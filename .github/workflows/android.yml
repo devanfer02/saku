@@ -1,10 +1,21 @@
 name: Android
 
+# Two lanes, deliberately not the same work twice.
+#
+#   pull_request -> verify. Tests, lint, debug build. This is the gate.
+#   push: master -> ship.   Signed release, no tests.
+#
+# A squash merge produces a new SHA over content the PR already proved, so
+# re-running the suite on master buys nothing and delays the artifact. The
+# safety this trades away is the case where master moved after the PR was
+# checked: enable "require branches to be up to date before merging" on the
+# branch rule and that gap closes. Direct pushes to master skip the gate
+# entirely, which is what the branch rule is for.
 on:
   push:
-    branches: [main, "foundation/**", "agent/**"]
+    branches: [master]
   pull_request:
-    branches: [main]
+    branches: [master]
   workflow_dispatch:
 
 concurrency:
@@ -12,8 +23,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
-    name: Build APK and run unit tests
+  verify:
+    name: Tests, lint and debug build
+    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -33,15 +45,44 @@ jobs:
       - name: Lint
         run: ./gradlew lintDebug --stacktrace
 
-      # Also runs checkDebugNoNetworkPermission / checkReleaseNoNetworkPermission,
-      # which are wired into assemble. A network permission fails the build here.
+      # Also runs checkDebugNoNetworkPermission, wired into assemble. A network
+      # permission fails the build here.
       - name: Assemble debug
         run: ./gradlew assembleDebug --stacktrace
 
-      # Written outside the checkout so it cannot be picked up by a build script or
-      # committed by accident, and removed even when the build fails. Secrets are
-      # absent on a pull request from a fork; the Gradle config detects that and
-      # produces an unsigned APK rather than failing.
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: saku-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-reports
+          path: app/build/reports/tests/
+          if-no-files-found: ignore
+
+  ship:
+    name: Signed release build
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      # Written outside the checkout so it cannot be picked up by a build script
+      # or committed by accident, and removed even when the build fails.
       - name: Decode keystore
         id: keystore
         env:
@@ -57,6 +98,8 @@ jobs:
           printf '%s' "$SAKU_KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/saku.jks"
           echo "path=$RUNNER_TEMP/saku.jks" >> "$GITHUB_OUTPUT"
 
+      # Also runs checkReleaseNoNetworkPermission, so the permission gate still
+      # covers this lane even though the unit tests do not run here.
       - name: Assemble release
         env:
           SAKU_KEYSTORE: ${{ steps.keystore.outputs.path }}
@@ -69,16 +112,9 @@ jobs:
         if: always()
         run: rm -f "$RUNNER_TEMP/saku.jks"
 
-      - name: Upload debug APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: saku-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
-
-      # Signed when the four SAKU_* secrets are present, unsigned otherwise — a fork's
-      # pull request has no access to them. The file name says which: AGP writes
-      # app-release.apk when signed and app-release-unsigned.apk when not.
+      # Signed when the four SAKU_* secrets are present, unsigned otherwise. The
+      # file name says which: AGP writes app-release.apk when signed and
+      # app-release-unsigned.apk when not.
       - name: Upload release APK
         uses: actions/upload-artifact@v4
         with:
@@ -86,21 +122,12 @@ jobs:
           path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error
 
-      - name: Upload test reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: unit-test-reports
-          path: app/build/reports/tests/
-          if-no-files-found: ignore
-
   e2e:
     name: Maestro e2e
+    # Emulator runs are slow, so keep them off pull requests. They run on master
+    # after a merge, and on demand.
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
-    needs: build
-    # Emulator runs are slow, so keep them off every push. Dispatch manually or
-    # let them run on main.
-    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
 
