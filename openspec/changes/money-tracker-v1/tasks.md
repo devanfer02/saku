@@ -40,96 +40,100 @@ four tracks' common ground.
 
 ## 1. Foundation — project setup
 
-- [ ] 1.1 Initialise the git repository, commit the current template state as the baseline, and confirm `.gitignore` covers `local.properties` and `.idea/`
-- [ ] 1.2 Rename the package from `com.example.myapplication` to the agreed id across sources, manifest, `namespace` and `applicationId`; set `rootProject.name` in `settings.gradle.kts`
-- [ ] 1.3 Set `minSdk 26` and `targetSdk 35`; verify `java.time` resolves without desugaring
-- [ ] 1.4 Add Room, KSP, Navigation Compose and kotlinx-datetime to `gradle/libs.versions.toml` and `app/build.gradle.kts`
-- [ ] 1.5 Delete the template `MainActivity` greeting, `ui/theme/{Color,Theme,Type}.kt` contents and the two example tests; leave a scaffold that builds
-- [ ] 1.6 Create the package skeleton — `data/`, `domain/`, `ui/theme/`, `ui/shared/`, `ui/transactions/`, `ui/categories/`, `ui/accounts/`, `ui/stats/`, `ui/importexport/`, `excel/` — so track boundaries exist before any track starts
-- [ ] 1.7 Confirm the merged manifest declares no `INTERNET` permission, and add a unit test asserting its absence
+- [x] 1.1 Initialise the git repository, commit the current template state as the baseline, and confirm `.gitignore` covers `local.properties` and `.idea/`
+- [x] 1.2 Rename the package from `com.example.myapplication` to the agreed id across sources, manifest, `namespace` and `applicationId`; set `rootProject.name` in `settings.gradle.kts`
+- [x] 1.3 Set `minSdk 26` and `targetSdk 35`; verify `java.time` resolves without desugaring
+- [x] 1.4 Add Room, KSP, Navigation Compose and kotlinx-datetime to `gradle/libs.versions.toml` and `app/build.gradle.kts`
+- [x] 1.5 Delete the template `MainActivity` greeting, `ui/theme/{Color,Theme,Type}.kt` contents and the two example tests; leave a scaffold that builds
+- [x] 1.6 Create the package skeleton — `data/`, `domain/`, `ui/theme/`, `ui/shared/`, `ui/transactions/`, `ui/categories/`, `ui/accounts/`, `ui/stats/`, `ui/importexport/`, `excel/` — so track boundaries exist before any track starts
+- [x] 1.7 Confirm the merged manifest declares no `INTERNET` permission, and add a unit test asserting its absence, plus a `check<Variant>NoNetworkPermission` Gradle task over the *merged* manifest so a transitively-added permission is caught too
+- [x] 1.8 Add a GitHub Actions workflow building debug and release APKs as downloadable artifacts, running unit tests and the no-network guard on every push
+- [x] 1.9 Set up the Maestro e2e harness — `.maestro/config.yaml`, a `flows/` directory, and a shell smoke flow — and add the emulator e2e job to CI. The smoke flow asserts the four destinations, so it stays red until task 5.2 lands the shell
 
 ## 2. Foundation — domain and data layer
 
 Locks the repository contracts every track codes against. Nothing here may change once phase 3 begins.
 
-- [ ] 2.1 Define pure domain types in `domain/`: `Money` as a `Long` rupiah value class, `TxnType`, `AccountType`, `CategoryKind`, `ColorSlot`
-- [ ] 2.2 Implement `DateRange` and period arithmetic — week, month and year boundaries, step forward and back, custom range — as pure functions with unit tests. Consumed by both the transaction list and stats
-- [ ] 2.3 Implement `dedupHash(occurredAt, type, amount, categoryName, note)` as a pure function with unit tests
-- [ ] 2.4 Implement `nextColorSlot(existingSlots)` — creation order, wrapping after the eighth — with unit tests
-- [ ] 2.5 Define the Room entities `account`, `category`, `subcategory`, `txn`, `import_batch` with the columns named in `design.md`
-- [ ] 2.6 Add indexes on `txn(occurredAt)`, `txn(accountId)`, `txn(categoryId)` and a unique index on `txn(dedupHash)`
-- [ ] 2.7 Implement the balance aggregate query — opening balance plus inflow minus outflow, filtered to `occurredAt >= openingAsOf` — and unit-test it against the scenarios in `specs/account-management/spec.md`
-- [ ] 2.8 Implement period aggregate queries for income, expense and per-category totals, excluding transfers and adjustments; unit-test the exclusion
-- [ ] 2.9 Define and implement the repository interfaces — `TransactionRepository`, `AccountRepository`, `CategoryRepository`, `ImportRepository` — exposing `Flow`. **These are the contracts phase 3 depends on; review them before proceeding**
-- [ ] 2.10 Implement the first-run seed: sixteen expense categories and four accounts, each with a colour slot
-- [ ] 2.11 Unit-test that amounts are `Long` throughout and that no aggregate path uses floating point
+- [x] 2.1 Define pure domain types in `domain/`: `Money` as a `Long` rupiah value class, `TxnType`, `AccountType`, `CategoryKind`, `ColorSlot`
+- [x] 2.2 Implement `DateRange` and period arithmetic — week, month and year boundaries, step forward and back, custom range — as pure functions with unit tests. Consumed by both the transaction list and stats
+- [x] 2.3 Implement `dedupHash(occurredAt, type, amount, categoryName, note)` as a pure function with unit tests
+- [x] 2.4 Implement `nextColorSlot(existingSlots)` — creation order, wrapping after the eighth — with unit tests
+- [x] 2.5 Define the Room entities `account`, `category`, `subcategory`, `txn`, `import_batch` with the columns named in `design.md`
+- [x] 2.6 Add indexes on `txn(occurredAt)`, `txn(accountId)`, `txn(categoryId)` and a unique index on `txn(dedupHash)`
+- [x] 2.7 Implement the balance aggregate query — opening balance plus inflow minus outflow, filtered to `occurredAt >= openingAsOf` — and unit-test it against the scenarios in `specs/account-management/spec.md`
+- [x] 2.8 Implement period aggregate queries for income, expense and per-category totals, excluding transfers and adjustments; unit-test the exclusion
+- [x] 2.9 Define and implement the repository interfaces — `TransactionRepository`, `AccountRepository`, `CategoryRepository`, `ImportRepository` — exposing `Flow`. **These are the contracts phase 3 depends on; review them before proceeding**
+- [x] 2.10 Implement the first-run seed: sixteen expense categories and four accounts, each with a colour slot
+- [x] 2.11 Unit-test that amounts are `Long` throughout and that no aggregate path uses floating point
 
 ## 3. Foundation — design system
 
-- [ ] 3.1 Define the light and dark token sets — background, surface, ink, ink-2, ink-3, line, accent, income, expense, transfer — as complete sets, neither derived from the other
-- [ ] 3.2 Define the eight-slot categorical chart palette per theme in shared slot order, using the validated hex values from the design agreement, and expose `colorForSlot(slot)` resolving against the active theme
-- [ ] 3.3 Define the type scale and spacing scale
-- [ ] 3.4 Implement `formatIdr(Money)`: `Rp 5.061.400`, full-stop thousands separator, no decimal component, with a compact variant omitting the `Rp` prefix for dense rows
-- [ ] 3.5 Implement `colorForDirection(TxnType)` returning the income, expense or neutral token — never the accent
-- [ ] 3.6 Add the appearance setting: follow system, always light, always dark
-- [ ] 3.7 Screenshot-test a token reference screen in both themes to catch any colour defined for only one theme
+- [x] 3.1 Define the light and dark token sets — background, surface, ink, ink-2, ink-3, line, accent, income, expense, transfer — as complete sets, neither derived from the other
+- [x] 3.2 Define the eight-slot categorical chart palette per theme in shared slot order, using the validated hex values from the design agreement, and expose `colorForSlot(slot)` resolving against the active theme
+- [x] 3.3 Define the type scale and spacing scale
+- [x] 3.4 Implement `formatIdr(Money)`: `Rp 5.061.400`, full-stop thousands separator, no decimal component, with a compact variant omitting the `Rp` prefix for dense rows
+- [x] 3.5 Implement `colorForDirection(TxnType)` returning the income, expense or neutral token — never the accent
+- [x] 3.6 Add the appearance setting: follow system, always light, always dark
+- [x] 3.7 Catch any colour defined for only one theme. **Done as a source guard rather than a screenshot harness**: `SakuColorsTest` proves both token sets are complete and distinct, and `NoHardCodedColorsTest` forbids a colour literal outside `ui/theme/` — which is the half a token check cannot see. No plugin, no golden PNGs, cannot flake
 
 ## 4. Foundation — shared components
 
 Every component here has at least two consumers. Each ships with a Compose preview in both themes.
 
-- [ ] 4.1 `MoneyText` — formats a `Money` with direction colour. Consumers: every screen
-- [ ] 4.2 `TransactionRow` — category, note, amount, account name with colour swatch, optional subcategory, both accounts for a transfer. Consumers: Daily list, stats drill-through
-- [ ] 4.3 `Donut` — segments from (slot, value) pairs, 2px gaps, centre label slot, zero and negative values omitted from the ring. Consumers: stats, accounts
-- [ ] 4.4 `RankedRow` — colour chip, name, optional share percentage, value. Consumers: stats category list, accounts list
-- [ ] 4.5 `CategoryPicker` and `SubcategoryPicker` — filtered by kind and parent, archived excluded, each ending in a create action. Consumers: entry sheet, import mapping, stats filters
-- [ ] 4.6 `AccountPicker` — archived excluded, colour swatch per row. Consumers: entry sheet, import mapping, accounts
-- [ ] 4.7 `PeriodBar` — range display with step-back and step-forward, backed by `DateRange`. Consumers: transaction list month header, stats period selector
-- [ ] 4.8 `SegmentedTabs` — used for the entry sheet's type selector, the category screen's kind tabs, and the stats income/expense tabs
-- [ ] 4.9 `ConfirmDialog` — title, body, affected-count line, confirm and cancel. Consumers: delete, merge, reconcile, batch reversal
-- [ ] 4.10 `EmptyState` — icon, message, optional action. Consumers: stats, list, import history
-- [ ] 4.11 Write component tests covering the donut's gap and omission rules, and `TransactionRow`'s transfer variant
+- [x] 4.1 `MoneyText` — formats a `Money` with direction colour. Consumers: every screen
+- [x] 4.2 `TransactionRow` — category, note, amount, account name with colour swatch, optional subcategory, both accounts for a transfer. Consumers: Daily list, stats drill-through
+- [x] 4.3 `Donut` — segments from (slot, value) pairs, 2px gaps, centre label slot, zero and negative values omitted from the ring. Consumers: stats, accounts
+- [x] 4.4 `RankedRow` — colour chip, name, optional share percentage, value. Consumers: stats category list, accounts list
+- [x] 4.5 `CategoryPicker` and `SubcategoryPicker` — filtered by kind and parent, archived excluded, each ending in a create action. Consumers: entry sheet, import mapping, stats filters
+- [x] 4.6 `AccountPicker` — archived excluded, colour swatch per row. Consumers: entry sheet, import mapping, accounts
+- [x] 4.7 `PeriodBar` — range display with step-back and step-forward, backed by `DateRange`. Consumers: transaction list month header, stats period selector
+- [x] 4.8 `SegmentedTabs` — used for the entry sheet's type selector, the category screen's kind tabs, and the stats income/expense tabs
+- [x] 4.9 `ConfirmDialog` — title, body, affected-count line, confirm and cancel. Consumers: delete, merge, reconcile, batch reversal
+- [x] 4.10 `EmptyState` — icon, message, optional action. Consumers: stats, list, import history
+- [x] 4.11 Write component tests covering the donut's gap and omission rules, and `TransactionRow`'s transfer variant
 
 ## 5. Foundation — app shell
 
-- [ ] 5.1 Build the four-destination bottom navigation with per-destination state retention
-- [ ] 5.2 Wire Navigation Compose with a placeholder screen per destination, so every track has a mount point that already exists
-- [ ] 5.3 Build the More menu listing category management, import from Money Manager, import Excel, export Excel, import history and appearance
-- [ ] 5.4 Verify the shell builds and runs with all four placeholders before phase 2 starts
+- [x] 5.1 Build the four-destination bottom navigation with per-destination state retention
+- [x] 5.2 Wire Navigation Compose with a placeholder screen per destination, so every track has a mount point that already exists
+- [x] 5.3 Build the More menu listing category management, import from Money Manager, import Excel, export Excel, import history and appearance
+- [x] 5.4 Verify the shell builds and runs with all four placeholders before phase 2 starts
 
 ## 6. Excel library spike — concurrent with groups 1–5, gates track F
 
-- [ ] 6.1 Add `fastexcel` and `fastexcel-reader`; build a debug APK and confirm it assembles without method-count or desugaring errors
-- [ ] 6.2 On a device or emulator, read `data/mock-money-manager.xlsx` end to end and assert 1,200 rows and 11 header names, two of which are `Account`
-- [ ] 6.3 Write an `.xlsx` on device, read it back, and assert round-trip equality
-- [ ] 6.4 Record the outcome in `design.md`. If any step fails, switch to Apache POI with `poi-ooxml-lite` and note the APK size cost before track F starts
+- [x] 6.1 Add `fastexcel` and `fastexcel-reader`; build a debug APK and confirm it assembles without method-count or desugaring errors
+- [x] 6.2 On a device or emulator, read `data/mock-money-manager.xlsx` end to end and assert 1,200 rows and 11 header names, two of which are `Account`
+- [x] 6.3 Write an `.xlsx` on device, read it back, and assert round-trip equality
+- [x] 6.4 Record the outcome in `design.md`. **Outcome: fastexcel passes, +1,337,200 bytes, but needs `geronimo-stax-api` — Android ships no `javax.xml.stream`. POI is not a viable fallback: same StAX need, plus 71 unresolvable `java.awt` refs, at +7,728,585 bytes**
 
 ## 7. Proving slice — transaction list (read path)
 
 Pushes the data layer, `DateRange`, `MoneyText`, `TransactionRow` and `PeriodBar` through a real screen.
 
-- [ ] 7.1 Build the month header using `PeriodBar`, with Income / Expenses / Total figures excluding transfers and adjustments
-- [ ] 7.2 Build the Daily tab: day-grouped descending list, per-day subtotals excluding transfers and adjustments, no header for empty days
-- [ ] 7.3 Render rows via the shared `TransactionRow`, including the transfer variant showing both accounts
-- [ ] 7.4 Build the Calendar tab: month grid with per-day net, empty days rendered visibly empty rather than as zero
-- [ ] 7.5 Wire calendar day tap through to the Daily tab scrolled to that day, and row tap through to edit
-- [ ] 7.6 Write tests for every scenario in `specs/transaction-list/spec.md`
-- [ ] 7.7 **Foundation review** — record which shared components needed changing and fix them in `ui/shared/` now, before the write path
+- [x] 7.1 Build the month header using `PeriodBar`, with Income / Expenses / Total figures excluding transfers and adjustments
+- [x] 7.2 Build the Daily tab: day-grouped descending list, per-day subtotals excluding transfers and adjustments, no header for empty days
+- [x] 7.3 Render rows via the shared `TransactionRow`, including the transfer variant showing both accounts
+- [x] 7.4 Build the Calendar tab: month grid with per-day net, empty days rendered visibly empty rather than as zero
+- [x] 7.5 Wire calendar day tap through to the Daily tab scrolled to that day, and row tap through to edit
+- [x] 7.6 Write tests for every scenario in `specs/transaction-list/spec.md`
+- [x] 7.7 Write a Maestro flow: navigate months, switch Daily and Calendar, open a day from the calendar
+- [x] 7.8 **Foundation review** — record which shared components needed changing and fix them in `ui/shared/` now, before the write path
 
 ## 8. Proving slice — transaction entry (write path)
 
 Pushes the pickers, validation and every repository write through a real screen.
 
-- [ ] 8.1 Build the entry sheet using `SegmentedTabs`: three-way type selector, date and time defaulted to now, amount, category, subcategory, account, note
-- [ ] 8.2 Build the numeric keypad with digits, `000`, backspace, `+` and `−` inline arithmetic, and save
-- [ ] 8.3 Wire the shared category, subcategory and account pickers into the sheet
-- [ ] 8.4 Implement last-used subcategory recall per category, and clearing the subcategory when the category changes
-- [ ] 8.5 Implement inline create from both pickers: persist, select, return with all other field values intact
-- [ ] 8.6 Implement the Transfer variant: destination account replaces category, same-account transfers blocked
-- [ ] 8.7 Implement validation — non-zero amount, category required for income and expense, destination required and distinct for transfers
-- [ ] 8.8 Implement edit and delete, including single-confirmation delete via `ConfirmDialog` and balance recalculation
-- [ ] 8.9 Write tests for every scenario in `specs/transaction-entry/spec.md`
-- [ ] 8.10 **Fan-out gate** — freeze `data/`, `domain/`, `ui/theme/` and `ui/shared/`. Record the freeze in `design.md`. Tracks C, D, E and F may start
+- [x] 8.1 Build the entry sheet using `SegmentedTabs`: three-way type selector, date and time defaulted to now, amount, category, subcategory, account, note
+- [x] 8.2 Build the numeric keypad with digits, `000`, backspace, `+` and `−` inline arithmetic, and save
+- [x] 8.3 Wire the shared category, subcategory and account pickers into the sheet
+- [x] 8.4 Implement last-used subcategory recall per category, and clearing the subcategory when the category changes
+- [x] 8.5 Implement inline create from both pickers: persist, select, return with all other field values intact
+- [x] 8.6 Implement the Transfer variant: destination account replaces category, same-account transfers blocked
+- [x] 8.7 Implement validation — non-zero amount, category required for income and expense, destination required and distinct for transfers
+- [x] 8.8 Implement edit and delete, including single-confirmation delete via `ConfirmDialog` and balance recalculation
+- [x] 8.9 Write tests for every scenario in `specs/transaction-entry/spec.md`
+- [x] 8.10 Write a Maestro flow: record an expense end to end, including creating a subcategory inline, and assert it appears in the Daily list
+- [x] 8.11 **Fan-out gate** — freeze `data/`, `domain/`, `ui/theme/` and `ui/shared/`. Record the freeze in `design.md`. Confirm CI is green and the Maestro suite passes. Tracks C, D, E and F may start
 
 ---
 
@@ -143,6 +147,7 @@ Owns `ui/categories/`. Depends on: `CategoryRepository`, `ConfirmDialog`, `Segme
 - [ ] 9.4 Implement archive and unarchive, and restrict delete to zero-reference records
 - [ ] 9.5 Implement merge: same-kind targets only, affected count shown in `ConfirmDialog` before confirmation, subcategories carried across with name collisions merged
 - [ ] 9.6 Write tests for every scenario in `specs/category-management/spec.md`
+- [ ] 9.7 Write a Maestro flow in `.maestro/flows/`: create a category, add two subcategories to it, rename one, archive the category
 
 ## 10. Track D — accounts
 
@@ -154,6 +159,7 @@ Owns `ui/accounts/`. Depends on: `AccountRepository`, `Donut`, `RankedRow`, `Con
 - [ ] 10.4 Implement the Reconcile flow: enter true balance, write a dated `ADJUSTMENT` for the difference, no adjustment when the difference is zero
 - [ ] 10.5 Implement staleness flagging at 30 days, with a distinct never-reconciled state
 - [ ] 10.6 Write tests for every scenario in `specs/account-management/spec.md`
+- [ ] 10.7 Write a Maestro flow in `.maestro/flows/`: add an account, reconcile it to a different balance, assert the adjustment row appears in the transaction list
 
 ## 11. Track E — stats
 
@@ -168,6 +174,7 @@ Owns `ui/stats/`. Depends on: `TransactionRepository` aggregates, `PeriodBar`, `
 - [ ] 11.6 Implement drill-through from a segment or row to a transaction list built from the shared `TransactionRow`, and from "Other" to its constituent categories
 - [ ] 11.7 Implement the empty state for a period with no data on the selected side
 - [ ] 11.8 Write tests for every scenario in `specs/period-stats/spec.md`
+- [ ] 11.9 Write a Maestro flow in `.maestro/flows/`: switch period mode, step back a month, drill through a category row to its transactions
 
 ## 12. Track F — excel import and export
 
@@ -186,6 +193,7 @@ Owns `excel/` and `ui/importexport/`. Depends on: group 6 having passed, `Import
 - [ ] 12.10 Write a round-trip test: export a populated database, import into an empty one, assert every field matches
 - [ ] 12.11 Write an integration test importing the real `data/mock-money-manager.xlsx`, asserting 1,200 parsed rows, the six transfers mapped, and a second import of the same file inserting zero
 - [ ] 12.12 Write tests for the remaining scenarios in `specs/excel-interchange/spec.md`
+- [ ] 12.13 Write a Maestro flow in `.maestro/flows/`: run the Money Manager import through mapping and preview, confirm, then re-run the same file and assert zero new rows
 
 ---
 
@@ -197,5 +205,6 @@ Runs once tracks C, D, E and F have all merged.
 - [ ] 13.2 Add the "Import from Money Manager" and "Import Excel" entry points to first-run and to More
 - [ ] 13.3 Resolve any shared-component changes the tracks raised but did not apply, and re-run every track's tests
 - [ ] 13.4 Verify the six approved screens against the design agreement in both themes on a real device
-- [ ] 13.5 Run the full test suite and record the result; verify the release manifest still declares no network permission
-- [ ] 13.6 Update `CLAUDE.md` to describe the built app rather than the template, and record the deferred v2 list
+- [ ] 13.5 Run the full Maestro suite against a clean install and fix any flow broken by cross-track interaction
+- [ ] 13.6 Run the full test suite and record the result; confirm CI produces both APK artifacts and that the release manifest still declares no network permission
+- [ ] 13.7 Update `CLAUDE.md` to describe the built app rather than the template, and record the deferred v2 list

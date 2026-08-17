@@ -1,0 +1,112 @@
+appId: com.dvnnfrr.saku
+name: Import from Money Manager
+---
+# Task 12.13. The whole import path: mapping, preview, confirm, then the same file
+# again to prove the second run adds nothing.
+#
+# Two prerequisites, both outside the app:
+#
+#  1. `data/mock-money-manager.xlsx` must be on the device in Downloads. Push it
+#     with `adb push "data/mock-money-manager.xlsx" /sdcard/Download/`.
+#  2. The file arrives through the Storage Access Framework, so the steps between
+#     tapping "Choose a file" and landing back in Saku are the system picker's, not
+#     ours. They are the one part of this flow that varies by device.
+#
+# Saku holds no storage permission and no INTERNET permission — SAF is the only way a
+# file gets in, which is why the picker is in the flow at all.
+
+- clearState
+- launchApp
+
+- tapOn: "More"
+- tapOn: "Import from Money Manager"
+
+# Nothing has been read yet, so the screen offers the picker and says what it wants.
+- assertVisible: "Choose a file"
+- tapOn: "Choose a file"
+
+# --- the system document picker -------------------------------------------------
+# Documents UI. If the picker opens somewhere other than Downloads, the first tap
+# reaches the drawer and the second picks the folder.
+- runFlow:
+    when:
+      visible: "Show roots"
+    commands:
+      - tapOn: "Show roots"
+      - tapOn: "Downloads"
+- tapOn:
+    text: ".*Money Manager.*"
+# --------------------------------------------------------------------------------
+
+# The preview. The file, its size and its span, before any mapping is done.
+- assertVisible: "mock-money-manager.xlsx"
+- assertVisible: "1200"
+- assertVisible: "Date span"
+- assertVisible: "What importing will do"
+
+# Deleted is structurally zero and the screen says so rather than leaving the user to
+# infer it.
+- assertVisible: "Deleted"
+- assertVisible: "Import only ever adds. No existing transaction is changed or removed, which is why deleted reads zero."
+
+# Card covers 1,150 of the 1,200 rows and arrives pointing at BCA, marked as a guess.
+- assertVisible: "Accounts in this file"
+- assertVisible: "Card"
+- assertVisible: "1548 rows"
+- assertVisible: "BCA"
+- assertVisible: "Prefilled — check this"
+
+# Gopay has no match, so the import is blocked until it is given one. The row is
+# reached by its placeholder rather than by "Gopay": the name appears in more than one
+# place on this screen, and only an unmapped account row says "Choose an account".
+- assertVisible: "Gopay"
+- assertVisible: "\"Gopay\" has no account chosen"
+- tapOn: "Choose an account"
+- tapOn: "Create \"Gopay\""
+
+# The six investment transfers. Nothing is prefilled here on purpose: this is the
+# choice that decides whether 5.050.800 lands in an account or disappears.
+- assertVisible: "Investment transfers"
+- assertVisible: "RDPU SucorInvest"
+- assertVisible: "Saham"
+- assertVisible: "Transfers in \"Saham\" have no destination"
+
+# Same trick: "Choose a destination" belongs to a transfer group and nothing else, so
+# the two taps land on the two groups in order.
+- tapOn: "Choose a destination"
+- tapOn: "Create \"RDPU SucorInvest\""
+- tapOn: "Choose a destination"
+- tapOn: "Create \"Saham\""
+
+# Everything is mapped, so the action turns on and says what it will do. The count is
+# in the label deliberately — a button reading just "Import" would let a preview the
+# user misread be confirmed without ever showing the number.
+- assertVisible: "Import 1200 transactions"
+- tapOn: "Import 1200 transactions"
+
+- assertVisible: "Import finished"
+- assertVisible: "1200 added from mock-money-manager.xlsx. 0 were already here."
+
+# --- the same file again --------------------------------------------------------
+# Every row is now present, so the second pass must add nothing at all.
+- tapOn: "Choose another file"
+- runFlow:
+    when:
+      visible: "Show roots"
+    commands:
+      - tapOn: "Show roots"
+      - tapOn: "Downloads"
+- tapOn:
+    text: ".*Money Manager.*"
+
+- assertVisible: "What importing will do"
+- assertVisible: "Every row in this file is already here"
+- assertVisible:
+    text: "Import"
+    enabled: false
+
+# And the history records the one import that did happen, reversible as a unit.
+- tapOn: "More"
+- tapOn: "Import history"
+- assertVisible: "mock-money-manager.xlsx"
+- assertVisible: "Reverse"

@@ -1,0 +1,41 @@
+appId: com.dvnnfrr.saku
+name: Transaction list
+---
+# Task 7.7. Month navigation, both tabs, and opening a day from the calendar.
+# Runs on a freshly seeded install, so the month is empty — which is the point of
+# the first assertion: an empty month must say so rather than render nothing.
+- clearState
+- launchApp
+
+- assertVisible: "Daily"
+- assertVisible: "Calendar"
+- assertVisible: "Income"
+- assertVisible: "Expenses"
+- assertVisible: "Total"
+- assertVisible: "Nothing recorded this month"
+
+# Month navigation keeps the selected tab. Stepping back and forward must land on
+# the month it started from.
+- tapOn: "Calendar"
+- assertVisible:
+    text: "Calendar"
+    selected: true
+
+- tapOn: "Previous period"
+- assertVisible:
+    text: "Calendar"
+    selected: true
+
+- tapOn: "Next period"
+- assertVisible:
+    text: "Calendar"
+    selected: true
+
+# The grid is present with its weekday headings.
+- assertVisible: "Mon"
+- assertVisible: "Sun"
+
+- tapOn: "Daily"
+- assertVisible:
+    text: "Daily"
+    selected: true

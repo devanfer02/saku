@@ -1,0 +1,46 @@
+appId: com.dvnnfrr.saku
+name: Record an expense
+---
+# Task 8.10. An expense end to end, including creating a subcategory inline, and
+# then finding it in the Daily list.
+#
+# Runs against the first-run seed, so BCA and the sixteen Indonesian categories are
+# already there. If the seed ever stops running, this flow is what catches it.
+- clearState
+- launchApp
+
+- assertVisible: "Nothing recorded this month"
+
+- tapOn: "Add transaction"
+- assertVisible: "New transaction"
+- assertVisible: "Expense"
+
+# 187 then 000, which is the keypad's whole reason for existing.
+- tapOn: "1"
+- tapOn: "8"
+- tapOn: "7"
+- tapOn: "000"
+- assertVisible: "Rp 187.000"
+
+# Category, then a subcategory created without leaving the sheet.
+- tapOn: "Category"
+- tapOn: "Makan & Minum"
+- assertVisible: "Makan & Minum"
+
+- tapOn: "Subcategory"
+- tapOn: "New subcategory"
+- inputText: "Warung Padang"
+- tapOn: "Create"
+- assertVisible: "Warung Padang"
+
+- tapOn: "Save"
+
+# Back on the list, with the row and the month header both updated.
+- assertVisible: "Makan & Minum"
+- assertVisible: "Warung Padang"
+- assertNotVisible: "Nothing recorded this month"
+
+# Reopening it must show what was saved, not an empty sheet.
+- tapOn: "Makan & Minum"
+- assertVisible: "Edit transaction"
+- assertVisible: "Rp 187.000"

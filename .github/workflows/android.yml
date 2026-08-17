@@ -1,0 +1,152 @@
+name: Android
+
+on:
+  push:
+    branches: [main, "foundation/**", "agent/**"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build APK and run unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Unit tests
+        run: ./gradlew testDebugUnitTest --stacktrace
+
+      - name: Lint
+        run: ./gradlew lintDebug --stacktrace
+
+      # Also runs checkDebugNoNetworkPermission / checkReleaseNoNetworkPermission,
+      # which are wired into assemble. A network permission fails the build here.
+      - name: Assemble debug
+        run: ./gradlew assembleDebug --stacktrace
+
+      # Written outside the checkout so it cannot be picked up by a build script or
+      # committed by accident, and removed even when the build fails. Secrets are
+      # absent on a pull request from a fork; the Gradle config detects that and
+      # produces an unsigned APK rather than failing.
+      - name: Decode keystore
+        id: keystore
+        env:
+          SAKU_KEYSTORE_B64: ${{ secrets.SAKU_KEYSTORE_B64 }}
+        run: |
+          # Guarded in the script rather than with `if:`, because a step's own env
+          # is not in scope when its `if` is evaluated. An empty secret leaves the
+          # output unset, which leaves the build unsigned.
+          if [ -z "$SAKU_KEYSTORE_B64" ]; then
+            echo "No keystore secret; release will be unsigned."
+            exit 0
+          fi
+          printf '%s' "$SAKU_KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/saku.jks"
+          echo "path=$RUNNER_TEMP/saku.jks" >> "$GITHUB_OUTPUT"
+
+      - name: Assemble release
+        env:
+          SAKU_KEYSTORE: ${{ steps.keystore.outputs.path }}
+          SAKU_KEYSTORE_PASSWORD: ${{ secrets.SAKU_KEYSTORE_PASSWORD }}
+          SAKU_KEY_ALIAS: ${{ secrets.SAKU_KEY_ALIAS }}
+          SAKU_KEY_PASSWORD: ${{ secrets.SAKU_KEY_PASSWORD }}
+        run: ./gradlew assembleRelease --stacktrace
+
+      - name: Shred keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/saku.jks"
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: saku-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
+      # Signed when the four SAKU_* secrets are present, unsigned otherwise — a fork's
+      # pull request has no access to them. The file name says which: AGP writes
+      # app-release.apk when signed and app-release-unsigned.apk when not.
+      - name: Upload release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: saku-release-apk
+          path: app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-reports
+          path: app/build/reports/tests/
+          if-no-files-found: ignore
+
+  e2e:
+    name: Maestro e2e
+    runs-on: ubuntu-latest
+    needs: build
+    # Emulator runs are slow, so keep them off every push. Dispatch manually or
+    # let them run on main.
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Assemble debug
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: Install Maestro
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run Maestro flows
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          target: google_apis
+          arch: x86_64
+          profile: pixel_5
+          disable-animations: true
+          script: |
+            adb install -r app/build/outputs/apk/debug/app-debug.apk
+            maestro test .maestro --exclude-tags pending-shell \
+              --format junit --output maestro-report.xml
+
+      - name: Upload Maestro report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-report
+          path: |
+            maestro-report.xml
+            ~/.maestro/tests/
+          if-no-files-found: ignore

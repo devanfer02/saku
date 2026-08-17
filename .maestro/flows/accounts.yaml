@@ -1,0 +1,76 @@
+appId: com.dvnnfrr.saku
+name: Accounts and the balance donut
+---
+# Task 10.7, plus the list-and-donut half of track D's definition of done.
+#
+# Runs on a freshly seeded install, so the four default accounts exist and every one of
+# them opens at zero. That is what makes the first block worth asserting: with nothing
+# held anywhere the donut must say so rather than draw a ring of nothing, and the
+# Liabilities figure must be absent rather than sitting at zero.
+- clearState
+- launchApp
+
+- tapOn: "Accounts"
+
+# The header. Two figures, not three, until a liability account exists.
+- assertVisible: "Spendable"
+- assertVisible: "Invested"
+- assertVisible: "Total"
+- assertNotVisible: "Liabilities"
+
+# The seeded four, under their type headings, every one never reconciled.
+- assertVisible: "BCA"
+- assertVisible: "Jago"
+- assertVisible: "RDPU SucorInvest"
+- assertVisible: "Never reconciled"
+
+# Nothing holds a positive balance, so there is nothing to chart.
+- assertVisible: "Nothing to chart yet"
+
+# Add an account with a real opening balance.
+- tapOn: "Add account"
+- assertVisible: "New account"
+
+- tapOn: "Name"
+- inputText: "Gopay"
+
+- tapOn: "Opening balance"
+- inputText: "500000"
+
+- tapOn: "Create"
+
+# It joins the list and the chart. The only positive balance in the app owns the whole
+# ring, so its legend row reads 100% — which is the donut's share arithmetic, asserted
+# through the label rather than through pixels.
+- assertVisible: "Gopay"
+- assertNotVisible: "Nothing to chart yet"
+- assertVisible: "100%"
+
+# Into the account, and reconcile it to a figure 50.000 lower than the app believes.
+- tapOn: "Gopay"
+- assertVisible: "Never reconciled"
+
+- tapOn: "Reconcile"
+- assertVisible: "Reconcile Gopay"
+- assertVisible: "Balance on record"
+
+- tapOn: "500000"
+- eraseText
+- inputText: "450000"
+
+# The correction is stated before it is written, and it is a difference, not an overwrite.
+- assertVisible: "Adjustment to record"
+- tapOn: "Save"
+
+- assertVisible: "adjustment of"
+- tapOn: "Done"
+
+# The balance has moved, and the account is no longer flagged as unchecked.
+- assertNotVisible: "Never reconciled"
+
+# The adjustment is an ordinary transaction. This is the assertion that proves the app
+# recorded the drift rather than quietly rewriting the balance to match.
+- tapOn: "Back"
+- tapOn: "Trans."
+- assertVisible: "Adjustment"
+- assertVisible: "Reconciled Gopay"

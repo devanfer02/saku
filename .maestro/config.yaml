@@ -1,0 +1,6 @@
+appId: com.dvnnfrr.saku
+
+# Every flow starts from a clean install so state from a previous flow can never
+# make a later one pass. Import flows in particular depend on this.
+flows:
+  - "flows/*.yaml"

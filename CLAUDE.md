@@ -4,12 +4,66 @@ Personal finance tracking app. Android, Kotlin, Jetpack Compose.
 
 ## Current state (17 Aug 2026)
 
-**Nothing is built yet.** This is an unmodified Android Studio Compose template:
+Saku. `com.dvnnfrr.saku`, minSdk 26, compileSdk 35, Room + KSP, Navigation Compose, IDR-only,
+offline. **No INTERNET permission, and a Gradle task fails the build if one reaches the merged
+manifest.** All four destinations mount real screens; 437 unit tests.
 
-- Package `com.example.myapplication`, `rootProject.name = "My Application"` — both still need renaming
-- One `MainActivity.kt` with the default "Hello Android" greeting
-- 6 Kotlin files total, all template scaffolding (`MainActivity`, `ui/theme/{Color,Theme,Type}.kt`, two example tests)
-- Not a git repository yet
+```
+com.dvnnfrr.saku
+├── domain/         Money, DateRange, TxnType, Account… pure Kotlin, no Android
+├── data/           Room entities, DAOs, repositories, FirstRunSeed, AppearanceStore
+├── excel/          import parsing and export, pure JVM, no Android and no UI copy
+└── ui/
+    ├── theme/      SakuTheme: colours, spacing, typography — the only place colour literals live
+    ├── shared/     MoneyText, Donut, RankedRow, SegmentedTabs, EmptyState…
+    ├── navigation/ SakuDestination, MoreRoute, SakuNavHost
+    ├── shell/      the Scaffold and bottom bar; owns no feature
+    └── <feature>/  transactions, entry, stats, accounts, categories, importexport
+```
+
+Nothing has yet run on real hardware. Excel import in particular is unproven on-device: fastexcel
+needs a StAX shim because Android ships no `javax.xml.stream`, and only a classloader test covers it.
+
+## Architecture rules
+
+Non-negotiable. A change that breaks one of these is wrong even if it compiles and passes.
+
+**MVVM, strictly.** A `ViewModel` holds only what the user has chosen — the selected month, the open
+tab, the pending dialog. Everything else is derived. Composables receive state and emit events; they
+never touch a repository, a DAO or a `Clock`. Repositories expose `Flow`s and suspend functions and
+know nothing about Compose. Nothing in `domain/` imports Android.
+
+Every feature gets a stateless overload taking a plain state object, and a stateful one that builds
+its own ViewModel. `StatsScreen` and `AccountsScreen` are the worked examples. The stateless overload
+is what previews and tests use.
+
+**Adapter at every boundary.** Foreign shapes stop at the edge; they never leak inward. Excel rows
+become `PendingRow` in `excel/`, entities become domain types in `data/`, domain types become UI
+state in a feature's `*Assembly.kt`. Those adapters are pure functions in their own file, tested
+without a database or a ViewModel — see `TransactionListAssembly.kt`, `StatsAssembly.kt`,
+`AccountsAssembly.kt`. (Compose has no `RecyclerView.Adapter`; this is the pattern, not the class.)
+If a fold is happening inside a composable or a ViewModel body, it belongs in an assembly file.
+
+**KISS.** Prefer a pure function to a class, a `when` to a strategy interface, and a data class to a
+builder. No dependency-injection framework — `AppContainer` is a hand-written container and that is
+deliberate. No abstraction whose only implementation is the one that exists. No interface added for a
+second implementation nobody has asked for.
+
+**DRY, but on behaviour, not on shape.** Two screens rendering an amount share `MoneyText`; two
+screens that happen to have a title do not share a `TitledScreen`. Before writing a component, search
+`ui/shared/` — the proving slice bypassed `MoneyText` five times and that counted as a defect. Money
+formatting, percentage rounding (`wholePercents`), colour-slot mapping and date labelling each have
+exactly one implementation. Duplicating one is a bug, not a style preference.
+
+**Money.** `Money` wraps a `Long` of rupiah. No `Float`, no `Double`, no `BigDecimal` in any balance,
+total or percentage. Percentages go through `wholePercents`, which uses largest-remainder so they sum
+to exactly 100.
+
+**Colour.** Only `ui/theme/` may contain a colour literal. `NoHardCodedColorsTest` scans `ui/` and
+fails the build otherwise.
+
+**Destructive writes.** Archive with a flag; never delete. Merging moves rows with a scoped `WHERE`
+inside one transaction. No `deleteAll`, no unscoped `UPDATE`, no `TRUNCATE` — see the global rules.
 
 ## Why this project exists
 
@@ -41,14 +95,22 @@ Export quirks to handle on import:
 - Transaction types are `Expense`, `Income`, `Transfer-Out`
 - Timestamps carry microsecond precision and reflect *entry* time, not spend time
 
-## Open decisions
+## Decisions already made
 
-None of these have been made yet:
+Settled — reopen only with a reason, not by drift:
 
-- App name, package name, min SDK
-- Local-only vs sync; storage layer (Room assumed but not chosen)
-- Whether to import from Money Manager exports or start clean
-- Multi-currency, or IDR-only
+- **Saku**, `com.dvnnfrr.saku`, minSdk 26. Room for storage.
+- **Local-only.** No sync, no account, no network, no ads. The build enforces the last three.
+- **IDR only.** `Money` is a `Long` of rupiah; there is no currency field to add later cheaply.
+- **Import from Money Manager exports**, merging into existing months rather than replacing them.
+- Seeded accounts open at the epoch, because every row worth importing predates any install.
+
+## Still open
+
+- First-run setup (group 13): real opening balances are set by hand on the accounts screen today.
+- Budget caps — gap 5 in the analysis below, and the one gap nothing yet addresses.
+- Reassigning a subcategory to a different parent: `SubcategoryDao.moveToCategory` exists but no
+  repository method reaches it.
 
 ## Domain notes
 

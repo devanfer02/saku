@@ -69,8 +69,16 @@ reconciled SHALL be flagged distinctly.
 
 ### Requirement: Summarise holdings as Spendable, Invested and Total
 The accounts screen SHALL show three figures: Spendable — the sum of Cash and Bank balances; Invested — the sum of
-Investment balances; and Total — Spendable plus Invested minus Liability balances. A Liabilities figure SHALL be
+Investment balances; and Total — Spendable plus Invested minus the amount owed. A Liabilities figure SHALL be
 shown only when at least one non-archived liability account exists.
+
+A liability account's stored balance MUST be negative while money is owed: spending against it is an expense, which
+the balance formula subtracts, so debt lowers the balance exactly as it lowers net worth. The Liabilities figure
+displayed to the user is the negation of that sum, and is therefore positive.
+
+#### Scenario: Taking on debt lowers net worth
+- **WHEN** the user holds BCA 1.000.000 and spends 500.000 on a liability account
+- **THEN** the header reads Spendable 1.000.000, Liabilities 500.000, Total 500.000
 
 #### Scenario: Summary with no liabilities
 - **WHEN** the user holds BCA 8.420.000, Jago 2.150.000, Cash 385.000 and RDPU 5.000.000, and no liability account exists
@@ -79,6 +87,24 @@ shown only when at least one non-archived liability account exists.
 #### Scenario: Summary once a liability exists
 - **WHEN** the user adds a liability account carrying a balance
 - **THEN** a Liabilities figure appears and Total is reduced by it
+
+### Requirement: A transfer must postdate both accounts' as-of dates
+The app MUST refuse to record a transfer dated before either the source or the destination account's
+`openingAsOf`. Because the as-of filter is applied per account, such a transfer is counted on one leg and not the
+other, which invents or destroys money in the Total. Anything that early is already reflected in the opening
+balances. First-run setup gives every seeded account the same as-of date, so the case is unreachable there.
+
+#### Scenario: Refusing a transfer that predates an opening date
+- **WHEN** the user records a transfer from an account whose as-of date is later than the transfer's date
+- **THEN** the save is blocked with a message naming the account whose opening date is too late
+
+### Requirement: Set the opening balance after an account exists
+The user SHALL be able to change an account's opening balance and as-of date after creation. First-run setup seeds
+accounts at zero and then collects the real figures, so this is the only way that flow can complete.
+
+#### Scenario: Completing first-run setup
+- **WHEN** the user enters BCA's true balance and a cutover date during first-run setup
+- **THEN** the account's opening balance and as-of date are stored, and its derived balance reflects them immediately
 
 ### Requirement: Chart balances by account
 The accounts screen SHALL render a donut of balance by account, with the total in its centre and the account list

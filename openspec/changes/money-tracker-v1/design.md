@@ -70,7 +70,8 @@ The `,00` tail is dropped on import and never rendered.
 ### Balances and period totals are SQL aggregates, not in-memory sums
 
 Room DAOs expose `Flow` over aggregate queries. At 1,200 rows either approach works; the app is meant to hold years
-more. Indexes on `txn(occurredAt)`, `txn(accountId)`, `txn(categoryId)` and a unique index on `txn(dedupHash)`.
+more. Indexes on `txn(occurredAt)`, `txn(accountId)`, `txn(categoryId)` and `txn(dedupHash)` — the last one plain,
+not unique; see the review section below for why.
 
 ### Transfers are one row with two account references
 
@@ -106,8 +107,8 @@ operations whose blast radius is "all rows".
 No import path updates, overwrites or deletes an existing transaction. A duplicate is skipped. The preview's deleted
 count is therefore structurally zero rather than incidentally zero.
 
-Dedup key: a hash over `occurredAt` truncated to seconds, type, `amountIdr`, category name and note. The reference
-data contains no two rows identical on all five, so collisions mean genuine duplicates.
+Dedup key: a hash over `occurredAt` truncated to seconds, type, `amountIdr`, `accountId`, `toAccountId`, category
+name and note. Leaving the account out was provably wrong — see the review section below.
 
 Two mapping steps run before any write. Accounts: every distinct name in the file maps to an existing or new
 account, with `Card → BCA` prefilled, covering 1,150 of 1,200 rows. Investment destinations: `Transfer-Out` rows
@@ -116,13 +117,31 @@ is asked once for a destination account. Net worth becomes computable during imp
 
 Every confirmed import writes a batch record and stamps its rows, so a bad import is reversible as a unit.
 
-### Excel via fastexcel, with Apache POI as the named fallback
+### Excel via fastexcel, plus a StAX shim. POI is not a fallback
 
-`fastexcel` and `fastexcel-reader` are pure Java, small, and have no POI dependency. Apache POI is the obvious
-alternative and the safer-looking one, but `poi-ooxml` on Android is heavy — roughly 8 MB of APK even with
-`poi-ooxml-lite`, plus method-count and desugaring friction. This is the one library risk in the plan and it is
-called out as such: the very first Excel task is a spike on device against the real 1,200-row file, before anything
-is built on top of it.
+**Resolved by the group 6 spike.** `fastexcel` and `fastexcel-reader` read all 1,200 rows of the real export, see
+all eleven headers including `Account` at both position 2 and position 11, and round-trip a written file. Cost is
+**+1,337,200 bytes**, 11.8% on an 11.3 MB release APK.
+
+It does not work out of the box. `fastexcel-reader` parses through `javax.xml.stream`, and **Android has never
+shipped StAX** — `android.jar` declares zero classes across `javax.xml.stream`, `.events` and `.util` while
+providing every other `javax.xml.*` package in the chain. On a device the first touch of `ReadableWorkbook` throws
+`NoClassDefFoundError`, and because the factory is held in a `static` field it fails at class-init rather than at
+the call site.
+
+`org.apache.geronimo.specs:geronimo-stax-api_1.2_spec` supplies it — 37 KB, API-only, Apache-2.0. fastexcel
+instantiates aalto's `InputFactoryImpl` directly instead of going through `XMLInputFactory.newInstance()`, so no
+`ServiceLoader` lookup has to resolve on Android.
+
+**Nothing in the normal toolchain catches the missing dependency.** `assembleDebug` succeeds, D8 dexes the dangling
+references silently with minification off, and both JVM unit tests and Robolectric pass because the desktop JDK
+carries its own StAX. `XlsxAndroidRuntimeTest` reproduces Android's classpath with a classloader that removes
+exactly those three packages and loads the libraries child-first, so dropping `libs.stax.api` fails the build. It
+cannot cover ART verifier behaviour or on-device throughput — track F should still run one import on hardware early.
+
+**The POI fallback this document previously named does not exist.** `poi-ooxml` needs the *same* StAX API and adds
+71 unresolvable `java.awt` references that no small shim replaces, at +7,728,585 bytes — 5.8× the cost of fastexcel,
+and still broken. The ~8 MB size estimate was right; the premise that POI was the safe alternative was not.
 
 ### No `INTERNET` permission in the manifest
 
@@ -175,17 +194,147 @@ task 1.6, before any track exists, so the boundaries are real from the start.
 *The Excel spike runs concurrently with the whole foundation phase.* It is isolated and gates only track F, but
 its outcome can change a dependency, so it must resolve before that track's agent starts.
 
+### CI builds the APK; Maestro covers e2e
+
+GitHub Actions runs on every push to `main`, `foundation/**` and `agent/**`. The build job runs unit tests, then
+assembles debug and release and uploads both as downloadable artifacts. Because the no-network check is wired into
+`assemble`, CI cannot produce an APK that declares network access.
+
+Running on `agent/**` matters for the fan-out: four concurrent tracks each get an independent green or red signal
+without waiting on a merge.
+
+E2E is Maestro rather than Espresso. Flows are YAML, they exercise the app the way it is actually used, and they
+do not couple to Compose internals — which matters when four tracks are writing screens in parallel and an
+Espresso matcher written against another track's tree would break constantly. The harness and a shell smoke flow
+land in foundation; each track adds its own flow beside them, in its own file, so flows never conflict either.
+
+The e2e job is gated to `main` and manual dispatch. An emulator boot per push would dominate the feedback loop
+for no benefit while foundation work is still moving.
+
+Release APKs are unsigned. Signing needs a keystore in repository secrets, which is a decision for whenever the
+app first goes to a device that is not the owner's.
+
+### Decisions forced by the foundation review
+
+Two independent reviews of PR #1 landed before the freeze, one design-focused and one adversarial. The adversarial
+pass proved eleven bugs with failing tests. These are the design-level consequences, recorded because the fixes are
+not obvious from the code alone.
+
+*The dedup hash includes the account, and is not a storage constraint.* The original key — timestamp, type, amount,
+category, note — omitted the account, and a unique index enforced it over every write path. Two Rp 5.000 parkir
+entries at the same picked minute therefore crashed on save, and on import two real rows differing only by which
+account paid were collapsed to one and reported as a duplicate. Since the reference export has `Subcategory` and
+`Description` empty on all 1,200 rows, that collision is likely rather than exotic. The account is now in the key,
+the index is no longer unique, and deduplication lives only in the importer, inside one transaction. The fields are
+length-prefixed rather than delimiter-joined, because imported text can contain the delimiter.
+
+*A liability's stored balance is negative while money is owed.* Nothing previously stated the convention, and both
+readings were wrong somewhere: `AccountSummary.total` subtracted an already-negative balance, so taking on debt
+raised net worth. Spending against a liability is an expense, the balance query subtracts it, and the summary
+negates the sum to present a positive "amount owed".
+
+*A transfer must postdate both accounts' as-of dates.* The filter is applied per account, so a transfer between two
+accounts with different cutovers is counted on one leg and not the other, inventing or destroying money in the
+Total. The repository refuses to record one, and first-run setup gives every seeded account the same cutover, which
+makes the case unreachable in practice. What the balance SQL does with such a row is unchanged and still correct:
+anything that early is already inside the opening balance.
+
+*Repositories take the database, not DAOs.* `mergeCategory` moves hundreds of rows, migrates subcategories and
+archives the source; unwrapped, process death mid-loop left a state no retry repairs. Reconcile had the same shape
+and a worse failure: it stamped "reconciled just now" before writing the adjustment, so a failed insert left the
+account looking clean with no correction. Both are now single transactions, and the reads inside them are one-shot
+queries rather than `Flow.first()`, which deadlocks against the write lock.
+
+*A container exists before the fan-out.* `AppContainer` is hand-rolled — four repositories do not justify an
+annotation processor. Its value is timing, not design: without it each of the four tracks would invent its own path
+from ViewModel to repository and all four would collide in `MainActivity`, the one file no track owns.
+
+*Chart shares are integers.* `CategoryTotal` carries basis points rather than a float, with the rounding remainder
+given to the largest slice, so a column of whole percentages sums to exactly 100 and the no-floating-point rule
+holds all the way to the screen.
+
+*The no-permission guard allows the app's own namespace.* Asserting zero `<uses-permission>` entries turned out to be
+too strict: AndroidX adds a signature permission namespaced to the applicationId for runtime receiver registration.
+The rule is now "nothing outside our own namespace", which still fails on every `android.permission.*`.
+
 ### Donuts rather than pies
 
 The reference app uses a filled pie. A donut is used in both places because the hole carries the figure that
 belongs at the centre of attention — the period total on stats, net worth on accounts — and because segment gaps
 read more cleanly on a ring. This is a deliberate, and the only significant, departure from the reference layout.
 
+### Shared components stay atomic and module-extractable
+
+The app is one Gradle module today, and splitting it is not in scope. The package layout is nonetheless drawn on
+the boundaries a split would use, so the option stays open and so parallel tracks cannot quietly couple to each
+other.
+
+`ui/shared/` may import Compose, `ui/theme/` and `domain/`. It may not import `data/`, `AppContainer`, any
+ViewModel or any repository, and it takes its copy as parameters rather than reading `R.string` — a component that
+hard-codes its own labels cannot be reused by a second caller that needs different ones. The working test for any
+file in `ui/shared/`: could it move to a `:ui-core` module tomorrow with nothing but a package rename?
+
+The same rule applies upward. `ui/shell/` composes shared components and owns no UI primitives of its own; the
+Daily/Calendar tab row is a placeholder for `SegmentedTabs`, not a second implementation of it. When two screens
+need the same control, it belongs in `ui/shared/` and both call it.
+
+### The proving slice found one contract gap: bulk subcategory lookup
+
+`CategoryRepository` exposed subcategories only per category. The transaction list needs a name for whatever
+subcategory each row points at, and asking per category is an N+1 over a month of rows. Added
+`observeAllSubcategories()` — no argument, archived included, backed by an existing `subcategory` table scan.
+
+Archived rows are in scope deliberately. Archiving a subcategory does not rewrite the transactions already
+referencing it, so filtering archived rows out of the lookup blanks the label on real history rather than hiding
+anything.
+
+This is what the proving slice is for. Finding it after four tracks had started would have meant editing a frozen
+contract with four branches open against it.
+
+### Two aggregation paths, and the test that keeps them honest
+
+The transaction screen folds its header, day subtotals and calendar cells from the single list of rows it already
+loaded for the Daily tab. The stats screen aggregates the same rules in SQL, because it reports on periods it does
+not list — an annual view must not load a year of rows to total them.
+
+Two implementations of one rule drift. `TransactionListViewModelTest` runs both over the same seeded month and
+asserts they agree, figure for figure. `TxnType.countsAsFlow` is the single written form of the underlying rule,
+and both paths route through it.
+
+### The shell's state retention is a real check, not a comment
+
+Bottom-bar navigation that forgets a destination still looks like it works — the user just loses their scroll
+position and their selected sub-tab. `navigateTo` carries `saveState`/`restoreState` with
+`popUpTo(findStartDestination())` and `launchSingleTop`, and dropping either flag is a silent regression. Two
+things fail if it is dropped: an instrumented test in `SakuShellNavigationTest`, and a step in the Maestro smoke
+flow that asserts `selected: true` on the Calendar tab after a round trip through Stats and Accounts. The Maestro
+step is the one that runs in CI, since CI has an emulator on the e2e job and no device on the unit job.
+
+### The fan-out gate: what is frozen, as of 5d197b0
+
+`data/`, `domain/`, `ui/theme/` and `ui/shared/` are frozen. Tracks C, D, E and F build against them and do not edit
+them. A track that needs a change stops and raises it, because that file is four branches' common ground.
+
+Each track owns exactly one directory and no track edits another's: C owns `ui/categories/`, D owns `ui/accounts/`,
+E owns `ui/stats/`, F owns `excel/` and `ui/importexport/`. Integration — routing the More menu entries and the
+nav destinations at each screen — is done centrally afterwards, in `ui/navigation/` and `ui/shell/`, which no track
+owns either.
+
+Three reviews ran before this line was drawn and found 24 findings between them, of which the load-bearing ones
+were three separate paths where money could silently vanish. That is the argument for the gate: each would have
+cost four branches to fix afterwards.
+
+**What the gate did not prove.** `Donut` has no consumer. The proving slice covered the pickers, `SegmentedTabs`,
+`TransactionRow` and `PeriodBar`, and the API defects that surfaced there are fixed. It never rendered a chart.
+Track D is the first real consumer and is expected to find things; a donut change it needs is a legitimate reason
+to break the freeze, and the finding should be recorded here rather than patched quietly.
+
 ## Risks / Trade-offs
 
-- **fastexcel may not behave on Android** → The first Excel task is an on-device spike against the real file. If it
-  fails, fall back to Apache POI with `poi-ooxml-lite` and accept roughly 8 MB of APK. Nothing else in the plan is
-  built on top until the spike passes.
+- ~~**fastexcel may not behave on Android**~~ → **Resolved.** It works, at +1.34 MB, once the geronimo StAX API is
+  on the classpath. There is no viable POI fallback; see the Excel decision above. Residual risk: the shim is
+  verified by a classloader that emulates Android's classpath, not by a device, so track F imports on hardware once
+  before building on it.
 - **Imported history is attributed to BCA, which is partly fiction** → Contained by the as-of date: those rows can
   never move a balance. The honest framing, stated in the UI, is that pre-cutover rows describe spending that was
   logged, on accounts nobody can now reconstruct.

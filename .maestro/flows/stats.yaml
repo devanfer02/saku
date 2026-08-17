@@ -1,0 +1,92 @@
+appId: com.dvnnfrr.saku
+name: Stats period switching and drill-down
+---
+# Task 11.9. Switch period mode, step back a month, and drill a category row through
+# to its subcategory split and its transactions.
+#
+# Records its own expense first, because a freshly seeded install has an empty month
+# and there is nothing to drill into. The empty state is asserted before that, since a
+# period with no data must say so rather than render an empty chart.
+- clearState
+- launchApp
+
+- tapOn: "Stats"
+
+# Opens on the current month. The header names the period, the line under it gives the
+# boundaries, and Expenses is the selected side.
+- assertVisible: "Monthly"
+- assertVisible: "Weekly"
+- assertVisible: "Annually"
+- assertVisible: "Period"
+- assertVisible:
+    text: "Expenses"
+    selected: true
+
+# A month with nothing in it says so.
+- assertVisible:
+    text: "Nothing spent in .*"
+
+# Mode switching. Annually must survive being selected, then Monthly must come back.
+- tapOn: "Annually"
+- assertVisible:
+    text: "Annually"
+    selected: true
+- tapOn: "Monthly"
+- assertVisible:
+    text: "Monthly"
+    selected: true
+
+# Stepping back and forward within a mode must land on the month it started from.
+- tapOn: "Previous period"
+- assertVisible:
+    text: "Monthly"
+    selected: true
+- tapOn: "Next period"
+- assertVisible:
+    text: "Monthly"
+    selected: true
+
+# Give the month something to chart: an expense with a subcategory, so the drill has
+# a split to show rather than one undifferentiated row.
+- tapOn: "Trans."
+- tapOn: "Add transaction"
+- tapOn: "1"
+- tapOn: "8"
+- tapOn: "7"
+- tapOn: "000"
+- tapOn: "Category"
+- tapOn: "Makan & Minum"
+- tapOn: "Subcategory"
+- tapOn: "New subcategory"
+- inputText: "Warung Padang"
+- tapOn: "Create"
+- tapOn: "Save"
+
+# Back on Stats the figure is charted, the ranked list names it, and the empty state
+# is gone.
+- tapOn: "Stats"
+- assertNotVisible:
+    text: "Nothing spent in .*"
+- assertVisible: "Makan & Minum"
+- assertVisible: "100%"
+
+# The drill: category row through to its subcategory split and its transactions.
+- tapOn: "Makan & Minum"
+- assertVisible: "By subcategory"
+- assertVisible: "Warung Padang"
+- assertVisible: "Transactions"
+
+# And back out to the period, which is still the one the drill was opened from.
+- tapOn: "Back to the period"
+- assertNotVisible: "By subcategory"
+- assertVisible:
+    text: "Expenses"
+    selected: true
+
+# Switching side clears the drill and reports the other side's empty period.
+- tapOn: "Income"
+- assertVisible:
+    text: "Income"
+    selected: true
+- assertVisible:
+    text: "Nothing earned in .*"

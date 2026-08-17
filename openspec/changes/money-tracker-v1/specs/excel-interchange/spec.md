@@ -76,8 +76,16 @@ require a destination account for each group, so that imported transfers leave n
 
 ### Requirement: Skip duplicates and merge into existing months
 Each incoming row SHALL be reduced to a deduplication hash over its timestamp truncated to seconds, its type, its
-amount, its category name and its note. A row whose hash matches an existing transaction MUST be skipped. Importing
-a file overlapping a month that already holds data MUST add only the rows not already present.
+amount, its **account**, its destination account, its category name and its note. A row whose hash matches an
+existing transaction MUST be skipped. Importing a file overlapping a month that already holds data MUST add only
+the rows not already present.
+
+The hash is an import-time heuristic and MUST NOT be enforced as a uniqueness constraint on storage: two
+transactions may legitimately share one, and refusing the second breaks ordinary entry.
+
+#### Scenario: Two rows differing only by account are both imported
+- **WHEN** the file holds two rows with the same timestamp, type, amount, category and note, paid from different accounts
+- **THEN** both are imported, because they are two real transactions rather than one duplicate
 
 #### Scenario: Re-importing an overlapping export
 - **WHEN** the user imports a file containing August 2026 into a database that already holds 54 of that month's rows

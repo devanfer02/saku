@@ -1,3 +1,300 @@
 <resources>
-    <string name="app_name">My Application</string>
+    <string name="app_name">Saku</string>
+
+    <!-- Bottom navigation -->
+    <string name="nav_transactions">Trans.</string>
+    <string name="nav_stats">Stats</string>
+    <string name="nav_accounts">Accounts</string>
+    <string name="nav_more">More</string>
+
+    <!-- Transactions -->
+    <string name="transactions_tab_daily">Daily</string>
+    <string name="transactions_tab_calendar">Calendar</string>
+    <string name="transactions_empty">Nothing recorded this month</string>
+
+    <!-- Period figures -->
+    <string name="label_income">Income</string>
+    <string name="label_expenses">Expenses</string>
+    <string name="label_total">Total</string>
+
+    <!-- Stats -->
+    <string name="stats_mode_weekly">Weekly</string>
+    <string name="stats_mode_monthly">Monthly</string>
+    <string name="stats_mode_annually">Annually</string>
+    <string name="stats_mode_custom">Period</string>
+    <string name="stats_previous_period">Previous period</string>
+    <string name="stats_next_period">Next period</string>
+    <string name="stats_pick_range">Choose the start and end dates</string>
+    <string name="stats_other">Other</string>
+    <string name="stats_other_heading">Combined into Other</string>
+    <string name="stats_no_subcategory">No subcategory</string>
+    <string name="stats_subcategory_heading">By subcategory</string>
+    <string name="stats_transactions_heading">Transactions</string>
+    <string name="stats_empty_expenses">Nothing spent in %1$s</string>
+    <string name="stats_empty_income">Nothing earned in %1$s</string>
+    <string name="stats_compare_none">Nothing recorded in %1$s to compare against</string>
+    <string name="stats_compare_change">%1$s vs %2$s</string>
+    <string name="stats_back">Back to the period</string>
+    <!-- Spoken instead of the colour alone: "Pemberian, 53 percent, Rp 1.050.000" -->
+    <string name="stats_row_description">%1$s, %2$d percent, %3$s</string>
+
+    <!-- Placeholder bodies, replaced by each feature track -->
+
+    <!-- More menu -->
+    <string name="more_categories">Categories</string>
+    <string name="more_import_money_manager">Import from Money Manager</string>
+    <string name="more_import_excel">Import Excel</string>
+    <string name="more_export_excel">Export Excel</string>
+    <string name="more_import_history">Import history</string>
+    <string name="more_appearance">Appearance</string>
+
+    <string name="action_done">Done</string>
+    <string name="action_save">Save</string>
+    <string name="action_add">Add transaction</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_create">Create</string>
+
+    <!-- Entry sheet -->
+    <string name="keypad_backspace">Backspace</string>
+    <string name="entry_type_expense">Expense</string>
+    <string name="entry_type_income">Income</string>
+    <string name="entry_type_transfer">Transfer</string>
+    <string name="entry_field_when">When</string>
+    <string name="entry_field_account">Account</string>
+    <string name="entry_field_destination">To account</string>
+    <string name="entry_field_category">Category</string>
+    <string name="entry_field_subcategory">Subcategory</string>
+    <string name="entry_field_note">Note</string>
+    <string name="entry_field_unset">Choose</string>
+    <string name="entry_field_none">None</string>
+    <string name="entry_title_new">New transaction</string>
+    <string name="entry_title_edit">Edit transaction</string>
+    <string name="entry_new_category">New category</string>
+    <string name="entry_new_subcategory">New subcategory</string>
+    <string name="entry_name_hint">Name</string>
+    <string name="entry_duplicate_notice">"%1$s" already exists, so it was selected instead</string>
+    <string name="entry_delete_title">Delete this transaction?</string>
+    <string name="entry_delete_body">It is removed from the list and the account balance recalculates. Nothing else changes.</string>
+
+    <!-- Entry validation -->
+    <string name="entry_error_amount_missing">Enter an amount</string>
+    <string name="entry_error_amount_not_positive">The amount must be more than zero</string>
+    <string name="entry_error_category_missing">Choose a category</string>
+    <string name="entry_error_account_missing">Choose an account</string>
+    <string name="entry_error_destination_missing">Choose a destination account</string>
+    <string name="entry_error_destination_same">The destination must differ from the source</string>
+
+    <!-- Accounts -->
+    <string name="accounts_spendable">Spendable</string>
+    <string name="accounts_invested">Invested</string>
+    <string name="accounts_liabilities">Liabilities</string>
+    <string name="accounts_type_cash">Cash</string>
+    <string name="accounts_type_bank">Bank</string>
+    <string name="accounts_type_investment">Investment</string>
+    <string name="accounts_type_liability">Liability</string>
+    <string name="accounts_archived">Archived</string>
+    <string name="accounts_add">Add account</string>
+    <string name="accounts_empty">No accounts yet</string>
+    <string name="accounts_donut_empty">Nothing to chart yet</string>
+    <string name="accounts_back">Back</string>
+    <string name="accounts_never_reconciled">Never reconciled</string>
+    <string name="accounts_stale">Last reconciled %1$s</string>
+    <string name="accounts_reconciled_on">Reconciled %1$s</string>
+
+    <!-- Account editor -->
+    <string name="accounts_new_title">New account</string>
+    <string name="accounts_edit_title">Edit account</string>
+    <string name="accounts_edit">Edit</string>
+    <string name="accounts_field_name">Name</string>
+    <string name="accounts_field_type">Type</string>
+    <string name="accounts_field_colour">Colour</string>
+    <string name="accounts_field_opening_balance">Opening balance</string>
+    <string name="accounts_field_opening_as_of">As of</string>
+    <string name="accounts_colour_slot">Colour %1$d</string>
+    <string name="accounts_error_name_missing">Give the account a name</string>
+    <string name="accounts_refused_title">That change was not saved</string>
+
+    <!-- Reconcile -->
+    <string name="accounts_reconcile">Reconcile</string>
+    <string name="accounts_reconcile_title">Reconcile %1$s</string>
+    <string name="accounts_reconcile_derived">Balance on record</string>
+    <string name="accounts_reconcile_true">True balance</string>
+    <string name="accounts_reconcile_adjustment">Adjustment to record</string>
+    <string name="accounts_reconcile_matched">No difference. The date is recorded and nothing else changes.</string>
+    <string name="accounts_reconciled_message">%1$s: adjustment of %2$s recorded</string>
+    <string name="accounts_reconciled_matched_message">%1$s already matched. Reconciliation date updated.</string>
+
+    <!-- Archive -->
+    <string name="accounts_archive">Archive</string>
+    <string name="accounts_restore">Restore</string>
+    <string name="accounts_archive_title">Archive %1$s?</string>
+    <string name="accounts_archive_body">It leaves the pickers and stops counting towards Spendable, Invested and Total. Every transaction on it is kept exactly as it is, and restoring brings it back.</string>
+
+    <!-- Account detail -->
+    <string name="accounts_detail_opening">Opening %1$s as of %2$s</string>
+    <string name="accounts_detail_empty">Nothing has moved this balance since its opening date</string>
+    <string name="accounts_detail_running">Balance %1$s</string>
+    <!-- Category management -->
+    <string name="categories_title">Categories</string>
+    <string name="categories_tab_expense">Expense</string>
+    <string name="categories_tab_income">Income</string>
+    <string name="categories_empty">No categories on this tab yet</string>
+    <string name="categories_new_category">New category</string>
+    <string name="categories_new_subcategory">New subcategory</string>
+    <string name="categories_add_subcategory">Add subcategory</string>
+    <string name="categories_show_archived">Show archived (%1$d)</string>
+    <string name="categories_hide_archived">Hide archived</string>
+    <string name="categories_archived_header">Archived</string>
+    <string name="categories_back">Back</string>
+    <plurals name="categories_subcategory_count">
+        <item quantity="one">%d subcategory</item>
+        <item quantity="other">%d subcategories</item>
+    </plurals>
+    <plurals name="categories_transaction_count">
+        <item quantity="one">%d transaction</item>
+        <item quantity="other">%d transactions</item>
+    </plurals>
+    <string name="categories_no_subcategories">No subcategories</string>
+
+    <!-- Category actions -->
+    <string name="categories_action_rename">Rename</string>
+    <string name="categories_action_recolour">Change colour</string>
+    <string name="categories_action_merge">Merge into…</string>
+    <string name="categories_action_archive">Archive</string>
+    <string name="categories_action_unarchive">Unarchive</string>
+    <string name="categories_action_move_up">Move up</string>
+    <string name="categories_action_move_down">Move down</string>
+    <string name="categories_action_merge_label">Merge</string>
+    <string name="categories_action_archive_label">Archive</string>
+    <string name="categories_expand">Show subcategories of %1$s</string>
+    <string name="categories_collapse">Hide subcategories of %1$s</string>
+    <string name="categories_actions_for">Actions for %1$s</string>
+    <string name="categories_reorder">Reorder %1$s</string>
+
+    <!-- Category dialogs -->
+    <string name="categories_rename_title">Rename %1$s</string>
+    <string name="categories_subcategory_of">Subcategory of %1$s</string>
+    <string name="categories_recolour_title">Colour for %1$s</string>
+    <string name="categories_colour_slot">Colour %1$d</string>
+    <string name="categories_delete_title">Delete %1$s?</string>
+    <string name="categories_delete_body">Nothing refers to it, so it can go. Its subcategories go with it.</string>
+    <string name="categories_delete_subcategory_body">Nothing refers to it, so it can go.</string>
+    <string name="categories_archive_title">Archive %1$s?</string>
+    <string name="categories_merge_choose_title">Merge %1$s into…</string>
+    <string name="categories_merge_title">Merge %1$s into %2$s?</string>
+    <string name="categories_merge_body">Every transaction moves to %1$s and the subcategories are carried across. %2$s is archived, not deleted.</string>
+    <string name="categories_error_blank">Enter a name</string>
+    <string name="categories_error_duplicate">"%1$s" is already here. Pick another name.</string>
+
+    <!-- Appearance -->
+    <string name="appearance_follow_system">Follow system</string>
+    <string name="appearance_light">Always light</string>
+    <string name="appearance_dark">Always dark</string>
+
+    <!-- Import: choosing a file -->
+    <string name="import_choose_file">Choose a file</string>
+    <string name="import_choose_another">Choose another file</string>
+    <string name="import_intro_money_manager">Pick an .xlsx export from Money Manager. Saku shows you a preview first and writes nothing until you confirm it.</string>
+    <string name="import_intro_excel">Pick an .xlsx file. Saku works the layout out from the header row, so a Money Manager export and a Saku export both land here.</string>
+    <string name="import_reading">Reading %1$s…</string>
+
+    <!-- Import: a file that never reached the preview -->
+    <string name="import_refused_title">That file was not imported</string>
+    <string name="import_refused_layout">%1$s matches neither layout Saku reads, so nothing was parsed.</string>
+    <string name="import_refused_expected">Expected either\n%1$s\nor\n%2$s</string>
+    <string name="import_refused_found">Found\n%1$s</string>
+    <string name="import_refused_unreadable">%1$s could not be opened as a spreadsheet.</string>
+    <string name="import_refused_no_rows">%1$s has a header row and no data under it.</string>
+
+    <!-- Import preview -->
+    <string name="import_preview_file">File</string>
+    <string name="import_preview_rows">Rows</string>
+    <string name="import_preview_span">Date span</string>
+    <string name="import_preview_span_value">%1$s to %2$s</string>
+    <string name="import_preview_counting">Counting…</string>
+    <string name="import_tally_title">What importing will do</string>
+    <string name="import_tally_new">New</string>
+    <string name="import_tally_already">Already here</string>
+    <string name="import_tally_deleted">Deleted</string>
+    <string name="import_tally_deleted_note">Import only ever adds. No existing transaction is changed or removed, which is why deleted reads zero.</string>
+    <string name="import_tally_collapsed">%1$d identical rows in the file collapse into one transaction.</string>
+    <string name="import_tally_excluded">%1$d rows excluded by you.</string>
+
+    <!-- Import preview: account mapping -->
+    <string name="import_section_accounts">Accounts in this file</string>
+    <string name="import_accounts_explainer">Every name in the file has to point at an account before anything is written.</string>
+    <string name="import_account_rows">%1$d rows</string>
+    <string name="import_account_unmapped">Choose an account</string>
+    <string name="import_account_prefilled">Prefilled — check this</string>
+    <string name="import_account_create">Create \"%1$s\"</string>
+
+    <!-- Import preview: investment destinations -->
+    <string name="import_section_transfers">Investment transfers</string>
+    <string name="import_transfers_explainer">These rows left an account and the file never records where they went. Give each group a destination so the money moves between your accounts instead of vanishing.</string>
+    <string name="import_transfer_group">%1$d transfers · %2$s</string>
+    <string name="import_transfer_uncategorised">No category</string>
+    <string name="import_transfer_destination">Choose a destination</string>
+
+    <!-- Import preview: categories -->
+    <string name="import_section_categories">Categories</string>
+    <string name="import_categories_summary">%1$d matched, %2$d to be created</string>
+    <string name="import_category_new">New</string>
+    <string name="import_category_matched">Matched</string>
+
+    <!-- Import preview: rows needing a decision -->
+    <string name="import_section_discrepancies">Amounts that disagree</string>
+    <string name="import_discrepancies_explainer">The file records these amounts twice and the two columns differ. Decide which rows go in.</string>
+    <string name="import_discrepancy_row">Row %1$d · IDR %2$s · Amount %3$s</string>
+    <string name="import_discrepancy_include">Include</string>
+    <string name="import_section_held_back">Held back</string>
+    <string name="import_held_back_row">Row %1$d — %2$s</string>
+
+    <!-- Import: why a row was held back -->
+    <string name="import_reason_non_idr">the currency is %1$s, not IDR</string>
+    <string name="import_reason_missing_date">no date</string>
+    <string name="import_reason_missing_amount">no amount</string>
+    <string name="import_reason_fractional">%1$s is not a whole number of rupiah</string>
+    <string name="import_reason_non_positive">%1$s is not a positive amount</string>
+    <string name="import_reason_zero_adjustment">an adjustment of zero corrects nothing</string>
+    <string name="import_reason_unknown_type">unrecognised type \"%1$s\"</string>
+    <string name="import_reason_unknown_type_blank">no transaction type</string>
+    <string name="import_reason_missing_account">no account</string>
+    <string name="import_reason_missing_category">no category</string>
+    <string name="import_reason_missing_destination">a transfer with no destination account</string>
+    <string name="import_reason_same_account">the destination is the account it came from</string>
+    <string name="import_reason_inbound_leg">the second leg of a transfer already counted once</string>
+
+    <!-- Import: what is blocking the import action -->
+    <string name="import_problem_unmapped_account">\"%1$s\" has no account chosen</string>
+    <string name="import_problem_unmapped_transfer">Transfers in \"%1$s\" have no destination</string>
+    <string name="import_problem_nothing">Every row in this file is already here</string>
+    <string name="import_problem_same_account">Transfers in \"%1$s\" would return to %2$s, the account they left</string>
+    <string name="import_problem_predates">%1$s opens on %2$s but the earliest transfer is %3$s, so it would be taken from one account and never given to the other. Set the opening date to %3$s or earlier, then import again.</string>
+
+    <!-- Import: acting on the preview -->
+    <string name="import_action">Import</string>
+    <string name="import_action_count">Import %1$d transactions</string>
+    <string name="import_discard">Discard</string>
+    <string name="import_failed_title">Nothing was imported</string>
+    <string name="import_done_title">Import finished</string>
+    <string name="import_done_body">%1$d added from %2$s. %3$d were already here.</string>
+
+    <!-- Import history -->
+    <string name="import_history_empty">Nothing imported yet</string>
+    <string name="import_history_counts">%1$d added · %2$d skipped · %3$d rows in the file</string>
+    <string name="import_history_reversed">Reversed on %1$s</string>
+    <string name="import_history_reverse">Reverse</string>
+    <string name="import_history_reverse_title">Reverse this import?</string>
+    <string name="import_history_reverse_body">Only the transactions this import added are removed. Anything entered by hand, or added by another import, is left alone.</string>
+
+    <!-- Export -->
+    <string name="export_intro">Writes every transaction to an .xlsx file you choose: date, type, amount, both accounts on a transfer, category, subcategory and note. Importing that file into an empty Saku rebuilds what you have now.</string>
+    <string name="export_action">Choose where to save</string>
+    <string name="export_empty">There is nothing to export yet</string>
+    <string name="export_writing">Writing %1$s…</string>
+    <string name="export_done">%1$d transactions written to %2$s</string>
+    <string name="export_failed">%1$s could not be written</string>
+    <string name="export_local_only">The file goes only where you put it. Saku holds no network permission, so there is nowhere else for it to go.</string>
+    <string name="export_default_file_name">saku-export</string>
 </resources>

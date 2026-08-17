@@ -1,0 +1,45 @@
+appId: com.dvnnfrr.saku
+name: Shell smoke test
+---
+# Proves the app launches and all four destinations mount. Each feature track adds
+# its own flow beside this one; this is the one that must never break.
+- clearState
+- launchApp
+
+- assertVisible: "Trans."
+- assertVisible: "Stats"
+- assertVisible: "Accounts"
+- assertVisible: "More"
+
+- tapOn: "Stats"
+- assertVisible: "Stats"
+
+- tapOn: "Accounts"
+- assertVisible: "Accounts"
+
+- tapOn: "More"
+- assertVisible: "Categories"
+- assertVisible: "Import from Money Manager"
+- assertVisible: "Import Excel"
+- assertVisible: "Export Excel"
+- assertVisible: "Import history"
+- assertVisible: "Appearance"
+
+- tapOn: "Trans."
+- assertVisible: "Daily"
+- assertVisible: "Calendar"
+
+# State retention. Navigating away and back must not reset a destination — drop
+# saveState/restoreState from navigateTo and this is the step that goes red.
+- tapOn: "Calendar"
+- assertVisible:
+    text: "Calendar"
+    selected: true
+
+- tapOn: "Stats"
+- tapOn: "Accounts"
+- tapOn: "Trans."
+
+- assertVisible:
+    text: "Calendar"
+    selected: true

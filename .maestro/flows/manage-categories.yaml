@@ -1,0 +1,71 @@
+appId: com.dvnnfrr.saku
+name: Manage categories
+---
+# Task 9.7. The reason this screen exists: subcategory went unfilled for a year
+# and 1,200 transactions, and Pemberian — 50% of all spend — is one undifferentiated
+# bucket. The first half of this flow is that split actually happening.
+#
+# Runs against the first-run seed, so the sixteen Indonesian categories and Pemberian's
+# four starter subcategories are already there. Requires the More menu's Categories row
+# to be routed at this screen.
+- clearState
+- launchApp
+
+- tapOn: "More"
+- tapOn: "Categories"
+- assertVisible: "Categories"
+- assertVisible: "Pemberian"
+- assertVisible: "Expense"
+
+# Expand Pemberian and file a new subcategory under it without leaving the screen.
+- tapOn: "Pemberian"
+- assertVisible: "Arisan"
+- tapOn: "Add subcategory"
+- assertVisible: "New subcategory"
+- assertVisible: "Subcategory of Pemberian"
+- inputText: "Adik"
+- tapOn: "Create"
+- assertVisible: "Adik"
+
+# A category of its own, created from the header, appended to the end of the list.
+- tapOn: "New category"
+- assertVisible: "New category"
+- inputText: "Asuransi"
+- tapOn: "Create"
+
+- scrollUntilVisible:
+    element: "Asuransi"
+    direction: DOWN
+
+- tapOn: "Asuransi"
+- tapOn: "Add subcategory"
+- inputText: "Jiwa"
+- tapOn: "Create"
+- assertVisible: "Jiwa"
+
+- tapOn: "Add subcategory"
+- inputText: "Kesehatan"
+- tapOn: "Create"
+- assertVisible: "Kesehatan"
+
+# Rename one of the two. The transactions filed against it keep pointing at the same row,
+# which is the whole reason rename exists instead of delete-and-recreate.
+- tapOn: "Actions for Jiwa"
+- tapOn: "Rename"
+- tapOn: "Name"
+- eraseText
+- inputText: "Jiwa Berjangka"
+- tapOn: "Save"
+- assertVisible: "Jiwa Berjangka"
+
+# Archive, never delete. The row leaves the list and the pickers; it does not leave the
+# database, and the archived section is where it can be brought back from.
+- tapOn: "Actions for Asuransi"
+- tapOn: "Archive"
+- assertNotVisible: "Asuransi"
+
+- scrollUntilVisible:
+    element: "Show archived (1)"
+    direction: DOWN
+- tapOn: "Show archived (1)"
+- assertVisible: "Asuransi"
