@@ -99,6 +99,57 @@ Column names are unqualified so the fragment works in the aliased, joined `obser
 
 ## Open Questions
 
-- Week start: Monday (chosen, matches Calendar and Stats Weekly) or Sunday as in Money Manager. If Sunday, it should change for the whole app, in `DateRange.ofWeek`, not only here.
-- Should search also match category, subcategory and account names? Specified as note text and amount only, as asked.
-- The ACCOUNT tab shows a Liability group when a liability account exists. Money Manager's screenshot shows Cash, Bank and Investment only.
+Closed by the owner before implementation:
+
+- Week start stays Monday, matching the Calendar and `DateRange.ofWeek`.
+- Search matches note text and amount only, as specified.
+- The ACCOUNT tab shows a Liability group only when a liability account exists, as specified.
+
+## Decisions made while building
+
+**The filter parameter goes last on every repository method.** `observeInRange(range, zone, filter)`, `observeForCategory(range, zone, categoryId, type, filter)` and so on. It reads as a qualifier on the query rather than part of what is asked for, and every caller had to be touched anyway.
+- Rejected: placing it right after `range`. No caller reads better for it, and it would reorder arguments that tests pass positionally.
+
+**DAO methods take six flat arguments; the repository maps them in one place.** `TransactionFilter.toArgs()` in `Mappers.kt` returns a `FilterArgs`; each repository method spreads it into the DAO call. Room cannot bind a data class to several named parameters, so the flat list is forced.
+- Rejected: DAO default arguments for the six. They would let a DAO caller skip the filter as silently as a repository default would, which the design already rejected.
+
+**`observeAll` uses `WHERE 1 = 1` before the fragment.** The fragment starts with `AND` so it concatenates after a range in every other query; a constant true clause is the smallest way to reuse it unchanged.
+
+**`TransactionFilter.includesCategory(type, id)` lives in `domain/`.** Stats needs it to close a drill whose category left the selection. It reads the model only, so it belongs beside it rather than in a feature assembly. Stats closes the drill by collecting the filter in `init` and clearing `Selection.drill`, the same way switching side clears it.
+- Rejected: hiding the drill in the final combine while leaving it in `Selection`. Re-ticking the category would then reopen a drill the user never asked for again.
+
+**Normalising "every listed item ticked" to "All" happens only on a tick.** `toggledItem` in `FilterSheetAssembly.kt` returns null when a tick completes the listed set. A selection is never normalised passively, so "Makan & Minum only" does not become "All" if every other expense category is later archived.
+
+**"Unticking one item under All" starts from the listed (non-archived) ids.** The resulting explicit set therefore excludes archived categories. That matches what the user sees ticked; "All" is the only state that includes archived items, as the spec says.
+
+**`filterSummary` returns English copy from the assembly.** "2 accounts · 1 expense category" is the behaviour the spec's scenarios quote, so it is tested as a string. An empty selection reads "no income", "no expenses" or "no accounts" rather than "0 income categories". The app ships in English only; `periodLabel` and the date labels already build copy in Kotlin for the same reason.
+- Rejected: Android plurals resources. They need a `Context`, which would push the rule into a composable and out of reach of a JVM test.
+
+**The sheet's ViewModel is keyed by range and resets to INCOME once per opening.** `viewModel(key = "filter-sheet-$range")` gives Trans month, Trans year and each Stats period their own instance. The ViewModel outlives a closed sheet, so the composable selects INCOME on the first composition of each opening, guarded by a `rememberSaveable` flag so rotation keeps the open tab.
+- Rejected: a fresh ViewModel key per opening. Each opening would leave a ViewModel in the destination's store until the destination is popped.
+
+**Sheet header on Trans follows the visible view.** In Monthly the sheet opens on the year, because that is the period the header shows; in Daily and Calendar on the month. `TransactionListUiState.headerRange` is the one place that choice is made, and the header and the sheet both read it.
+
+**`ShareRing` lives in `ui/shared/` and takes its copy and spoken description as parameters,** as every shared component does. Its arc colour comes from `forDirection`, the existing direction mapping.
+
+**`FilteredEmptyState` sits beside `FilterBar` in `ui/filter/`.** Daily, Monthly, Stats and search all need the same "the filter hides everything, clear it" state; one composable keeps the copy and the action identical. Calendar shows no such state: under a filter its cells render empty as unlogged days do, which is what the spec asks for.
+
+**Monthly empty versus filtered.** A year whose every month is empty shows the filtered empty state only while a filter is active. Without one, the month rows stay, each reading "Nothing recorded", because an unlogged month is information.
+
+**Week rows are computed for every month, not only the expanded one.** About 60 week folds over 370 day rows a year is negligible, and it keeps the assembly free of the expansion rule except for the `expanded` flag.
+
+**The week tap passes the open date; the ViewModel derives the month from it.** `openDay(date)` now sets `range = ofMonth(date)`. The assembly computes `openDate = min(week end, month end)`, which falls inside the month the row is listed under, so one function serves Calendar day taps and Monthly week taps.
+
+**Daily's scroll fallback is a pure function.** `scrollIndexFor` in `TransactionListAssembly.kt` returns the header index of the target day or of the nearest earlier day with rows, and the oldest day when every day is later. Before this change Daily scrolled only on an exact date match.
+
+**Search drops a bare "Rp" word.** "Rp 25.000", typed the way the app prints amounts, means the same as "Rp25.000" and "25000". A digits word also matches the note by its digits, so "Rp25.000" finds a note reading "25000".
+- Rejected: treating "Rp" as a text word. It would match no note and make the whole query fail.
+
+**Search's text field reads an undebounced `query` flow; results read the debounced one.** Binding a text field to a debounced or combined state drops keystrokes and moves the cursor.
+
+**Search reuses `DailyTab` for its results.** The same day headers, rows and tap handling as Daily, so a result looks exactly like the row it is. Its own empty states are decided before `DailyTab` is called, so Daily's "Nothing recorded this month" never shows under search.
+
+**`TransRoute` mirrors `MoreRoute`.** A one-entry enum, `SEARCH("transactions/search")`, that `SakuDestination.owning` maps to the Trans tab.
+- Rejected: a string constant. The enum keeps the owning check symmetrical with More, and a second pushed Trans screen slots in without a new rule.
+
+**New copy is in `res/values/strings_transaction_filter.xml`.** A concurrent change appends to `strings.xml`; a separate file keeps the two from conflicting. Android merges every file under `values/`, so nothing else changes.

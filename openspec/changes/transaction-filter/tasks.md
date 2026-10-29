@@ -11,7 +11,7 @@
 - [x] 2.2 Add `TxnDao.observeAccountFlows(startSec, endSec)` (source and destination legs by `UNION ALL`, adjustments excluded) and `TxnDao.observeAll` with the filter, newest first
 - [x] 2.3 Add the filter-to-arguments mapping in `Mappers.kt` and the required `filter` parameter on the six `TransactionRepository` methods; add `observeAccountFlows` and `observeAll(filter)`; update `RoomTransactionRepository`
 - [x] 2.4 Robolectric DAO tests beside `PeriodAggregateTest`: category and account selections, either-leg transfers, transfers and adjustments hidden under a category filter, empty selections (`IN ()`), the joined category-totals query, and account flows with an adjustment present
-- [ ] 2.5 Fix every existing caller to pass `TransactionFilter.ALL` until its screen reads the shared filter; `:app:testDebugUnitTest` green
+- [x] 2.5 Fix every existing caller to pass `TransactionFilter.ALL` until its screen reads the shared filter; `:app:testDebugUnitTest` green
 
 ## 3. Shared filter and sheet
 
@@ -44,4 +44,4 @@
 
 - [ ] 7.1 Maestro flows: filter to one account on Trans and see it on Stats, then clear; open Monthly and expand a month; search a note and an amount
 - [ ] 7.2 Emulator check with the real 1,200-row export: Pemberian-only Stats for 2026 matches the drill-through total; the BCA account row's four figures match a hand count for one month
-- [ ] 7.3 `ANDROID_HOME=/home/dvnnfrr/Android/Sdk ./gradlew :app:testDebugUnitTest :app:assembleDebug` green
+- [x] 7.3 `ANDROID_HOME=/home/dvnnfrr/Android/Sdk ./gradlew :app:testDebugUnitTest :app:assembleDebug` green
