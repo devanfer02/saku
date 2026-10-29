@@ -103,6 +103,9 @@ Settled — reopen only with a reason, not by drift:
 - **Local-only.** No sync, no account, no network, no ads. The build enforces the last three.
 - **IDR only.** `Money` is a `Long` of rupiah; there is no currency field to add later cheaply.
 - **Import from Money Manager exports**, merging into existing months rather than replacing them.
+- **Generic first run** (30 Oct 2026). First run seeds two accounts, `Cash` and `Card`, and no
+  categories or subcategories, so the app is not tailored to its first owner. Categories come from
+  the entry sheet's "New category" or from an import; the owner's own data arrives by import.
 - Seeded accounts open at the epoch, because every row worth importing predates any install.
 
 ## Still open
@@ -114,7 +117,9 @@ Settled — reopen only with a reason, not by drift:
 
 ## Domain notes
 
-Categories in the existing data are Indonesian and worth keeping as defaults:
+Categories in the existing data are Indonesian. They are not seeded (since 30 Oct 2026 first run
+seeds only Cash and Card, so other users get no owner-specific setup); an import of the owner's
+export recreates them:
 Pemberian (giving/family support), Makan & Minum, Kebutuhan Kos (boarding-house costs), Kuliah,
 Perawatan Diri, Jajan & Hiburan, Baju dan Aksesoris, Kendaraan Pribadi, Kerjaan, Transportasi Umum,
 Gym, Internet, Servis, Obat, Paket, Parkir.
