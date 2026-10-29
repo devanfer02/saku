@@ -66,6 +66,12 @@ enum class SheetLayout(val headers: List<String>) {
 
         /** The duplicated header. Holds the amount again; discarded. */
         const val TRAILING_ACCOUNT = 10
+
+        /**
+         * Exports from October 2026 on insert `Tag` here, after `Income/Expense`. Saku has
+         * no tags, so the column is cut before detection and every index above still holds.
+         */
+        const val INSERTED_TAG = 7
     }
 
     object Saku {
@@ -109,6 +115,19 @@ object LayoutDetector {
      * a cosmetically dirty file readable while a genuinely different column count
      * still fails.
      */
+    fun withoutMoneyManagerTag(table: SheetTable): SheetTable {
+        val tag = SheetLayout.MoneyManager.INSERTED_TAG
+        val tagged = SheetLayout.MONEY_MANAGER.headers.toMutableList().apply { add(tag, "Tag") }
+        val isTaggedExport = table.headers.trimTrailingBlanks().normalised() == tagged.normalised()
+        if (!isTaggedExport) return table
+
+        fun <T> List<T>.dropTag() = filterIndexed { index, _ -> index != tag }
+        return table.copy(
+            headers = table.headers.dropTag(),
+            rows = table.rows.map { it.copy(cells = it.cells.dropTag()) },
+        )
+    }
+
     private fun List<String>.trimTrailingBlanks(): List<String> = dropLastWhile { it.isBlank() }
 
     /** Case and surrounding whitespace are not part of the layout's identity. */
