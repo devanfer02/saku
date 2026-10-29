@@ -3,8 +3,8 @@ name: Accounts and the balance donut
 ---
 # Task 10.7, plus the list-and-donut half of track D's definition of done.
 #
-# Runs on a freshly seeded install, so the four default accounts exist and every one of
-# them opens at zero. That is what makes the first block worth asserting: with nothing
+# Runs on a freshly seeded install, so the two default accounts (Cash and Card) exist
+# and both open at zero. That is what makes the first block worth asserting: with nothing
 # held anywhere the donut must say so rather than draw a ring of nothing, and the
 # Liabilities figure must be absent rather than sitting at zero.
 - clearState
@@ -18,10 +18,9 @@ name: Accounts and the balance donut
 - assertVisible: "Total"
 - assertNotVisible: "Liabilities"
 
-# The seeded four, under their type headings, every one never reconciled.
-- assertVisible: "BCA"
-- assertVisible: "Jago"
-- assertVisible: "RDPU SucorInvest"
+# The seeded two, under their type headings, both never reconciled.
+- assertVisible: "Cash"
+- assertVisible: "Card"
 - assertVisible: "Never reconciled"
 
 # Nothing holds a positive balance, so there is nothing to chart.

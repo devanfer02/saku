@@ -5,21 +5,27 @@ name: Manage categories
 # and 1,200 transactions, and Pemberian — 50% of all spend — is one undifferentiated
 # bucket. The first half of this flow is that split actually happening.
 #
-# Runs against the first-run seed, so the sixteen Indonesian categories and Pemberian's
-# four starter subcategories are already there. Requires the More menu's Categories row
-# to be routed at this screen.
+# A first run seeds no categories, so the screen opens empty and the flow makes
+# Pemberian itself before splitting it. Requires the More menu's Categories row to be
+# routed at this screen.
 - clearState
 - launchApp
 
 - tapOn: "More"
 - tapOn: "Categories"
 - assertVisible: "Categories"
-- assertVisible: "Pemberian"
 - assertVisible: "Expense"
+- assertVisible: "No categories on this tab yet"
+
+- tapOn: "New category"
+- assertVisible: "New category"
+- inputText: "Pemberian"
+- tapOn: "Create"
+- assertVisible: "Pemberian"
+- assertNotVisible: "No categories on this tab yet"
 
 # Expand Pemberian and file a new subcategory under it without leaving the screen.
 - tapOn: "Pemberian"
-- assertVisible: "Arisan"
 - tapOn: "Add subcategory"
 - assertVisible: "New subcategory"
 - assertVisible: "Subcategory of Pemberian"
