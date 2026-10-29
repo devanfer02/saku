@@ -9,10 +9,12 @@ import androidx.navigation.compose.composable
 import com.dvnnfrr.saku.domain.ThemePreference
 import com.dvnnfrr.saku.ui.accounts.AccountsScreen
 import com.dvnnfrr.saku.ui.categories.CategoriesScreen
+import com.dvnnfrr.saku.ui.importexport.BackupScreen
 import com.dvnnfrr.saku.ui.importexport.ExportScreen
 import com.dvnnfrr.saku.ui.importexport.ImportEntryPoint
 import com.dvnnfrr.saku.ui.importexport.ImportHistoryScreen
 import com.dvnnfrr.saku.ui.importexport.ImportScreen
+import com.dvnnfrr.saku.ui.importexport.RestoreScreen
 import com.dvnnfrr.saku.ui.shell.MoreScreen
 import com.dvnnfrr.saku.ui.stats.StatsScreen
 import com.dvnnfrr.saku.ui.transactions.TransactionsScreen
@@ -71,6 +73,8 @@ fun SakuNavHost(
         }
         composable(MoreRoute.EXPORT_EXCEL.route) { ExportScreen() }
         composable(MoreRoute.IMPORT_HISTORY.route) { ImportHistoryScreen() }
+        composable(MoreRoute.BACKUP.route) { BackupScreen() }
+        composable(MoreRoute.RESTORE.route) { RestoreScreen() }
     }
 }
 

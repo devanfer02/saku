@@ -104,6 +104,10 @@ interface SubcategoryDao {
     @Update
     suspend fun updateAll(subcategories: List<SubcategoryEntity>)
 
+    /** One-shot, so it is safe inside `withTransaction` where a Flow's first() is not. */
+    @Query("SELECT * FROM subcategory ORDER BY categoryId, sortOrder, id")
+    suspend fun all(): List<SubcategoryEntity>
+
     @Query("SELECT * FROM subcategory WHERE categoryId = :categoryId AND archived = 0")
     suspend fun activeForCategory(categoryId: Long): List<SubcategoryEntity>
 

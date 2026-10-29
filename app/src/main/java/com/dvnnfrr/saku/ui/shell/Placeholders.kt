@@ -11,10 +11,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ListAlt
+import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
+import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -102,6 +104,8 @@ enum class MoreEntry(@StringRes val labelRes: Int, val icon: ImageVector) {
     IMPORT_EXCEL(R.string.more_import_excel, Icons.Filled.FileUpload),
     EXPORT_EXCEL(R.string.more_export_excel, Icons.Filled.FileDownload),
     IMPORT_HISTORY(R.string.more_import_history, Icons.AutoMirrored.Filled.ListAlt),
+    BACKUP(R.string.more_backup, Icons.Filled.Backup),
+    RESTORE(R.string.more_restore, Icons.Filled.Restore),
     APPEARANCE(R.string.more_appearance, Icons.Filled.DarkMode),
 }
 

@@ -4,8 +4,10 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.InputStream
 import java.io.OutputStream
 import java.net.URL
 import java.net.URLClassLoader
@@ -130,6 +132,38 @@ class XlsxAndroidRuntimeTest {
         }
     }
 
+    /**
+     * A backup is several sheets in one workbook, and restore finds them by name. That path
+     * goes through `ReadableWorkbook.getSheets()` rather than `getFirstSheet()`, so it is
+     * proved separately: Saku's own [XlsxReader.readAll] is loaded inside the Android-like
+     * classpath, where its fastexcel references can only resolve StAX through the shim.
+     */
+    @Test
+    fun `with the bundled StAX shim a multi-sheet workbook reads back sheet by sheet`() {
+        val bytes = ByteArrayOutputStream().also { output ->
+            XlsxWriter.write(
+                listOf(
+                    SheetTable("Saku", listOf("Note"), listOf(SheetRow(1, listOf(CellValue.Text("nasi padang"))))),
+                    SheetTable("Accounts", listOf("Name"), listOf(SheetRow(1, listOf(CellValue.Text("BCA"))))),
+                    SheetTable("Backup", listOf("Field", "Value"), emptyList()),
+                ),
+                output,
+            )
+        }.toByteArray()
+
+        androidLikeLoader(withStaxShim = true).use { loader ->
+            val reader = loader.loadClass("com.dvnnfrr.saku.excel.XlsxReader")
+            assertTrue("XlsxReader must be defined inside the Android-like loader", reader.classLoader === loader)
+
+            val tables = reader.getMethod("readAll", InputStream::class.java)
+                .invoke(reader.getField("INSTANCE").get(null), ByteArrayInputStream(bytes)) as List<*>
+
+            fun Any.call(getter: String): Any? = javaClass.getMethod(getter).invoke(this)
+            assertEquals(listOf("Saku", "Accounts", "Backup"), tables.map { it!!.call("getSheetName") })
+            assertEquals(1, (tables[1]!!.call("getRows") as List<*>).size)
+        }
+    }
+
     private fun Throwable.causeChain(): String =
         generateSequence(this) { it.cause.takeIf { cause -> cause !== it } }
             .joinToString("\n") { "${it.javaClass.name}: ${it.message}" }
@@ -210,8 +244,12 @@ class XlsxAndroidRuntimeTest {
                 "javax.xml.stream.util",
             )
 
-            /** The Excel libraries, plus the StAX implementation they instantiate directly. */
+            /**
+             * The Excel libraries, the StAX implementation they instantiate directly, and
+             * Saku's own Excel wrappers, so a test can drive those on the same classpath.
+             */
             val CHILD_FIRST = listOf(
+                "com.dvnnfrr.saku.excel.",
                 "org.dhatim.",
                 "com.fasterxml.aalto.",
                 "org.codehaus.stax2.",

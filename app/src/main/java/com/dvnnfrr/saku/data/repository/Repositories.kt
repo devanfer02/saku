@@ -15,6 +15,7 @@ import com.dvnnfrr.saku.domain.PeriodTotals
 import com.dvnnfrr.saku.domain.Subcategory
 import com.dvnnfrr.saku.domain.Transaction
 import com.dvnnfrr.saku.domain.TxnType
+import com.dvnnfrr.saku.excel.BackupContents
 import kotlinx.coroutines.flow.Flow
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
@@ -254,7 +255,37 @@ interface ImportRepository {
 
     /** Removes only the transactions this batch inserted; the batch record survives. */
     suspend fun reverse(batchId: Long, at: Instant): Int
+
+    /**
+     * Every account, category, subcategory and transaction, archived included, read in
+     * one transaction so a transaction can never name an account the snapshot lacks.
+     */
+    suspend fun backupSnapshot(): BackupSnapshot
+
+    /**
+     * Inserts what [backup] has and this database lacks, in one transaction: missing
+     * accounts, categories and subcategories first, then the transactions as one import
+     * batch through [commit]. Matches by name and never updates an existing record, so a
+     * same-named account keeps its own settings. Any failure leaves nothing behind.
+     */
+    suspend fun restore(backup: BackupContents, fileName: String, at: Instant): RestoreResult
 }
+
+/** The whole database as domain values, for writing a backup. */
+data class BackupSnapshot(
+    val accounts: List<Account>,
+    val categories: List<Category>,
+    val subcategories: List<Subcategory>,
+    val transactions: List<Transaction>,
+)
+
+/** What a restore created. The transactions are in [batch], so Import history can reverse them. */
+data class RestoreResult(
+    val accountsCreated: Int,
+    val categoriesCreated: Int,
+    val subcategoriesCreated: Int,
+    val batch: ImportBatch,
+)
 
 /** A parsed, fully mapped row waiting on the user's confirmation. */
 data class PendingRow(

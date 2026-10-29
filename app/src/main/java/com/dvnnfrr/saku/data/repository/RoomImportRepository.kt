@@ -1,10 +1,18 @@
 package com.dvnnfrr.saku.data.repository
 
 import androidx.room.withTransaction
+import com.dvnnfrr.saku.data.local.AccountEntity
+import com.dvnnfrr.saku.data.local.CategoryEntity
 import com.dvnnfrr.saku.data.local.ImportBatchEntity
 import com.dvnnfrr.saku.data.local.SakuDatabase
+import com.dvnnfrr.saku.data.local.SubcategoryEntity
 import com.dvnnfrr.saku.data.local.TxnEntity
 import com.dvnnfrr.saku.domain.ImportBatch
+import com.dvnnfrr.saku.excel.BackupContents
+import com.dvnnfrr.saku.excel.ExistingRecords
+import com.dvnnfrr.saku.excel.RestoreIds
+import com.dvnnfrr.saku.excel.RestorePlan
+import com.dvnnfrr.saku.excel.nameKey
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.datetime.Instant
@@ -20,6 +28,9 @@ class RoomImportRepository(
 
     private val txnDao = db.txnDao()
     private val batchDao = db.importBatchDao()
+    private val accountDao = db.accountDao()
+    private val categoryDao = db.categoryDao()
+    private val subcategoryDao = db.subcategoryDao()
 
     /**
      * The same validator the entry sheet goes through.
@@ -132,6 +143,96 @@ class RoomImportRepository(
         if (claimed == 0) return@withTransaction 0
         txnDao.deleteByImportBatch(batchId)
     }
+
+    override suspend fun backupSnapshot(): BackupSnapshot = db.withTransaction {
+        val records = existingRecords()
+        BackupSnapshot(
+            accounts = records.accounts,
+            categories = records.categories,
+            subcategories = records.subcategories,
+            transactions = txnDao.all().map { it.toDomain() },
+        )
+    }
+
+    /**
+     * The plan is rebuilt here, inside the transaction, rather than taken from the preview:
+     * whatever exists at commit time is what gets matched, so a record created since the
+     * preview is reused instead of duplicated.
+     *
+     * Records are inserted with every setting the backup holds, sort order included, so a
+     * restore onto an empty database reproduces the one that wrote the file. [commit] runs
+     * in this same transaction, and when it throws on an invalid row the records created
+     * above roll back with it.
+     */
+    override suspend fun restore(
+        backup: BackupContents,
+        fileName: String,
+        at: Instant,
+    ): RestoreResult = db.withTransaction {
+        val plan = RestorePlan.of(backup, existingRecords())
+
+        val accountIds = plan.matched.accounts.toMutableMap()
+        plan.accountsToCreate.forEach { account ->
+            accountIds[nameKey(account.name)] = accountDao.insert(
+                AccountEntity(
+                    name = account.name,
+                    type = account.type,
+                    openingBalance = account.openingBalance.rupiah,
+                    openingAsOfEpochSec = account.openingAsOf.epochSeconds,
+                    colorSlot = account.colorSlot.index,
+                    sortOrder = account.sortOrder,
+                    archived = account.archived,
+                    lastReconciledEpochSec = account.lastReconciled?.epochSeconds,
+                ),
+            )
+        }
+
+        val categoryIds = plan.matched.categories.toMutableMap()
+        plan.categoriesToCreate.forEach { category ->
+            categoryIds[category.ref] = categoryDao.insert(
+                CategoryEntity(
+                    name = category.name,
+                    kind = category.kind,
+                    colorSlot = category.colorSlot.index,
+                    sortOrder = category.sortOrder,
+                    archived = category.archived,
+                ),
+            )
+        }
+
+        val subcategoryIds = plan.matched.subcategories.toMutableMap()
+        plan.subcategoriesToCreate.forEach { subcategory ->
+            subcategoryIds[subcategory.ref] = subcategoryDao.insert(
+                SubcategoryEntity(
+                    categoryId = categoryIds.getValue(subcategory.ref.category),
+                    name = subcategory.name,
+                    sortOrder = subcategory.sortOrder,
+                    archived = subcategory.archived,
+                ),
+            )
+        }
+
+        val batch = commit(
+            fileName = fileName,
+            rows = plan.pendingRows(RestoreIds(accountIds, categoryIds, subcategoryIds)),
+            fileRowCount = backup.transactions.fileRowCount,
+            at = at,
+        )
+
+        RestoreResult(
+            accountsCreated = plan.accountsToCreate.size,
+            categoriesCreated = plan.categoriesToCreate.size,
+            subcategoriesCreated = plan.subcategoriesToCreate.size,
+            batch = batch,
+        )
+    }
+
+    /** One-shot DAO reads only; a Flow's first() inside withTransaction deadlocks. */
+    private suspend fun existingRecords(): ExistingRecords = ExistingRecords(
+        accounts = accountDao.all().map { it.toDomain(accountDao.balanceOf(it.id) ?: it.openingBalance) },
+        categories = categoryDao.all().map { it.toDomain() },
+        subcategories = subcategoryDao.all().map { it.toDomain() },
+    )
 
     private companion object {
         // SQLite caps host parameters per statement; chunk IN-clauses below it.
