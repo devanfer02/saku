@@ -4,6 +4,7 @@ import com.dvnnfrr.saku.domain.ColorSlot
 import com.dvnnfrr.saku.domain.DateRange
 import com.dvnnfrr.saku.domain.Money
 import com.dvnnfrr.saku.domain.PeriodTotals
+import com.dvnnfrr.saku.domain.TransactionFilter
 import com.dvnnfrr.saku.domain.TxnType
 import com.dvnnfrr.saku.ui.transactions.TransactionRowUi
 
@@ -39,6 +40,8 @@ data class StatsUiState(
     val composition: RankedComposition = RankedComposition.EMPTY,
     /** Null while the overview is showing; set once the user drills into a slice. */
     val drill: DrillUiState? = null,
+    /** The filter the figures were computed under, for the bar and the action. */
+    val filter: TransactionFilter = TransactionFilter.ALL,
     val loading: Boolean = true,
 ) {
     /** The figure the donut carries in its centre and the shares are taken against. */

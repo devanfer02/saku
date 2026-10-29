@@ -16,6 +16,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,6 +31,10 @@ import com.dvnnfrr.saku.domain.DateRange
 import com.dvnnfrr.saku.domain.Money
 import com.dvnnfrr.saku.domain.PeriodMode
 import com.dvnnfrr.saku.domain.PeriodTotals
+import com.dvnnfrr.saku.ui.filter.FilterAction
+import com.dvnnfrr.saku.ui.filter.FilterBar
+import com.dvnnfrr.saku.ui.filter.FilterSheet
+import com.dvnnfrr.saku.ui.filter.FilteredEmptyState
 import com.dvnnfrr.saku.ui.shared.Donut
 import com.dvnnfrr.saku.ui.shared.EmptyState
 import com.dvnnfrr.saku.ui.shared.PeriodBar
@@ -55,6 +60,7 @@ fun StatsScreen(
     viewModel: StatsViewModel = viewModel(factory = StatsViewModel.Factory),
 ) {
     val state by viewModel.state.collectAsState()
+    var filtering by rememberSaveable { mutableStateOf(false) }
 
     StatsScreen(
         state = state,
@@ -66,8 +72,14 @@ fun StatsScreen(
         onOpenCategory = viewModel::openCategory,
         onOpenOther = viewModel::openOther,
         onCloseDrill = viewModel::closeDrill,
+        onOpenFilter = { filtering = true },
+        onClearFilter = viewModel::clearFilter,
         modifier = modifier,
     )
+
+    if (filtering) {
+        FilterSheet(range = state.range, onDismiss = { filtering = false })
+    }
 }
 
 @Composable
@@ -82,6 +94,8 @@ fun StatsScreen(
     onOpenOther: () -> Unit,
     onCloseDrill: () -> Unit,
     modifier: Modifier = Modifier,
+    onOpenFilter: () -> Unit = {},
+    onClearFilter: () -> Unit = {},
 ) {
     var pickingRange by remember { mutableStateOf(false) }
 
@@ -92,8 +106,10 @@ fun StatsScreen(
             onNext = onNext,
             previousDescription = stringResource(R.string.stats_previous_period),
             nextDescription = stringResource(R.string.stats_next_period),
+            trailing = { FilterAction(active = state.filter.isActive, onClick = onOpenFilter) },
         )
         RangeDates(state.range)
+        FilterBar(filter = state.filter, onClear = onClearFilter)
 
         SegmentedTabs(
             options = MODES.map { stringResource(it.labelRes) },
@@ -127,6 +143,7 @@ fun StatsScreen(
                 state = state,
                 onOpenCategory = onOpenCategory,
                 onOpenOther = onOpenOther,
+                onClearFilter = onClearFilter,
             )
         } else {
             BackHandler(onBack = onCloseDrill)
@@ -163,6 +180,7 @@ private fun Composition(
     state: StatsUiState,
     onOpenCategory: (Long) -> Unit,
     onOpenOther: () -> Unit,
+    onClearFilter: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val otherLabel = stringResource(R.string.stats_other)
@@ -172,6 +190,15 @@ private fun Composition(
             StatsSide.INCOME -> R.string.label_income
         },
     )
+
+    if (state.composition.isEmpty && state.filter.isActive) {
+        FilteredEmptyState(
+            message = stringResource(R.string.filter_empty_period, explicitRangeLabel(state.range)),
+            onClear = onClearFilter,
+            modifier = modifier.fillMaxSize(),
+        )
+        return
+    }
 
     if (state.composition.isEmpty) {
         // Named, not generic. "No data" leaves the user wondering whether the period is

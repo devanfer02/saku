@@ -21,6 +21,16 @@ data class TransactionFilter(
     val isActive: Boolean
         get() = incomeCategoryIds != null || expenseCategoryIds != null || accountIds != null
 
+    /** Whether a [type] category with [categoryId] is inside its side's selection. */
+    fun includesCategory(type: TxnType, categoryId: Long): Boolean {
+        val selection = when (type) {
+            TxnType.INCOME -> incomeCategoryIds
+            TxnType.EXPENSE -> expenseCategoryIds
+            TxnType.TRANSFER, TxnType.ADJUSTMENT -> return false
+        }
+        return selection == null || categoryId in selection
+    }
+
     companion object {
         val ALL = TransactionFilter()
     }

@@ -12,6 +12,7 @@ import com.dvnnfrr.saku.domain.DateRange
 import com.dvnnfrr.saku.domain.Money
 import com.dvnnfrr.saku.domain.PeriodMode
 import com.dvnnfrr.saku.domain.TxnType
+import com.dvnnfrr.saku.ui.filter.SharedFilter
 import com.dvnnfrr.saku.domain.TransactionFilter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -58,6 +59,7 @@ class StatsViewModelTest {
     private lateinit var transactions: RoomTransactionRepository
     private lateinit var accounts: RoomAccountRepository
     private lateinit var categories: RoomCategoryRepository
+    private val shared = SharedFilter()
 
     private var bca = 0L
     private var rdpu = 0L
@@ -121,6 +123,7 @@ class StatsViewModelTest {
         transactionRepository = transactions,
         accountRepository = accounts,
         categoryRepository = categories,
+        sharedFilter = shared,
         zone = zone,
         clock = clock,
     )
@@ -446,4 +449,70 @@ class StatsViewModelTest {
                 transactions.observePeriodTotals(august.next(), zone, TransactionFilter.ALL).first().expense,
             )
         }
+
+    // transaction-filter: every figure respects the filter.
+
+    @Test
+    fun `a category filter narrows the totals and the ranked shares sum to 100`() = runTest(dispatcher) {
+        seed()
+        val jajan = categories.createCategory("Jajan & Hiburan", CategoryKind.EXPENSE)
+        spend(day = 5, amount = 1_257_700)
+        spend(day = 6, amount = 843_800, categoryId = jajan)
+        spend(day = 7, amount = 1_050_000, categoryId = pemberian)
+
+        shared.set(TransactionFilter(expenseCategoryIds = setOf(makan, jajan)))
+        val state = viewModel().state.first { !it.loading && it.filter.isActive }
+
+        assertEquals(Money(2_101_500), state.totals.expense)
+        assertEquals(listOf(makan, jajan), state.composition.rows.map { it.categoryId })
+        assertEquals(listOf(60, 40), state.composition.rows.map { it.percent })
+    }
+
+    @Test
+    fun `the comparison runs under the same filter`() = runTest(dispatcher) {
+        seed()
+        spend(day = 5, amount = 300_000)
+        spend(day = 6, amount = 900_000, categoryId = pemberian)
+        record(LocalDateTime(2026, 7, 5, 12, 0), 200_000)
+        record(LocalDateTime(2026, 7, 6, 12, 0), 800_000, categoryId = pemberian)
+
+        shared.set(TransactionFilter(expenseCategoryIds = setOf(makan)))
+        val state = viewModel().state.first { !it.loading && it.filter.isActive }
+
+        assertEquals(Money(200_000), state.comparison.previous.expense)
+        assertEquals(Money(300_000), state.comparison.current.expense)
+    }
+
+    @Test
+    fun `a drilled category that leaves the selection closes the drill`() = runTest(dispatcher) {
+        seed()
+        spend(day = 5, amount = 300_000)
+        spend(day = 6, amount = 900_000, categoryId = pemberian)
+        val vm = viewModel()
+        vm.state.first { !it.loading }
+        vm.openCategory(pemberian)
+        assertNotNull(vm.state.first { it.drill != null }.drill)
+
+        shared.set(TransactionFilter(expenseCategoryIds = setOf(makan)))
+
+        val state = vm.state.first { it.filter.isActive && it.drill == null }
+        assertNull(state.drill)
+        assertEquals(Money(300_000), state.totals.expense)
+    }
+
+    @Test
+    fun `a drilled category still selected stays open and is filtered`() = runTest(dispatcher) {
+        seed()
+        spend(day = 5, amount = 300_000)
+        record(LocalDateTime(2026, 8, 6, 12, 0), 150_000, toAccountId = null)
+        val vm = viewModel()
+        vm.state.first { !it.loading }
+        vm.openCategory(makan)
+        vm.state.first { it.drill != null }
+
+        shared.set(TransactionFilter(accountIds = setOf(rdpu)))
+
+        val drill = vm.state.first { it.filter.isActive && it.drill != null }.drill
+        assertEquals(Money.ZERO, drill?.total)
+    }
 }

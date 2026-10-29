@@ -11,6 +11,7 @@ import com.dvnnfrr.saku.domain.Money
 import com.dvnnfrr.saku.domain.PeriodMode
 import com.dvnnfrr.saku.domain.PeriodTotals
 import com.dvnnfrr.saku.sakuViewModelFactory
+import com.dvnnfrr.saku.ui.filter.SharedFilter
 import com.dvnnfrr.saku.ui.transactions.DisplayIndex
 import com.dvnnfrr.saku.ui.transactions.toRowUi
 import com.dvnnfrr.saku.domain.TransactionFilter
@@ -26,6 +27,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -42,6 +44,7 @@ class StatsViewModel(
     private val transactionRepository: TransactionRepository,
     private val accountRepository: AccountRepository,
     private val categoryRepository: CategoryRepository,
+    private val sharedFilter: SharedFilter,
     private val zone: TimeZone = TimeZone.currentSystemDefault(),
     private val clock: Clock = Clock.System,
 ) : ViewModel() {
@@ -62,8 +65,16 @@ class StatsViewModel(
 
     private fun today(): LocalDate = clock.now().toLocalDateTime(zone).date
 
-    /** The period and side, which is all the overview's three queries depend on. */
-    private data class PeriodKey(val range: DateRange, val side: StatsSide)
+    /**
+     * The period, the side and the filter, which is all the overview's three queries
+     * depend on. The filter is in the key so the comparison runs under it too: August
+     * against July compares like with like.
+     */
+    private data class PeriodKey(
+        val range: DateRange,
+        val side: StatsSide,
+        val filter: TransactionFilter,
+    )
 
     private data class PeriodData(
         val key: PeriodKey,
@@ -83,15 +94,16 @@ class StatsViewModel(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private val periodData: Flow<PeriodData> =
-        selection
-            .map { PeriodKey(it.range, it.side) }
+        combine(selection, sharedFilter.state) { current, filter ->
+            PeriodKey(current.range, current.side, filter)
+        }
             .distinctUntilChanged()
             .flatMapLatest { key ->
                 val previous = key.range.previous()
                 combine(
-                    transactionRepository.observePeriodTotals(key.range, zone, TransactionFilter.ALL),
-                    transactionRepository.observePeriodTotals(previous, zone, TransactionFilter.ALL),
-                    transactionRepository.observeCategoryTotals(key.range, zone, key.side.txnType, TransactionFilter.ALL),
+                    transactionRepository.observePeriodTotals(key.range, zone, key.filter),
+                    transactionRepository.observePeriodTotals(previous, zone, key.filter),
+                    transactionRepository.observeCategoryTotals(key.range, zone, key.side.txnType, key.filter),
                 ) { totals, previousTotals, categoryTotals ->
                     PeriodData(
                         key = key,
@@ -104,11 +116,10 @@ class StatsViewModel(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private val drillData: Flow<DrillData> =
-        // No distinctUntilChanged: a StateFlow already conflates equal values, so the
-        // drill re-subscribes only when the selection genuinely differs.
-        selection
-            .flatMapLatest { current ->
-                val key = PeriodKey(current.range, current.side)
+        combine(selection, sharedFilter.state, ::Pair)
+            .distinctUntilChanged()
+            .flatMapLatest { (current, filter) ->
+                val key = PeriodKey(current.range, current.side, filter)
                 when (val target = current.drill) {
                     // "Other" needs no query of its own: the categories it combines are
                     // already in the composition the overview loaded.
@@ -118,7 +129,7 @@ class StatsViewModel(
             }
 
     private fun categoryDrill(key: PeriodKey, categoryId: Long): Flow<DrillData> = combine(
-        transactionRepository.observeForCategory(key.range, zone, categoryId, key.side.txnType, TransactionFilter.ALL),
+        transactionRepository.observeForCategory(key.range, zone, categoryId, key.side.txnType, key.filter),
         categoryRepository.observeAllSubcategories(categoryId),
         categoryRepository.observeAll(),
         accountRepository.observeAll(),
@@ -156,6 +167,7 @@ class StatsViewModel(
                 totals = period.totals,
                 comparison = period.comparison,
                 composition = period.composition,
+                filter = period.key.filter,
                 drill = resolveDrill(current.drill, period, drill),
                 loading = false,
             )
@@ -222,9 +234,26 @@ class StatsViewModel(
 
     fun closeDrill() = selection.update { it.copy(drill = null) }
 
+    fun clearFilter() = sharedFilter.clear()
+
+    init {
+        // A drilled category that leaves the selection closes, the same way switching
+        // side does: its rows would all be filtered away under a header that still
+        // named it.
+        viewModelScope.launch {
+            sharedFilter.state.collect { filter ->
+                selection.update { current ->
+                    val target = current.drill as? DrillTarget.Category ?: return@update current
+                    if (filter.includesCategory(current.side.txnType, target.id)) current
+                    else current.copy(drill = null)
+                }
+            }
+        }
+    }
+
     companion object {
         val Factory = sakuViewModelFactory {
-            StatsViewModel(transactions, accounts, categories)
+            StatsViewModel(transactions, accounts, categories, filter)
         }
     }
 }
