@@ -6,8 +6,10 @@ import com.dvnnfrr.saku.SEED_CUTOVER
 import com.dvnnfrr.saku.data.local.SakuDatabase
 import com.dvnnfrr.saku.data.repository.PendingRow
 import com.dvnnfrr.saku.data.repository.RoomAccountRepository
+import com.dvnnfrr.saku.data.repository.RoomCategoryRepository
 import com.dvnnfrr.saku.data.repository.RoomImportRepository
 import com.dvnnfrr.saku.data.repository.RoomTransactionRepository
+import com.dvnnfrr.saku.domain.CategoryKind
 import com.dvnnfrr.saku.domain.Money
 import com.dvnnfrr.saku.domain.TxnType
 import kotlinx.coroutines.flow.first
@@ -63,8 +65,8 @@ class SeedCutoverTest {
     fun `a seeded install imports a transfer dated a year before it`() = runTest {
         FirstRunSeed.applyIfEmpty(db, openingAsOf = SEED_CUTOVER, zone = zone)
         val accounts = RoomAccountRepository(db).all()
-        val bca = accounts.first { it.name == "BCA" }
-        val rdpu = accounts.first { it.name == "RDPU SucorInvest" }
+        val card = accounts.first { it.name == "Card" }
+        val cash = accounts.first { it.name == "Cash" }
 
         RoomImportRepository(db).commit(
             fileName = "mock-money-manager.xlsx",
@@ -73,8 +75,8 @@ class SeedCutoverTest {
                     occurredAt = backThen,
                     type = TxnType.TRANSFER,
                     amount = Money(1_000_000),
-                    accountId = bca.id,
-                    toAccountId = rdpu.id,
+                    accountId = card.id,
+                    toAccountId = cash.id,
                     categoryId = null,
                     subcategoryId = null,
                     note = null,
@@ -87,8 +89,8 @@ class SeedCutoverTest {
 
         // Both legs, which is the point: a transfer that lands on one side only
         // invents or destroys money in the total.
-        assertEquals(Money(-1_000_000), balanceOf(bca.id))
-        assertEquals(Money(1_000_000), balanceOf(rdpu.id))
+        assertEquals(Money(-1_000_000), balanceOf(card.id))
+        assertEquals(Money(1_000_000), balanceOf(cash.id))
     }
 
     /**
@@ -99,18 +101,19 @@ class SeedCutoverTest {
     @Test
     fun `a back-dated expense moves the balance it was recorded against`() = runTest {
         FirstRunSeed.applyIfEmpty(db, openingAsOf = SEED_CUTOVER, zone = zone)
-        val bca = RoomAccountRepository(db).all().first { it.name == "BCA" }
-        val category = db.categoryDao().all().first().id
+        val card = RoomAccountRepository(db).all().first { it.name == "Card" }
+        // First run seeds no categories, so the test makes the one it files under.
+        val category = RoomCategoryRepository(db).createCategory("Food", CategoryKind.EXPENSE)
 
         RoomTransactionRepository(db).record(
             occurredAt = backThen,
             type = TxnType.EXPENSE,
             amount = Money(250_000),
-            accountId = bca.id,
+            accountId = card.id,
             categoryId = category,
         )
 
-        assertEquals(Money(-250_000), balanceOf(bca.id))
+        assertEquals(Money(-250_000), balanceOf(card.id))
     }
 
     private suspend fun balanceOf(id: Long): Money =

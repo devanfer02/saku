@@ -636,48 +636,40 @@ class CategoryManagerViewModelTest {
         assertNull(viewModel.state.value.dialog)
     }
 
-    // Requirement: Seed the default Indonesian categories
+    // Requirement: first run seeds no categories (decided 30 Oct 2026, so the app is
+    // not tailored to its first owner).
 
     @Test
-    fun `the sixteen seeded categories are ordinary editable records`() = runTest(dispatcher) {
-        FirstRunSeed.applyIfEmpty(
-            db = db,
-            openingAsOf = LocalDateTime(2026, 8, 17, 9, 0).toInstant(zone),
-            zone = zone,
-        )
-
-        val viewModel = manager()
-        advanceUntilIdle()
-
-        val names = viewModel.state.value.active.map { it.name }
-        assertEquals(FirstRunSeed.DEFAULT_EXPENSE_CATEGORIES, names)
-        assertEquals(16, names.size)
-        assertTrue(viewModel.state.value.active.all { it.colorSlot.index in 0 until ColorSlot.COUNT })
-
-        // Nothing about a seeded row is special-cased: it renames, recolours, archives.
-        val pemberian = viewModel.state.value.active.first()
-        assertEquals("Pemberian", pemberian.name)
-        assertEquals(4, pemberian.subcategoryCount)
-
-        viewModel.promptRenameCategory(pemberian.id)
-        viewModel.submitName("Pemberian Keluarga")
-        advanceUntilIdle()
-        assertEquals("Pemberian Keluarga", categories.byId(pemberian.id)?.name)
-
-        viewModel.setCategoryArchived(pemberian.id, archived = true)
-        advanceUntilIdle()
-        assertEquals(15, viewModel.state.value.active.size)
-        assertEquals(1, viewModel.state.value.archived.size)
-    }
-
-    @Test
-    fun `creating a subcategory under Pemberian opens the parent so the result is visible`() =
+    fun `after first run the manager is empty and the first category can be created`() =
         runTest(dispatcher) {
             FirstRunSeed.applyIfEmpty(
                 db = db,
                 openingAsOf = LocalDateTime(2026, 8, 17, 9, 0).toInstant(zone),
                 zone = zone,
             )
+
+            val viewModel = manager()
+            advanceUntilIdle()
+            assertEquals(emptyList<Any>(), viewModel.state.value.active)
+            assertEquals(emptyList<Any>(), viewModel.state.value.archived)
+            // Income included: the manager shows one kind at a time, the table holds both.
+            // A subcategory needs a parent, so none can exist either.
+            assertEquals(0, db.categoryDao().all().size)
+
+            viewModel.promptCreateCategory()
+            viewModel.submitName("Groceries")
+            advanceUntilIdle()
+
+            val created = viewModel.state.value.active.single()
+            assertEquals("Groceries", created.name)
+            assertEquals(ColorSlot(0), created.colorSlot)
+            assertNull(viewModel.state.value.dialog)
+        }
+
+    @Test
+    fun `creating a subcategory under Pemberian opens the parent so the result is visible`() =
+        runTest(dispatcher) {
+            categories.createCategory("Pemberian", CategoryKind.EXPENSE)
 
             val viewModel = manager()
             advanceUntilIdle()

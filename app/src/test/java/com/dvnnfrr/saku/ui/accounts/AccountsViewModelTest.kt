@@ -200,28 +200,20 @@ class AccountsViewModelTest {
     // Requirement: accounts are typed and user-managed.
 
     @Test
-    fun `first run leaves four typed accounts, each with a slot and no opening balance`() =
+    fun `first run leaves Cash and Card, each with a slot and no opening balance`() =
         runTest(dispatcher) {
             FirstRunSeed.applyIfEmpty(db, openingAsOf = today, zone = zone)
 
             val state = viewModel().settled()
             val rows = state.rows
 
+            assertEquals(listOf("Cash", "Card"), rows.sortedBy { it.id }.map { it.name })
             assertEquals(
-                listOf("BCA", "Jago", "Cash", "RDPU SucorInvest"),
-                rows.sortedBy { it.id }.map { it.name },
-            )
-            assertEquals(
-                listOf(
-                    AccountType.BANK,
-                    AccountType.BANK,
-                    AccountType.CASH,
-                    AccountType.INVESTMENT,
-                ),
+                listOf(AccountType.CASH, AccountType.BANK),
                 rows.sortedBy { it.id }.map { it.type },
             )
             assertTrue(rows.all { it.openingBalance.isZero })
-            assertEquals(4, rows.map { it.colorSlot }.toSet().size)
+            assertEquals(2, rows.map { it.colorSlot }.toSet().size)
             // Nothing to chart while every balance is zero, and no divide by zero either.
             assertTrue(state.mix.isEmpty())
             assertEquals(Money.ZERO, state.summary.total)
@@ -452,7 +444,7 @@ class AccountsViewModelTest {
         runTest(dispatcher) {
             FirstRunSeed.applyIfEmpty(db, openingAsOf = today, zone = zone)
             val vm = viewModel()
-            val seeded = vm.settled().rows.first { it.name == "BCA" }
+            val seeded = vm.settled().rows.first { it.name == "Card" }
             assertTrue(seeded.balance.isZero)
 
             vm.save(
@@ -468,7 +460,7 @@ class AccountsViewModelTest {
             advanceUntilIdle()
 
             val updated = vm.state.first { s -> s.rows.any { !it.balance.isZero } }
-                .rows.first { it.name == "BCA" }
+                .rows.first { it.name == "Card" }
             assertEquals(Money(8_420_000), updated.balance)
             assertEquals(LocalDate(2026, 8, 17), updated.openingAsOf)
         }

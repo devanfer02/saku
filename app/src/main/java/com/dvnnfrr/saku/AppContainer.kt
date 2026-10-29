@@ -99,8 +99,9 @@ class SakuApplication : Application() {
         val roomContainer = RoomAppContainer(this)
         container = roomContainer
 
-        // The seed is what makes a fresh install usable: with no accounts and no
-        // categories the entry sheet cannot save anything. applyIfEmpty is idempotent
+        // The seed is what makes a fresh install usable: with no account the entry
+        // sheet cannot save anything. Categories are not seeded; the entry sheet
+        // creates them inline. applyIfEmpty is idempotent
         // and returns on the first query when the database already has data, so this
         // costs one read per launch rather than needing a "has run" flag.
         scope.launch {

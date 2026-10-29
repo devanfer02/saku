@@ -2,6 +2,7 @@ package com.dvnnfrr.saku.ui.entry
 
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.dvnnfrr.saku.data.FirstRunSeed
 import com.dvnnfrr.saku.data.local.SakuDatabase
 import com.dvnnfrr.saku.data.repository.RoomAccountRepository
 import com.dvnnfrr.saku.data.repository.RoomCategoryRepository
@@ -125,6 +126,58 @@ class TransactionEntryViewModelTest {
         // Only expense categories are offered.
         assertEquals(listOf("Makan & Minum"), state.categories.map { it.name })
     }
+
+    /**
+     * A brand-new install seeds Cash and Card and no categories. The picker gets an
+     * empty list (it still offers "New category"), and the first category is made from
+     * the sheet itself, after which the entry saves.
+     */
+    @Test
+    fun `after first run the sheet opens with no categories and creates the first one`() =
+        runTest(dispatcher) {
+            FirstRunSeed.applyIfEmpty(db, openingAsOf = clock.now(), zone = zone)
+            val vm = viewModel()
+            vm.open()
+            advanceUntilIdle()
+
+            val opened = vm.state.value
+            assertEquals(listOf("Cash", "Card"), opened.accounts.map { it.name })
+            assertEquals(opened.accounts.first().id, opened.form.accountId)
+            assertTrue(opened.categories.isEmpty())
+            assertTrue(opened.subcategories.isEmpty())
+
+            type(vm, "25000")
+            vm.createCategory("Food")
+            advanceUntilIdle()
+            val created = vm.state.value
+            assertEquals(listOf("Food"), created.categories.map { it.name })
+            assertEquals(created.categories.single().id, created.form.categoryId)
+
+            vm.save()
+            advanceUntilIdle()
+            val stored = transactions.observeInRange(august, zone).first().single()
+            assertEquals(Money(25_000), stored.amount)
+            assertEquals(created.form.categoryId, stored.categoryId)
+            assertTrue(vm.state.value.saved)
+        }
+
+    @Test
+    fun `after first run an income category is created with the income kind`() =
+        runTest(dispatcher) {
+            FirstRunSeed.applyIfEmpty(db, openingAsOf = clock.now(), zone = zone)
+            val vm = viewModel()
+            vm.open()
+            advanceUntilIdle()
+
+            vm.setType(TxnType.INCOME)
+            advanceUntilIdle()
+            assertTrue(vm.state.value.categories.isEmpty())
+
+            vm.createCategory("Salary")
+            advanceUntilIdle()
+            assertEquals(CategoryKind.INCOME, categories.allCategories().single().kind)
+            assertEquals(listOf("Salary"), vm.state.value.categories.map { it.name })
+        }
 
     @Test
     fun `recording an expense stores it`() = runTest(dispatcher) {
