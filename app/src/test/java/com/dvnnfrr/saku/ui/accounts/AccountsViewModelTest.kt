@@ -13,6 +13,7 @@ import com.dvnnfrr.saku.domain.ColorSlot
 import com.dvnnfrr.saku.domain.DateRange
 import com.dvnnfrr.saku.domain.Money
 import com.dvnnfrr.saku.domain.TxnType
+import com.dvnnfrr.saku.domain.TransactionFilter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -417,7 +418,7 @@ class AccountsViewModelTest {
             // It is in the transaction list like anything else, and it can be removed.
             val august = DateRange.ofMonth(LocalDate(2026, 8, 1))
             assertTrue(
-                transactions.observeInRange(august, zone).first()
+                transactions.observeInRange(august, zone, TransactionFilter.ALL).first()
                     .any { it.id == entry.transactionId },
             )
             transactions.delete(entry.transactionId)
@@ -437,7 +438,7 @@ class AccountsViewModelTest {
             advanceUntilIdle()
 
             val august = DateRange.ofMonth(LocalDate(2026, 8, 1))
-            val totals = transactions.observePeriodTotals(august, zone).first()
+            val totals = transactions.observePeriodTotals(august, zone, TransactionFilter.ALL).first()
             // The 715.000 correction is neither income nor spending; it corrects a
             // balance rather than recording a flow.
             assertEquals(Money(100_000), totals.expense)

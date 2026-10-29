@@ -11,6 +11,7 @@ import com.dvnnfrr.saku.domain.CategoryKind
 import com.dvnnfrr.saku.domain.DateRange
 import com.dvnnfrr.saku.domain.Money
 import com.dvnnfrr.saku.domain.TxnType
+import com.dvnnfrr.saku.domain.TransactionFilter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asExecutor
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -140,7 +141,7 @@ class TransactionEntryViewModelTest {
         vm.save()
         advanceUntilIdle()
 
-        val stored = transactions.observeInRange(august, zone).first()
+        val stored = transactions.observeInRange(august, zone, TransactionFilter.ALL).first()
         assertEquals(1, stored.size)
         assertEquals(Money(187_000), stored.single().amount)
         assertEquals(makan, stored.single().categoryId)
@@ -163,7 +164,7 @@ class TransactionEntryViewModelTest {
         vm.save()
         advanceUntilIdle()
 
-        val stored = transactions.observeInRange(august, zone).first()
+        val stored = transactions.observeInRange(august, zone, TransactionFilter.ALL).first()
         assertEquals(1, stored.size)
         assertEquals(Money(30_000), stored.single().amount)
     }
@@ -179,7 +180,7 @@ class TransactionEntryViewModelTest {
         vm.save()
         advanceUntilIdle()
 
-        assertTrue(transactions.observeInRange(august, zone).first().isEmpty())
+        assertTrue(transactions.observeInRange(august, zone, TransactionFilter.ALL).first().isEmpty())
         assertEquals(EntryProblem.CATEGORY_MISSING, vm.state.value.problemFor(EntryField.CATEGORY))
         assertFalse(vm.state.value.saved)
     }
@@ -301,7 +302,7 @@ class TransactionEntryViewModelTest {
             EntryProblem.DESTINATION_SAME_AS_SOURCE,
             vm.state.value.problemFor(EntryField.DESTINATION),
         )
-        assertTrue(transactions.observeInRange(august, zone).first().isEmpty())
+        assertTrue(transactions.observeInRange(august, zone, TransactionFilter.ALL).first().isEmpty())
     }
 
     @Test
@@ -318,7 +319,7 @@ class TransactionEntryViewModelTest {
         vm.save()
         advanceUntilIdle()
 
-        val stored = transactions.observeInRange(august, zone).first().single()
+        val stored = transactions.observeInRange(august, zone, TransactionFilter.ALL).first().single()
         assertEquals(TxnType.TRANSFER, stored.type)
         assertEquals(bca, stored.accountId)
         assertEquals(rdpu, stored.toAccountId)

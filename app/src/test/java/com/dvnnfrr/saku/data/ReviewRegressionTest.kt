@@ -12,6 +12,7 @@ import com.dvnnfrr.saku.domain.CategoryKind
 import com.dvnnfrr.saku.domain.DateRange
 import com.dvnnfrr.saku.domain.Money
 import com.dvnnfrr.saku.domain.TxnType
+import com.dvnnfrr.saku.domain.TransactionFilter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Instant
@@ -188,7 +189,7 @@ class ReviewRegressionTest {
         accounts.reconcile(cash, Money(500_000), later)
 
         val august = DateRange.ofMonth(LocalDate(2026, 8, 1))
-        assertEquals(Money(200_000), transactions.observePeriodTotals(august, jakarta).first().expense)
+        assertEquals(Money(200_000), transactions.observePeriodTotals(august, jakarta, TransactionFilter.ALL).first().expense)
     }
 
     // ---- Bug 5: update() skipped every validation ----
@@ -234,8 +235,8 @@ class ReviewRegressionTest {
         transactions.record(later, TxnType.EXPENSE, Money(200_000), bca, categoryId = cat)
 
         val august = DateRange.ofMonth(LocalDate(2026, 8, 1))
-        val header = transactions.observePeriodTotals(august, jakarta).first().expense
-        val slices = transactions.observeCategoryTotals(august, jakarta, TxnType.EXPENSE).first()
+        val header = transactions.observePeriodTotals(august, jakarta, TransactionFilter.ALL).first().expense
+        val slices = transactions.observeCategoryTotals(august, jakarta, TxnType.EXPENSE, TransactionFilter.ALL).first()
             .fold(Money.ZERO) { a, c -> a + c.total }
 
         assertEquals("The donut must sum to the header above it", header, slices)
@@ -258,7 +259,7 @@ class ReviewRegressionTest {
         accounts.reconcile(cash, Money(9_000), Instant.parse("2026-08-12T03:00:00Z"))
 
         val days = transactions
-            .observeDailyTotals(DateRange.ofMonth(LocalDate(2026, 8, 1)), jakarta).first()
+            .observeDailyTotals(DateRange.ofMonth(LocalDate(2026, 8, 1)), jakarta, TransactionFilter.ALL).first()
 
         assertEquals("Only the expense day has a header", 1, days.size)
         assertEquals(LocalDate(2026, 8, 5), days.single().date)
@@ -349,7 +350,7 @@ class ReviewRegressionTest {
         }
 
         val totals = transactions
-            .observeCategoryTotals(DateRange.ofMonth(LocalDate(2026, 8, 1)), jakarta, TxnType.EXPENSE)
+            .observeCategoryTotals(DateRange.ofMonth(LocalDate(2026, 8, 1)), jakarta, TxnType.EXPENSE, TransactionFilter.ALL)
             .first()
 
         assertEquals(10_000, totals.sumOf { it.shareBasisPoints })

@@ -12,6 +12,7 @@ import com.dvnnfrr.saku.domain.DateRange
 import com.dvnnfrr.saku.domain.Money
 import com.dvnnfrr.saku.domain.PeriodMode
 import com.dvnnfrr.saku.domain.TxnType
+import com.dvnnfrr.saku.domain.TransactionFilter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -438,11 +439,11 @@ class StatsViewModelTest {
             // And the excluded rows land where they belong rather than nowhere.
             assertEquals(
                 Money(200_000),
-                transactions.observePeriodTotals(august.previous(), zone).first().expense,
+                transactions.observePeriodTotals(august.previous(), zone, TransactionFilter.ALL).first().expense,
             )
             assertEquals(
                 Money(400_000),
-                transactions.observePeriodTotals(august.next(), zone).first().expense,
+                transactions.observePeriodTotals(august.next(), zone, TransactionFilter.ALL).first().expense,
             )
         }
 }

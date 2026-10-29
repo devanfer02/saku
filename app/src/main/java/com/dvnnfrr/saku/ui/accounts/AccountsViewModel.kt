@@ -11,6 +11,7 @@ import com.dvnnfrr.saku.domain.ColorSlot
 import com.dvnnfrr.saku.domain.DateRange
 import com.dvnnfrr.saku.domain.Money
 import com.dvnnfrr.saku.sakuViewModelFactory
+import com.dvnnfrr.saku.domain.TransactionFilter
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -111,7 +112,7 @@ class AccountsViewModel(
             .map { it?.let(::ledgerRange) }
             .distinctUntilChanged()
             .flatMapLatest { range ->
-                if (range == null) flowOf(emptyList()) else transactions.observeInRange(range, zone)
+                if (range == null) flowOf(emptyList()) else transactions.observeInRange(range, zone, TransactionFilter.ALL)
             }
         return combine(account, rows, categories.observeAll()) { current, transactions, cats ->
             if (current == null) return@combine null

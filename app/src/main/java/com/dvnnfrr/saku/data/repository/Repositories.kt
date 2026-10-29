@@ -1,6 +1,7 @@
 package com.dvnnfrr.saku.data.repository
 
 import com.dvnnfrr.saku.domain.Account
+import com.dvnnfrr.saku.domain.AccountFlows
 import com.dvnnfrr.saku.domain.AccountSummary
 import com.dvnnfrr.saku.domain.AccountType
 import com.dvnnfrr.saku.domain.Category
@@ -14,6 +15,7 @@ import com.dvnnfrr.saku.domain.Money
 import com.dvnnfrr.saku.domain.PeriodTotals
 import com.dvnnfrr.saku.domain.Subcategory
 import com.dvnnfrr.saku.domain.Transaction
+import com.dvnnfrr.saku.domain.TransactionFilter
 import com.dvnnfrr.saku.domain.TxnType
 import com.dvnnfrr.saku.excel.BackupContents
 import kotlinx.coroutines.flow.Flow
@@ -29,7 +31,18 @@ import kotlinx.datetime.TimeZone
  */
 
 interface TransactionRepository {
-    fun observeInRange(range: DateRange, zone: TimeZone): Flow<List<Transaction>>
+    /*
+     * Every read that feeds Trans and Stats takes a required [TransactionFilter]. Not a
+     * default argument: a screen that forgot it would compile and silently ignore the
+     * filter, and the compiler listing every caller is the point. Pass
+     * [TransactionFilter.ALL] where a screen is deliberately unfiltered.
+     */
+
+    fun observeInRange(
+        range: DateRange,
+        zone: TimeZone,
+        filter: TransactionFilter,
+    ): Flow<List<Transaction>>
 
     /**
      * Drill-through from a stats row. [type] is required, not optional: the row that
@@ -42,6 +55,7 @@ interface TransactionRepository {
         zone: TimeZone,
         categoryId: Long,
         type: TxnType,
+        filter: TransactionFilter,
     ): Flow<List<Transaction>>
 
     /** Drill-through for the stats screen's aggregated "Other" slice. */
@@ -50,20 +64,40 @@ interface TransactionRepository {
         zone: TimeZone,
         categoryIds: List<Long>,
         type: TxnType,
+        filter: TransactionFilter,
     ): Flow<List<Transaction>>
 
     /** Income and expense for the period. Transfers and adjustments are excluded. */
-    fun observePeriodTotals(range: DateRange, zone: TimeZone): Flow<PeriodTotals>
+    fun observePeriodTotals(
+        range: DateRange,
+        zone: TimeZone,
+        filter: TransactionFilter,
+    ): Flow<PeriodTotals>
 
-    /** Per-day subtotals for the Daily headers and Calendar cells. */
-    fun observeDailyTotals(range: DateRange, zone: TimeZone): Flow<List<DailyTotals>>
+    /** Per-day subtotals for the Daily headers, Calendar cells and Monthly rows. */
+    fun observeDailyTotals(
+        range: DateRange,
+        zone: TimeZone,
+        filter: TransactionFilter,
+    ): Flow<List<DailyTotals>>
 
     /** Ranked category composition for one side of the stats screen. */
     fun observeCategoryTotals(
         range: DateRange,
         zone: TimeZone,
         type: TxnType,
+        filter: TransactionFilter,
     ): Flow<List<CategoryTotal>>
+
+    /**
+     * Income, expense and both transfer legs per account for the period, adjustments
+     * excluded. Unfiltered on purpose: the filter sheet lists every account so the user
+     * can choose among them. An account nothing moved through has no entry.
+     */
+    fun observeAccountFlows(range: DateRange, zone: TimeZone): Flow<List<AccountFlows>>
+
+    /** Every transaction passing [filter], newest first, across all history. For search. */
+    fun observeAll(filter: TransactionFilter): Flow<List<Transaction>>
 
     suspend fun byId(id: Long): Transaction?
 

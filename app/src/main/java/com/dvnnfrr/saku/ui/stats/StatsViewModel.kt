@@ -13,6 +13,7 @@ import com.dvnnfrr.saku.domain.PeriodTotals
 import com.dvnnfrr.saku.sakuViewModelFactory
 import com.dvnnfrr.saku.ui.transactions.DisplayIndex
 import com.dvnnfrr.saku.ui.transactions.toRowUi
+import com.dvnnfrr.saku.domain.TransactionFilter
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -88,9 +89,9 @@ class StatsViewModel(
             .flatMapLatest { key ->
                 val previous = key.range.previous()
                 combine(
-                    transactionRepository.observePeriodTotals(key.range, zone),
-                    transactionRepository.observePeriodTotals(previous, zone),
-                    transactionRepository.observeCategoryTotals(key.range, zone, key.side.txnType),
+                    transactionRepository.observePeriodTotals(key.range, zone, TransactionFilter.ALL),
+                    transactionRepository.observePeriodTotals(previous, zone, TransactionFilter.ALL),
+                    transactionRepository.observeCategoryTotals(key.range, zone, key.side.txnType, TransactionFilter.ALL),
                 ) { totals, previousTotals, categoryTotals ->
                     PeriodData(
                         key = key,
@@ -117,7 +118,7 @@ class StatsViewModel(
             }
 
     private fun categoryDrill(key: PeriodKey, categoryId: Long): Flow<DrillData> = combine(
-        transactionRepository.observeForCategory(key.range, zone, categoryId, key.side.txnType),
+        transactionRepository.observeForCategory(key.range, zone, categoryId, key.side.txnType, TransactionFilter.ALL),
         categoryRepository.observeAllSubcategories(categoryId),
         categoryRepository.observeAll(),
         accountRepository.observeAll(),

@@ -11,6 +11,7 @@ import com.dvnnfrr.saku.domain.CategoryKind
 import com.dvnnfrr.saku.domain.DateRange
 import com.dvnnfrr.saku.domain.Money
 import com.dvnnfrr.saku.domain.TxnType
+import com.dvnnfrr.saku.domain.TransactionFilter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -131,12 +132,12 @@ class TransactionListViewModelTest {
         val vm = viewModel()
         val state = vm.state.first { !it.loading }
 
-        val sqlPeriod = transactions.observePeriodTotals(august, zone).first()
+        val sqlPeriod = transactions.observePeriodTotals(august, zone, TransactionFilter.ALL).first()
         assertEquals(sqlPeriod.income, state.totals.income)
         assertEquals(sqlPeriod.expense, state.totals.expense)
         assertEquals(sqlPeriod.net, state.totals.net)
 
-        val sqlDaily = transactions.observeDailyTotals(august, zone).first()
+        val sqlDaily = transactions.observeDailyTotals(august, zone, TransactionFilter.ALL).first()
             .filterNot { it.isEmpty }
             .associateBy { it.date }
         val folded = state.days.associateBy { it.date }

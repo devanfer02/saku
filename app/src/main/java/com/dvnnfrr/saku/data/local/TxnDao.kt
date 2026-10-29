@@ -8,6 +8,25 @@ import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
 /**
+ * The filter, as one `WHERE` fragment every filtered query concatenates.
+ *
+ * Transfers pass the account selection on either leg; transfers and adjustments carry no
+ * category, so they pass only while both category selections are "All". The six
+ * arguments come from `TransactionFilter.toArgs()` in `Mappers.kt`. A `const val`, so
+ * Room still verifies each full query at compile time.
+ *
+ * Column names are unqualified so the fragment also works in the joined category-totals
+ * query. A filtered query must therefore never join a table that also has `accountId`,
+ * `toAccountId`, `categoryId` or `type`.
+ */
+const val TXN_FILTER_WHERE = """
+          AND (:allAccounts OR accountId IN (:accountIds) OR toAccountId IN (:accountIds))
+          AND (    (type = 'INCOME'  AND (:allIncome  OR categoryId IN (:incomeIds)))
+                OR (type = 'EXPENSE' AND (:allExpense OR categoryId IN (:expenseIds)))
+                OR (type IN ('TRANSFER', 'ADJUSTMENT') AND :allIncome AND :allExpense) )
+"""
+
+/**
  * Every aggregate here excludes TRANSFER and ADJUSTMENT. Moving money between the
  * owner's own accounts is not spending, and an adjustment corrects a balance rather
  * than recording a flow, so neither belongs in any income or expense figure.
@@ -19,10 +38,20 @@ interface TxnDao {
         """
         SELECT * FROM txn
         WHERE occurredAtEpochSec >= :startSec AND occurredAtEpochSec < :endSec
+        """ + TXN_FILTER_WHERE + """
         ORDER BY occurredAtEpochSec DESC, id DESC
         """,
     )
-    fun observeInRange(startSec: Long, endSec: Long): Flow<List<TxnEntity>>
+    fun observeInRange(
+        startSec: Long,
+        endSec: Long,
+        allAccounts: Boolean,
+        accountIds: List<Long>,
+        allIncome: Boolean,
+        incomeIds: List<Long>,
+        allExpense: Boolean,
+        expenseIds: List<Long>,
+    ): Flow<List<TxnEntity>>
 
     @Query(
         """
@@ -30,6 +59,7 @@ interface TxnDao {
         WHERE occurredAtEpochSec >= :startSec AND occurredAtEpochSec < :endSec
           AND categoryId = :categoryId
           AND type = :type
+        """ + TXN_FILTER_WHERE + """
         ORDER BY occurredAtEpochSec DESC, id DESC
         """,
     )
@@ -38,6 +68,12 @@ interface TxnDao {
         endSec: Long,
         categoryId: Long,
         type: String,
+        allAccounts: Boolean,
+        accountIds: List<Long>,
+        allIncome: Boolean,
+        incomeIds: List<Long>,
+        allExpense: Boolean,
+        expenseIds: List<Long>,
     ): Flow<List<TxnEntity>>
 
     @Query(
@@ -47,9 +83,18 @@ interface TxnDao {
           COALESCE(SUM(CASE WHEN type = 'EXPENSE' THEN amountIdr ELSE 0 END), 0) AS expense
         FROM txn
         WHERE occurredAtEpochSec >= :startSec AND occurredAtEpochSec < :endSec
-        """,
+        """ + TXN_FILTER_WHERE,
     )
-    fun observePeriodTotals(startSec: Long, endSec: Long): Flow<PeriodTotalsRow>
+    fun observePeriodTotals(
+        startSec: Long,
+        endSec: Long,
+        allAccounts: Boolean,
+        accountIds: List<Long>,
+        allIncome: Boolean,
+        incomeIds: List<Long>,
+        allExpense: Boolean,
+        expenseIds: List<Long>,
+    ): Flow<PeriodTotalsRow>
 
     /**
      * Per-day subtotals. Days are bucketed in the caller's zone by passing the zone
@@ -75,6 +120,7 @@ interface TxnDao {
         FROM txn
         WHERE occurredAtEpochSec >= :startSec AND occurredAtEpochSec < :endSec
           AND type IN ('INCOME', 'EXPENSE')
+        """ + TXN_FILTER_WHERE + """
         GROUP BY dayEpochSec
         ORDER BY dayEpochSec DESC
         """,
@@ -83,6 +129,12 @@ interface TxnDao {
         startSec: Long,
         endSec: Long,
         zoneOffsetSec: Int,
+        allAccounts: Boolean,
+        accountIds: List<Long>,
+        allIncome: Boolean,
+        incomeIds: List<Long>,
+        allExpense: Boolean,
+        expenseIds: List<Long>,
     ): Flow<List<DailyTotalRow>>
 
     @Query(
@@ -96,6 +148,7 @@ interface TxnDao {
         WHERE t.type = :type
           AND t.occurredAtEpochSec >= :startSec
           AND t.occurredAtEpochSec < :endSec
+        """ + TXN_FILTER_WHERE + """
         GROUP BY t.categoryId, c.name, c.colorSlot
         ORDER BY total DESC
         """,
@@ -104,6 +157,12 @@ interface TxnDao {
         startSec: Long,
         endSec: Long,
         type: String,
+        allAccounts: Boolean,
+        accountIds: List<Long>,
+        allIncome: Boolean,
+        incomeIds: List<Long>,
+        allExpense: Boolean,
+        expenseIds: List<Long>,
     ): Flow<List<CategoryTotalRow>>
 
     /** Drill-through for the stats screen's aggregated "Other" slice. */
@@ -113,6 +172,7 @@ interface TxnDao {
         WHERE occurredAtEpochSec >= :startSec AND occurredAtEpochSec < :endSec
           AND categoryId IN (:categoryIds)
           AND type = :type
+        """ + TXN_FILTER_WHERE + """
         ORDER BY occurredAtEpochSec DESC, id DESC
         """,
     )
@@ -121,6 +181,66 @@ interface TxnDao {
         endSec: Long,
         categoryIds: List<Long>,
         type: String,
+        allAccounts: Boolean,
+        accountIds: List<Long>,
+        allIncome: Boolean,
+        incomeIds: List<Long>,
+        allExpense: Boolean,
+        expenseIds: List<Long>,
+    ): Flow<List<TxnEntity>>
+
+    /**
+     * Per-account income, expense and transfer legs for the filter sheet's ACCOUNT tab.
+     *
+     * Two legs by `UNION ALL`: the source leg books income, expense and transfer-out
+     * against `accountId`, the destination leg books transfer-in against `toAccountId`.
+     * Adjustments are left out, because they correct a balance rather than move money.
+     * Deliberately unfiltered: the tab lists every account so the user can choose among
+     * them, and its figures must not change when a category tab does.
+     */
+    @Query(
+        """
+        SELECT accountId,
+               SUM(income)      AS income,
+               SUM(expense)     AS expense,
+               SUM(transferIn)  AS transferIn,
+               SUM(transferOut) AS transferOut
+        FROM (
+          SELECT accountId                                              AS accountId,
+                 CASE WHEN type = 'INCOME'   THEN amountIdr ELSE 0 END AS income,
+                 CASE WHEN type = 'EXPENSE'  THEN amountIdr ELSE 0 END AS expense,
+                 0                                                      AS transferIn,
+                 CASE WHEN type = 'TRANSFER' THEN amountIdr ELSE 0 END AS transferOut
+          FROM txn
+          WHERE occurredAtEpochSec >= :startSec AND occurredAtEpochSec < :endSec
+            AND type IN ('INCOME', 'EXPENSE', 'TRANSFER')
+          UNION ALL
+          SELECT toAccountId AS accountId, 0, 0, amountIdr, 0
+          FROM txn
+          WHERE occurredAtEpochSec >= :startSec AND occurredAtEpochSec < :endSec
+            AND type = 'TRANSFER' AND toAccountId IS NOT NULL
+        )
+        GROUP BY accountId
+        """,
+    )
+    fun observeAccountFlows(startSec: Long, endSec: Long): Flow<List<AccountFlowsRow>>
+
+    /** Every transaction passing the filter, newest first. For search, over all history. */
+    @Query(
+        """
+        SELECT * FROM txn
+        WHERE 1 = 1
+        """ + TXN_FILTER_WHERE + """
+        ORDER BY occurredAtEpochSec DESC, id DESC
+        """,
+    )
+    fun observeAll(
+        allAccounts: Boolean,
+        accountIds: List<Long>,
+        allIncome: Boolean,
+        incomeIds: List<Long>,
+        allExpense: Boolean,
+        expenseIds: List<Long>,
     ): Flow<List<TxnEntity>>
 
     /** Unbounded read for export. Range-scoped queries cannot serve a full dump. */

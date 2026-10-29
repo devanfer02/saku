@@ -1,16 +1,16 @@
 ## 1. Domain
 
-- [ ] 1.1 Add `domain/TransactionFilter.kt`: three nullable id sets (null is "All", empty is "none"), `ALL`, `isActive`
-- [ ] 1.2 Add `domain/AccountFlows.kt`: account id, income, expense, transfer-in, transfer-out as `Money`
-- [ ] 1.3 Add `sharePercent(part, whole): Int?` beside `wholePercents` (half-up, null on a zero whole) and route `CategoryTotal.wholePercent` through it; extend `WholePercentsTest`
-- [ ] 1.4 Add `domain/TextFold.kt` (`fold`: NFD, strip combining marks, `Locale.ROOT` lowercase, collapse whitespace) with tests for case, accents and spacing
+- [x] 1.1 Add `domain/TransactionFilter.kt`: three nullable id sets (null is "All", empty is "none"), `ALL`, `isActive`
+- [x] 1.2 Add `domain/AccountFlows.kt`: account id, income, expense, transfer-in, transfer-out as `Money`
+- [x] 1.3 Add `sharePercent(part, whole): Int?` beside `wholePercents` (half-up, null on a zero whole) and route `CategoryTotal.wholePercent` through it; extend `WholePercentsTest`
+- [x] 1.4 Add `domain/TextFold.kt` (`fold`: NFD, strip combining marks, `Locale.ROOT` lowercase, collapse whitespace) with tests for case, accents and spacing
 
 ## 2. Data
 
-- [ ] 2.1 Add `TXN_FILTER_WHERE` to `TxnDao` and concatenate it into `observeInRange`, `observePeriodTotals`, `observeDailyTotals`, `observeCategoryTotals`, `observeInRangeForCategory` and `observeInRangeForCategories`, with the six filter arguments
-- [ ] 2.2 Add `TxnDao.observeAccountFlows(startSec, endSec)` (source and destination legs by `UNION ALL`, adjustments excluded) and `TxnDao.observeAll` with the filter, newest first
-- [ ] 2.3 Add the filter-to-arguments mapping in `Mappers.kt` and the required `filter` parameter on the six `TransactionRepository` methods; add `observeAccountFlows` and `observeAll(filter)`; update `RoomTransactionRepository`
-- [ ] 2.4 Robolectric DAO tests beside `PeriodAggregateTest`: category and account selections, either-leg transfers, transfers and adjustments hidden under a category filter, empty selections (`IN ()`), the joined category-totals query, and account flows with an adjustment present
+- [x] 2.1 Add `TXN_FILTER_WHERE` to `TxnDao` and concatenate it into `observeInRange`, `observePeriodTotals`, `observeDailyTotals`, `observeCategoryTotals`, `observeInRangeForCategory` and `observeInRangeForCategories`, with the six filter arguments
+- [x] 2.2 Add `TxnDao.observeAccountFlows(startSec, endSec)` (source and destination legs by `UNION ALL`, adjustments excluded) and `TxnDao.observeAll` with the filter, newest first
+- [x] 2.3 Add the filter-to-arguments mapping in `Mappers.kt` and the required `filter` parameter on the six `TransactionRepository` methods; add `observeAccountFlows` and `observeAll(filter)`; update `RoomTransactionRepository`
+- [x] 2.4 Robolectric DAO tests beside `PeriodAggregateTest`: category and account selections, either-leg transfers, transfers and adjustments hidden under a category filter, empty selections (`IN ()`), the joined category-totals query, and account flows with an adjustment present
 - [ ] 2.5 Fix every existing caller to pass `TransactionFilter.ALL` until its screen reads the shared filter; `:app:testDebugUnitTest` green
 
 ## 3. Shared filter and sheet

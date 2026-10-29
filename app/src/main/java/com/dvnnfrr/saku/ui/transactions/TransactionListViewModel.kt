@@ -8,6 +8,7 @@ import com.dvnnfrr.saku.data.repository.TransactionRepository
 import com.dvnnfrr.saku.domain.DateRange
 import com.dvnnfrr.saku.domain.PeriodTotals
 import com.dvnnfrr.saku.sakuViewModelFactory
+import com.dvnnfrr.saku.domain.TransactionFilter
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -68,7 +69,7 @@ class TransactionListViewModel(
             .distinctUntilChanged()
             .flatMapLatest { range ->
                 combine(
-                    transactionRepository.observeInRange(range, zone),
+                    transactionRepository.observeInRange(range, zone, TransactionFilter.ALL),
                     accountRepository.observeAll(),
                     categoryRepository.observeAll(),
                     categoryRepository.observeAllSubcategories(),

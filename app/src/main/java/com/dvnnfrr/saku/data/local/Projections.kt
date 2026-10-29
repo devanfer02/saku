@@ -50,3 +50,12 @@ data class IdCount(
     val id: Long,
     val count: Int,
 )
+
+/** One account's period flows, by leg. See `TxnDao.observeAccountFlows`. */
+data class AccountFlowsRow(
+    val accountId: Long,
+    val income: Long,
+    val expense: Long,
+    val transferIn: Long,
+    val transferOut: Long,
+)
