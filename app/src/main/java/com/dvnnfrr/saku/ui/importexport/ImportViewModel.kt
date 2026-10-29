@@ -457,10 +457,11 @@ class ImportViewModel(
     }
 
     /**
-     * `Card` is 1,150 of the 1,200 reference rows and it is not a bank — the source app
-     * collapsed every card, transfer and e-wallet payment onto one label. BCA is where
-     * that history honestly belongs, so it arrives chosen but visibly a guess. Anything
-     * whose name already matches an account maps to it; everything else waits.
+     * A file's account name maps to the existing account with the same name, ignoring
+     * case and surrounding space; everything else waits for the user. No name is guessed
+     * onto a different one. `Card`, 1,150 of the 1,200 reference rows, lands on the
+     * seeded `Card` account this way, and still shows as prefilled so the user checks it:
+     * the source app collapsed every card, transfer and e-wallet payment onto that label.
      */
     private fun prefillAccounts(
         sheet: ParsedSheet,
@@ -469,7 +470,6 @@ class ImportViewModel(
         val byName = existing.associateBy { it.name.trim().lowercase() }
         return accountNamesIn(sheet).keys.mapNotNull { name ->
             val matched = byName[name.trim().lowercase()]
-                ?: byName[DEFAULT_CARD_ACCOUNT.lowercase()].takeIf { name.equals(CARD, ignoreCase = true) }
             matched?.let { name to AccountChoice.Existing(it.id, it.name) }
         }.toMap()
     }
@@ -542,11 +542,6 @@ class ImportViewModel(
     private fun Instant.startOfLocalDay(): Instant = localDate().atStartOfDayIn(zone)
 
     companion object {
-        private const val CARD = "Card"
-
-        /** Where the source app's one collapsed account label honestly belongs. */
-        const val DEFAULT_CARD_ACCOUNT = "BCA"
-
         fun factory(entryPoint: ImportEntryPoint): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val container = container()
