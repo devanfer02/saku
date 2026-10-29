@@ -42,6 +42,7 @@ enum class SakuDestination(
         fun owning(route: String?): SakuDestination = when {
             fromRoute(route) != null -> fromRoute(route)!!
             MoreRoute.fromRoute(route) != null -> MORE
+            TransRoute.fromRoute(route) != null -> TRANSACTIONS
             else -> START
         }
     }

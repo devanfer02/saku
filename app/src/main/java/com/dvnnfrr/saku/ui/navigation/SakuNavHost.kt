@@ -15,6 +15,7 @@ import com.dvnnfrr.saku.ui.importexport.ImportEntryPoint
 import com.dvnnfrr.saku.ui.importexport.ImportHistoryScreen
 import com.dvnnfrr.saku.ui.importexport.ImportScreen
 import com.dvnnfrr.saku.ui.importexport.RestoreScreen
+import com.dvnnfrr.saku.ui.search.SearchScreen
 import com.dvnnfrr.saku.ui.shell.MoreScreen
 import com.dvnnfrr.saku.ui.stats.StatsScreen
 import com.dvnnfrr.saku.ui.transactions.TransactionsScreen
@@ -36,7 +37,10 @@ fun SakuNavHost(
         startDestination = SakuDestination.START.route,
         modifier = modifier,
     ) {
-        composable(SakuDestination.TRANSACTIONS.route) { TransactionsScreen() }
+        composable(SakuDestination.TRANSACTIONS.route) {
+            TransactionsScreen(onOpenSearch = { navController.navigate(TransRoute.SEARCH.route) })
+        }
+        composable(TransRoute.SEARCH.route) { SearchScreen(onBack = back) }
         composable(SakuDestination.STATS.route) { StatsScreen() }
         composable(SakuDestination.ACCOUNTS.route) { AccountsScreen() }
         composable(SakuDestination.MORE.route) {

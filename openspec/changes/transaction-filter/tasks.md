@@ -36,9 +36,9 @@
 
 ## 6. Search
 
-- [ ] 6.1 Add `ui/search/SearchAssembly.kt`: word splitting, letters versus digits words, "Rp" and separator stripping, note and amount matching, hidden-match count; reuse `toDaySections` and `periodTotals`; unit-test every scenario in `specs/transaction-search/spec.md`
-- [ ] 6.2 Add `SearchViewModel` (holds only the query, 150 ms debounce, second unfiltered stream only while a filter is active) and its tests
-- [ ] 6.3 Add the `transactions/search` route resolving to the Trans tab, the search action on Trans, and `SearchScreen` (stateless plus stateful) with the focused field, results, `FilterBar`, "N more outside the filter", and `EntrySheet` on tap
+- [x] 6.1 Add `ui/search/SearchAssembly.kt`: word splitting, letters versus digits words, "Rp" and separator stripping, note and amount matching, hidden-match count; reuse `toDaySections` and `periodTotals`; unit-test every scenario in `specs/transaction-search/spec.md`
+- [x] 6.2 Add `SearchViewModel` (holds only the query, 150 ms debounce, second unfiltered stream only while a filter is active) and its tests
+- [x] 6.3 Add the `transactions/search` route resolving to the Trans tab, the search action on Trans, and `SearchScreen` (stateless plus stateful) with the focused field, results, `FilterBar`, "N more outside the filter", and `EntrySheet` on tap
 
 ## 7. Verification
 
