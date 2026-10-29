@@ -25,6 +25,7 @@
     <string name="stats_previous_period">Previous period</string>
     <string name="stats_next_period">Next period</string>
     <string name="stats_pick_range">Choose the start and end dates</string>
+    <string name="stats_pick_range_none">No dates chosen</string>
     <string name="stats_other">Other</string>
     <string name="stats_other_heading">Combined into Other</string>
     <string name="stats_no_subcategory">No subcategory</string>
@@ -226,7 +227,7 @@
     <string name="import_accounts_explainer">Every name in the file has to point at an account before anything is written.</string>
     <string name="import_account_rows">%1$d rows</string>
     <string name="import_account_unmapped">Choose an account</string>
-    <string name="import_account_prefilled">Prefilled — check this</string>
+    <string name="import_account_prefilled">Prefilled, please check</string>
     <string name="import_account_create">Create \"%1$s\"</string>
 
     <!-- Import preview: investment destinations -->
@@ -248,7 +249,7 @@
     <string name="import_discrepancy_row">Row %1$d · IDR %2$s · Amount %3$s</string>
     <string name="import_discrepancy_include">Include</string>
     <string name="import_section_held_back">Held back</string>
-    <string name="import_held_back_row">Row %1$d — %2$s</string>
+    <string name="import_held_back_row">Row %1$d: %2$s</string>
 
     <!-- Import: why a row was held back -->
     <string name="import_reason_non_idr">the currency is %1$s, not IDR</string>
@@ -279,6 +280,16 @@
     <string name="import_failed_title">Nothing was imported</string>
     <string name="import_done_title">Import finished</string>
     <string name="import_done_body">%1$d added from %2$s. %3$d were already here.</string>
+    <string name="import_done_added_title">What was added</string>
+    <string name="import_done_expenses">Expenses</string>
+    <string name="import_done_income">Income</string>
+    <string name="import_done_transfers">Transfers</string>
+    <string name="import_done_adjustments">Adjustments</string>
+    <string name="import_done_accounts">Accounts</string>
+    <string name="import_done_categories">New categories</string>
+    <string name="import_done_categories_none">None. Every category was already here.</string>
+    <string name="import_done_view_transactions">View transactions</string>
+    <string name="import_back">Back</string>
 
     <!-- Import history -->
     <string name="import_history_empty">Nothing imported yet</string>

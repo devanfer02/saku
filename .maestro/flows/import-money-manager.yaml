@@ -54,7 +54,7 @@ name: Import from Money Manager
 - assertVisible: "Card"
 - assertVisible: "1548 rows"
 - assertVisible: "BCA"
-- assertVisible: "Prefilled — check this"
+- assertVisible: "Prefilled, please check"
 
 # Gopay has no match, so the import is blocked until it is given one. The row is
 # reached by its placeholder rather than by "Gopay": the name appears in more than one
@@ -86,6 +86,8 @@ name: Import from Money Manager
 
 - assertVisible: "Import finished"
 - assertVisible: "1200 added from mock-money-manager.xlsx. 0 were already here."
+- assertVisible: "What was added"
+- assertVisible: "View transactions"
 
 # --- the same file again --------------------------------------------------------
 # Every row is now present, so the second pass must add nothing at all.

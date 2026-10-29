@@ -46,7 +46,15 @@ fun SakuShell(
                 SakuDestination.entries.forEach { destination ->
                     NavigationBarItem(
                         selected = destination == current,
-                        onClick = { navController.navigateTo(destination) },
+                        onClick = {
+                            // Tapping the lit tab returns it to its root, so a screen
+                            // pushed from More is never more than one tap from the menu.
+                            if (destination == current) {
+                                navController.popBackStack(destination.route, inclusive = false)
+                            } else {
+                                navController.navigateTo(destination)
+                            }
+                        },
                         icon = { Icon(destination.icon, contentDescription = null) },
                         label = { Text(stringResource(destination.labelRes)) },
                         modifier = Modifier.testTag(destination.navTestTag),

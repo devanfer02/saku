@@ -52,10 +52,22 @@ fun SakuNavHost(
 
         composable(MoreRoute.CATEGORIES.route) { CategoriesScreen(onBack = back) }
         composable(MoreRoute.IMPORT_MONEY_MANAGER.route) {
-            ImportScreen(entryPoint = ImportEntryPoint.MONEY_MANAGER)
+            ImportScreen(
+                entryPoint = ImportEntryPoint.MONEY_MANAGER,
+                onBack = back,
+                onViewTransactions = { navController.leaveMoreFor(SakuDestination.TRANSACTIONS) },
+                onOpenHistory = { navController.replaceWithinMore(MoreRoute.IMPORT_HISTORY) },
+                onDone = { navController.popToMoreMenu() },
+            )
         }
         composable(MoreRoute.IMPORT_EXCEL.route) {
-            ImportScreen(entryPoint = ImportEntryPoint.EXCEL)
+            ImportScreen(
+                entryPoint = ImportEntryPoint.EXCEL,
+                onBack = back,
+                onViewTransactions = { navController.leaveMoreFor(SakuDestination.TRANSACTIONS) },
+                onOpenHistory = { navController.replaceWithinMore(MoreRoute.IMPORT_HISTORY) },
+                onDone = { navController.popToMoreMenu() },
+            )
         }
         composable(MoreRoute.EXPORT_EXCEL.route) { ExportScreen() }
         composable(MoreRoute.IMPORT_HISTORY.route) { ImportHistoryScreen() }
@@ -75,5 +87,28 @@ fun NavHostController.navigateTo(destination: SakuDestination) {
         popUpTo(graph.findStartDestination().id) { saveState = true }
         launchSingleTop = true
         restoreState = true
+    }
+}
+
+/**
+ * Back to the More menu, dropping whatever it pushed. A pushed screen left on the stack
+ * is saved with the tab and restored on the next visit, which is how the More tab kept
+ * reopening on a finished import.
+ */
+fun NavHostController.popToMoreMenu() {
+    popBackStack(SakuDestination.MORE.route, inclusive = false)
+}
+
+/** Switches tab from a More screen, leaving the More tab on its menu for next time. */
+fun NavHostController.leaveMoreFor(destination: SakuDestination) {
+    popToMoreMenu()
+    navigateTo(destination)
+}
+
+/** Swaps the open More screen for [route], so back from it returns to the menu. */
+fun NavHostController.replaceWithinMore(route: MoreRoute) {
+    navigate(route.route) {
+        popUpTo(SakuDestination.MORE.route)
+        launchSingleTop = true
     }
 }

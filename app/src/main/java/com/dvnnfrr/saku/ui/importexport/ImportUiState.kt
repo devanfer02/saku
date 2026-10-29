@@ -172,9 +172,7 @@ sealed interface ImportUiState {
 
     data class Imported(
         override val entryPoint: ImportEntryPoint,
-        val fileName: String,
-        val inserted: Int,
-        val skipped: Int,
+        val summary: ImportSummary,
     ) : ImportUiState
 }
 

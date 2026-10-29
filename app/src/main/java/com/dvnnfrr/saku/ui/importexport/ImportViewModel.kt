@@ -228,6 +228,9 @@ class ImportViewModel(
                     ),
                 )
 
+                // Read before the commit, because afterwards every row is present and
+                // the summary could no longer tell what this import added.
+                val presentBefore = imports.existingHashes(pending.map { it.dedupHash })
                 val batch = imports.commit(
                     fileName = current.fileName,
                     rows = pending,
@@ -238,9 +241,16 @@ class ImportViewModel(
                 draft = null
                 _state.value = ImportUiState.Imported(
                     entryPoint = current.entryPoint,
-                    fileName = batch.fileName,
-                    inserted = batch.insertedCount,
-                    skipped = batch.skippedCount,
+                    summary = importSummary(
+                        batch = batch,
+                        rows = pending,
+                        presentBefore = presentBefore,
+                        accountNames = accounts.all().associate { it.id to it.name },
+                        createdCategories = render(current).categories
+                            .filter { it.willBeCreated }
+                            .map { it.name },
+                        zone = zone,
+                    ),
                 )
             } catch (invalid: IllegalArgumentException) {
                 // commit validates every row inside its own transaction and throws on

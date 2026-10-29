@@ -17,6 +17,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.FileUpload
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -24,6 +25,8 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -59,6 +62,10 @@ import com.dvnnfrr.saku.ui.theme.formatIdr
 fun ImportScreen(
     entryPoint: ImportEntryPoint,
     modifier: Modifier = Modifier,
+    onBack: (() -> Unit)? = null,
+    onViewTransactions: () -> Unit = {},
+    onOpenHistory: () -> Unit = {},
+    onDone: () -> Unit = {},
     viewModel: ImportViewModel = viewModel(factory = ImportViewModel.factory(entryPoint)),
 ) {
     val state by viewModel.state.collectAsState()
@@ -78,6 +85,10 @@ fun ImportScreen(
         onSetIncluded = viewModel::setDiscrepancyIncluded,
         onConfirm = viewModel::confirm,
         onDiscard = viewModel::discard,
+        onBack = onBack,
+        onViewTransactions = onViewTransactions,
+        onOpenHistory = onOpenHistory,
+        onDone = onDone,
     )
 }
 
@@ -92,10 +103,16 @@ fun ImportScreenBody(
     onSetIncluded: (Int, Boolean) -> Unit = { _, _ -> },
     onConfirm: () -> Unit = {},
     onDiscard: () -> Unit = {},
+    /** Null hides the back arrow, for a host with its own way out. */
+    onBack: (() -> Unit)? = null,
+    onViewTransactions: () -> Unit = {},
+    onOpenHistory: () -> Unit = {},
+    onDone: () -> Unit = {},
 ) {
     val colors = SakuTheme.colors
 
     Column(modifier = modifier.fillMaxSize().background(colors.background)) {
+        Header(title = stringResource(state.entryPoint.titleRes()), onBack = onBack)
         when (state) {
             is ImportUiState.Idle -> IdleBody(state.entryPoint, onPickFile)
 
@@ -110,7 +127,13 @@ fun ImportScreenBody(
 
             is ImportUiState.Refused -> RefusedBody(state, onPickFile)
 
-            is ImportUiState.Imported -> DoneBody(state, onPickFile)
+            is ImportUiState.Imported -> DoneBody(
+                summary = state.summary,
+                onViewTransactions = onViewTransactions,
+                onOpenHistory = onOpenHistory,
+                onPickFile = onPickFile,
+                onDone = onDone,
+            )
 
             is ImportUiState.Ready -> PreviewBody(
                 preview = state.preview,
@@ -170,29 +193,155 @@ private fun RefusedBody(state: ImportUiState.Refused, onPickFile: () -> Unit) {
     }
 }
 
+/**
+ * The result. It says what went in, by type and date and account, because "1300 added"
+ * alone gives the user no way to tell whether a mapping landed where they meant, and
+ * the obvious next step is to go and look at those transactions.
+ */
 @Composable
-private fun DoneBody(state: ImportUiState.Imported, onPickFile: () -> Unit) {
+private fun ColumnScope.DoneBody(
+    summary: ImportSummary,
+    onViewTransactions: () -> Unit,
+    onOpenHistory: () -> Unit,
+    onPickFile: () -> Unit,
+    onDone: () -> Unit,
+) {
     val spacing = SakuTheme.spacing
+
     Column(
-        modifier = Modifier.fillMaxWidth().padding(spacing.screen),
-        verticalArrangement = Arrangement.spacedBy(spacing.md),
+        modifier = Modifier
+            .weight(1f)
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = spacing.screen, vertical = spacing.md),
+        verticalArrangement = Arrangement.spacedBy(spacing.lg),
     ) {
-        SectionTitle(stringResource(R.string.import_done_title))
-        Body(
-            stringResource(
-                R.string.import_done_body,
-                state.inserted,
-                state.fileName,
-                state.skipped,
-            ),
-        )
-        TextButton(onClick = onPickFile) {
+        Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+            SectionTitle(stringResource(R.string.import_done_title))
+            Body(
+                stringResource(
+                    R.string.import_done_body,
+                    summary.added,
+                    summary.fileName,
+                    summary.alreadyHere,
+                ),
+            )
+        }
+
+        if (summary.added > 0) {
+            Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+                SectionTitle(stringResource(R.string.import_done_added_title))
+                Card {
+                    summary.span?.let {
+                        FactRow(
+                            stringResource(R.string.import_preview_span),
+                            stringResource(
+                                R.string.import_preview_span_value,
+                                it.first.readable(),
+                                it.last.readable(),
+                            ),
+                        )
+                    }
+                    summary.byType.forEach { (type, count) ->
+                        FactRow(stringResource(type.addedRes()), count.toString())
+                    }
+                }
+            }
+
+            Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+                SectionTitle(stringResource(R.string.import_done_accounts))
+                Body(summary.accounts.joinToString(", "))
+            }
+        }
+
+        Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+            SectionTitle(stringResource(R.string.import_done_categories))
+            Body(
+                if (summary.createdCategories.isEmpty()) {
+                    stringResource(R.string.import_done_categories_none)
+                } else {
+                    summary.createdCategories.joinToString(", ")
+                },
+            )
+        }
+
+        Column {
+            LinkButton(stringResource(R.string.more_import_history), onOpenHistory)
+            LinkButton(stringResource(R.string.import_choose_another), onPickFile)
+        }
+    }
+
+    HorizontalDivider(color = SakuTheme.colors.line)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(SakuTheme.colors.surface)
+            .padding(horizontal = spacing.screen, vertical = spacing.md),
+        horizontalArrangement = Arrangement.spacedBy(spacing.md),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        TextButton(onClick = onDone) {
             Text(
-                text = stringResource(R.string.import_choose_another),
-                color = SakuTheme.colors.accent,
+                text = stringResource(R.string.action_done),
+                style = SakuTheme.typography.bodyStrong,
+                color = SakuTheme.colors.ink2,
+            )
+        }
+        Button(
+            onClick = onViewTransactions,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = SakuTheme.colors.accent,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+            ),
+            modifier = Modifier.weight(1f),
+        ) {
+            Text(
+                text = stringResource(R.string.import_done_view_transactions),
                 style = SakuTheme.typography.bodyStrong,
             )
         }
+    }
+}
+
+@Composable
+private fun LinkButton(text: String, onClick: () -> Unit) {
+    TextButton(onClick = onClick) {
+        Text(
+            text = text,
+            color = SakuTheme.colors.accent,
+            style = SakuTheme.typography.bodyStrong,
+        )
+    }
+}
+
+/** The title row, so the screen says where it is and has a way out besides system back. */
+@Composable
+private fun Header(title: String, onBack: (() -> Unit)?) {
+    val spacing = SakuTheme.spacing
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = spacing.touchTarget)
+            .padding(horizontal = spacing.sm, vertical = spacing.xs),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (onBack != null) {
+            IconButton(onClick = onBack) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = stringResource(R.string.import_back),
+                    tint = SakuTheme.colors.ink,
+                )
+            }
+        }
+        Text(
+            text = title,
+            style = SakuTheme.typography.title,
+            color = SakuTheme.colors.ink,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(horizontal = spacing.sm),
+        )
     }
 }
 

@@ -26,6 +26,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDate
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -242,6 +243,29 @@ class ImportViewModelTest {
         assertEquals(1, imports().observeBatches().first().size)
     }
 
+    @Test
+    fun `the finished screen summarises what the import added`() = runFlow {
+        seedAccounts()
+        val model = loadFixture()
+        mapEverything(model)
+        model.confirm()
+        advanceUntilIdle()
+
+        val summary = (model.state.value as ImportUiState.Imported).summary
+        assertEquals(Fixture.NAME, summary.fileName)
+        assertEquals(1_200, summary.added)
+        assertEquals(0, summary.alreadyHere)
+        assertEquals(DateSpan(LocalDate(2025, 7, 28), LocalDate(2026, 8, 16)), summary.span)
+        assertEquals(
+            mapOf(TxnType.EXPENSE to 1_160, TxnType.INCOME to 35, TxnType.TRANSFER to 6),
+            summary.byType,
+        )
+        assertEquals(listOf("BCA", "Cash", "Gopay", "RDPU SucorInvest", "Saham"), summary.accounts)
+        // Makan & Minum was seeded, so it was matched rather than created.
+        assertFalse("Makan & Minum" in summary.createdCategories)
+        assertTrue("Pemberian" in summary.createdCategories)
+    }
+
     /** Scenario: Reviewing an import — the tally splits new from already here. */
     @Test
     fun `a partially present file reports the split exactly`() = runFlow {
@@ -447,7 +471,7 @@ class ImportViewModelTest {
         advanceUntilIdle()
 
         return when (val state = model.state.value) {
-            is ImportUiState.Imported -> state.inserted
+            is ImportUiState.Imported -> state.summary.added
             is ImportUiState.Ready -> error(
                 "import did not run: ${state.preview.problems} ${state.preview.failure}",
             )
