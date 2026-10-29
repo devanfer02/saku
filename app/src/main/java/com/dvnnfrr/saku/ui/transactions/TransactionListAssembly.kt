@@ -55,7 +55,7 @@ class DisplayIndex(
     fun subcategoryName(id: Long?): String? = id?.let { subcategoryNames[it] }
 }
 
-private val UNKNOWN_ACCOUNT = AccountRef(id = -1L, name = "—", colorSlot = ColorSlot.FIRST)
+private val UNKNOWN_ACCOUNT = AccountRef(id = -1L, name = "Unknown account", colorSlot = ColorSlot.FIRST)
 
 fun Transaction.toRowUi(index: DisplayIndex): TransactionRowUi = TransactionRowUi(
     id = id,
