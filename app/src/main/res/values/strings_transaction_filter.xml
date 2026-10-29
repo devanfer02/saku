@@ -1,0 +1,54 @@
+<resources>
+    <!--
+        Copy for the transaction-filter change: the filter sheet and bar, the Monthly
+        sub-tab and search. Kept out of strings.xml so concurrent changes that append
+        there do not collide with this one.
+    -->
+
+    <!-- Filter action and bar -->
+    <string name="filter_action">Filter</string>
+    <string name="filter_action_active">Filter, active</string>
+    <string name="filter_bar">Filtered: %1$s</string>
+    <string name="filter_clear">Clear</string>
+    <string name="filter_clear_description">Clear the filter</string>
+
+    <!-- Filter sheet -->
+    <string name="filter_tab_income">INCOME</string>
+    <string name="filter_tab_expenses">EXPENSES</string>
+    <string name="filter_tab_account">ACCOUNT</string>
+    <string name="filter_all">All</string>
+    <string name="filter_transfer_in">Transfer-In</string>
+    <string name="filter_transfer_out">Transfer-Out</string>
+    <string name="filter_no_items">Nothing to choose from yet</string>
+    <!-- "Income 8.000.000, 80 percent of all income in October 2026" -->
+    <string name="filter_ring_share">%1$s %2$s, %3$d percent of all %4$s in %5$s</string>
+    <string name="filter_ring_plain">%1$s %2$s</string>
+
+    <!-- Empty states under a filter -->
+    <string name="filter_empty_month">Nothing in this month matches the filter</string>
+    <string name="filter_empty_year">Nothing in this year matches the filter</string>
+    <string name="filter_empty_period">Nothing in %1$s matches the filter</string>
+
+    <!-- Monthly sub-tab -->
+    <string name="transactions_tab_monthly">Monthly</string>
+    <string name="transactions_previous_year">Previous year</string>
+    <string name="transactions_next_year">Next year</string>
+    <string name="monthly_this_week">This week</string>
+    <string name="monthly_expand">Show the weeks of %1$s</string>
+    <string name="monthly_collapse">Hide the weeks of %1$s</string>
+    <string name="monthly_nothing">Nothing recorded</string>
+    <string name="monthly_empty_year">Nothing recorded in %1$d</string>
+
+    <!-- Search -->
+    <string name="search_action">Search</string>
+    <string name="search_hint">Search notes and amounts</string>
+    <string name="search_back">Back</string>
+    <string name="search_clear_query">Clear the search</string>
+    <plurals name="search_count">
+        <item quantity="one">%d result</item>
+        <item quantity="other">%d results</item>
+    </plurals>
+    <string name="search_hidden">%1$d more outside the filter</string>
+    <string name="search_empty">Nothing matches “%1$s”</string>
+    <string name="search_prompt">Type a word from a note, or an amount such as 47.500</string>
+</resources>

@@ -15,11 +15,11 @@
 
 ## 3. Shared filter and sheet
 
-- [ ] 3.1 Add `ui/filter/SharedFilter` (a `StateFlow<TransactionFilter>` with `set` and `clear`) and build it in `AppContainer`
-- [ ] 3.2 Add `ui/filter/FilterSheetAssembly.kt`: tick and "All" transitions with normalisation to null, account grouping by type, ring shares, per-account rows, and `filterSummary`; unit-test against every scenario in `specs/transaction-filter/spec.md` it covers
-- [ ] 3.3 Add `FilterSheetViewModel` (built with the opening screen's `DateRange`, holds only the open tab) and its tests
-- [ ] 3.4 Add `ui/shared/ShareRing` and the `FilterSheet` composable (stateless overload plus stateful one): three tabs, checkbox lists with "All", header rings and Total, two-line account rows
-- [ ] 3.5 Add `ui/filter/FilterBar` (summary and clear) and the filter action with its active marker and content description
+- [x] 3.1 Add `ui/filter/SharedFilter` (a `StateFlow<TransactionFilter>` with `set` and `clear`) and build it in `AppContainer`
+- [x] 3.2 Add `ui/filter/FilterSheetAssembly.kt`: tick and "All" transitions with normalisation to null, account grouping by type, ring shares, per-account rows, and `filterSummary`; unit-test against every scenario in `specs/transaction-filter/spec.md` it covers
+- [x] 3.3 Add `FilterSheetViewModel` (built with the opening screen's `DateRange`, holds only the open tab) and its tests
+- [x] 3.4 Add `ui/shared/ShareRing` and the `FilterSheet` composable (stateless overload plus stateful one): three tabs, checkbox lists with "All", header rings and Total, two-line account rows
+- [x] 3.5 Add `ui/filter/FilterBar` (summary and clear) and the filter action with its active marker and content description
 
 ## 4. Trans and Stats under the filter
 

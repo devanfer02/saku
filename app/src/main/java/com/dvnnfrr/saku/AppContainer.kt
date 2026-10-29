@@ -18,6 +18,7 @@ import com.dvnnfrr.saku.data.repository.RoomCategoryRepository
 import com.dvnnfrr.saku.data.repository.RoomImportRepository
 import com.dvnnfrr.saku.data.repository.RoomTransactionRepository
 import com.dvnnfrr.saku.data.repository.TransactionRepository
+import com.dvnnfrr.saku.ui.filter.SharedFilter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -43,6 +44,9 @@ interface AppContainer {
     val categories: CategoryRepository
     val imports: ImportRepository
     val appearance: AppearanceStore
+
+    /** The Trans and Stats filter. Process-scoped and never persisted. */
+    val filter: SharedFilter
 }
 
 class RoomAppContainer(context: Context) : AppContainer {
@@ -62,6 +66,8 @@ class RoomAppContainer(context: Context) : AppContainer {
      * construction only moves the same work behind a lock on the main thread.
      */
     override val appearance: AppearanceStore = SharedPreferencesAppearanceStore(context)
+
+    override val filter: SharedFilter = SharedFilter()
 }
 
 /**
