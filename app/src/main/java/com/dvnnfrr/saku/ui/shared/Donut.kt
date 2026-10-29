@@ -19,8 +19,12 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.isSpecified
 import com.dvnnfrr.saku.domain.ColorSlot
 import com.dvnnfrr.saku.domain.Money
 import com.dvnnfrr.saku.ui.theme.SakuPreview
@@ -149,26 +153,67 @@ fun Donut(
             }
         }
 
+        // The centre has to sit inside the hole, not inside the box. An eight-digit
+        // balance at amountLarge is wider than the hole, and left to wrap it broke after
+        // "Rp" and showed nothing else, so each line is measured and shrunk until it fits.
+        val typography = SakuTheme.typography
+        val textMeasurer = rememberTextMeasurer()
+        val lineWidthPx = with(density) {
+            val blockHeight = typography.label.lineHeight.toPx() + spacing.xs.toPx() +
+                typography.amountLarge.lineHeight.toPx()
+            donutHoleTextWidth(diameterPx - 2 * strokePx, blockHeight) - 2 * spacing.xs.toPx()
+        }
+        val labelStyle = remember(centerLabel, typography.label, lineWidthPx, textMeasurer) {
+            textMeasurer.fitOnOneLine(centerLabel, typography.label, lineWidthPx)
+        }
+        val valueStyle = remember(centerValue, typography.amountLarge, lineWidthPx, textMeasurer) {
+            textMeasurer.fitOnOneLine(centerValue, typography.amountLarge, lineWidthPx)
+        }
+
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(spacing.xs),
         ) {
             Text(
                 text = centerLabel,
-                style = SakuTheme.typography.label,
+                style = labelStyle,
                 color = colors.ink2,
                 textAlign = TextAlign.Center,
+                softWrap = false,
+                maxLines = 1,
             )
             Text(
                 text = centerValue,
-                style = SakuTheme.typography.amountLarge,
+                style = valueStyle,
                 color = colors.ink,
                 textAlign = TextAlign.Center,
+                softWrap = false,
                 maxLines = 1,
             )
         }
     }
 }
+
+/**
+ * [style] shrunk until [text] fits on one line [maxWidthPx] wide. Measured again after
+ * each step because glyph widths round to whole pixels and do not scale exactly with
+ * the font size.
+ */
+private fun TextMeasurer.fitOnOneLine(text: String, style: TextStyle, maxWidthPx: Float): TextStyle {
+    var fitted = style
+    repeat(FIT_ATTEMPTS) {
+        val width = measure(text, fitted, softWrap = false, maxLines = 1).size.width.toFloat()
+        val scale = textFitScale(width, maxWidthPx)
+        if (scale >= 1f) return fitted
+        fitted = fitted.copy(
+            fontSize = fitted.fontSize * scale,
+            lineHeight = if (fitted.lineHeight.isSpecified) fitted.lineHeight * scale else fitted.lineHeight,
+        )
+    }
+    return fitted
+}
+
+private const val FIT_ATTEMPTS = 3
 
 /** Overload for the common case where the centre figure is an amount. */
 @Composable
@@ -283,6 +328,12 @@ private fun DonutPreview() {
                 segments = emptyList(),
                 centerLabel = "Expenses",
                 centerValue = Money.ZERO,
+            )
+            // Wider than the hole at amountLarge, so it has to shrink to fit.
+            Donut(
+                segments = listOf(DonutSegment(ColorSlot(0), 18_000_000, "RDPU SucorInvest")),
+                centerLabel = "RDPU SucorInvest",
+                centerValue = Money(18_000_000),
             )
         }
     }

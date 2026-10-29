@@ -155,4 +155,43 @@ class DonutGeometryTest {
         assertEquals(0f, donutGapDegrees(gapPx = 6f, centerlineDiameterPx = 0f), 0f)
         assertEquals(0f, donutGapDegrees(gapPx = 0f, centerlineDiameterPx = 200f), 0f)
     }
+
+    @Test
+    fun `the hole holds a line as wide as the chord at the block's edge`() {
+        // The default donut: 176dp across, an 18dp ring, so a 140dp hole. The centre
+        // block is 18 + 4 + 34 = 56dp tall, which leaves 2 * sqrt(70^2 - 28^2).
+        assertEquals(128.31f, donutHoleTextWidth(holeDiameterPx = 140f, blockHeightPx = 56f), 0.01f)
+    }
+
+    @Test
+    fun `a line in the hole is narrower than the box the donut sits in`() {
+        // The old centre was bounded only by the 176dp box, which is how
+        // Rp 3.975.315 came to cross the ring.
+        assertTrue(donutHoleTextWidth(holeDiameterPx = 140f, blockHeightPx = 56f) < 140f)
+    }
+
+    @Test
+    fun `a block taller than the hole leaves no width`() {
+        assertEquals(0f, donutHoleTextWidth(holeDiameterPx = 140f, blockHeightPx = 140f), 0f)
+        assertEquals(0f, donutHoleTextWidth(holeDiameterPx = 0f, blockHeightPx = 10f), 0f)
+    }
+
+    @Test
+    fun `text that fits keeps its size`() {
+        assertEquals(1f, textFitScale(measuredWidthPx = 100f, availableWidthPx = 128f), 0f)
+        assertEquals(1f, textFitScale(measuredWidthPx = 128f, availableWidthPx = 128f), 0f)
+    }
+
+    @Test
+    fun `text that does not fit shrinks to the available width rather than wrapping`() {
+        // Rp 18.000.000 at 28sp is roughly 205dp, against 128dp of hole.
+        val scale = textFitScale(measuredWidthPx = 205f, availableWidthPx = 128f)
+        assertEquals(128f / 205f, scale, 0.0001f)
+        assertEquals(128f, 205f * scale, 0.01f)
+    }
+
+    @Test
+    fun `no available width never yields a negative size`() {
+        assertEquals(0f, textFitScale(measuredWidthPx = 50f, availableWidthPx = -4f), 0f)
+    }
 }

@@ -2,6 +2,7 @@ package com.dvnnfrr.saku.ui.shared
 
 import androidx.compose.runtime.Immutable
 import com.dvnnfrr.saku.domain.ColorSlot
+import kotlin.math.sqrt
 
 /** One slice of a donut: a colour identity, a magnitude in whole rupiah, and its name. */
 @Immutable
@@ -92,4 +93,27 @@ fun donutGapDegrees(gapPx: Float, centerlineDiameterPx: Float): Float {
     if (centerlineDiameterPx <= 0f || gapPx <= 0f) return 0f
     val circumference = (Math.PI * centerlineDiameterPx).toFloat()
     return (gapPx / circumference) * FULL_CIRCLE
+}
+
+/**
+ * How wide a line of text the hole can hold, for a block [blockHeightPx] tall centred in
+ * it. The hole is a circle, so the limit is the chord at the block's top and bottom edge,
+ * which is narrower than the diameter. Zero when the block is too tall for the hole.
+ */
+fun donutHoleTextWidth(holeDiameterPx: Float, blockHeightPx: Float): Float {
+    val radius = holeDiameterPx / 2f
+    val halfHeight = blockHeightPx / 2f
+    if (radius <= 0f || halfHeight >= radius) return 0f
+    return 2f * sqrt(radius * radius - halfHeight * halfHeight)
+}
+
+/**
+ * The factor a font size is multiplied by so a line [measuredWidthPx] wide fits into
+ * [availableWidthPx]. Never above 1: text that fits keeps its size, and text that does
+ * not shrinks rather than wrapping, because a wrapped `Rp 18.000.000` breaks after the
+ * `Rp` and the hole only has room for the first line.
+ */
+fun textFitScale(measuredWidthPx: Float, availableWidthPx: Float): Float {
+    if (measuredWidthPx <= availableWidthPx || measuredWidthPx <= 0f) return 1f
+    return (availableWidthPx / measuredWidthPx).coerceAtLeast(0f)
 }
