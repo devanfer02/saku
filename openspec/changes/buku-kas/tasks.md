@@ -17,6 +17,9 @@
 - [ ] 3.1 Total as the largest figure with the comparison line, from `StatsAssembly`
 - [ ] 3.2 Ranked rows with bars; remove the donut from Stats
 - [ ] 3.3 Comparison-line scenarios tested in `StatsAssembly` tests
+- [ ] 3.4 Compact money mode (`+2,5 jt`) in the single formatter, integer-only, with the rounding scenarios tested
+- [ ] 3.5 Six-month window fold in `StatsAssembly`: per-month income, expense, net, bar shares from `Long`, empty slots before the first transaction, filter respected; tested against the October 2026 figures
+- [ ] 3.6 Six-month strip composable on Stats (Monthly mode only): paired bars, muted non-selected months, net labels, tap selects the month, content description per month for TalkBack
 
 ## 4. Accounts
 

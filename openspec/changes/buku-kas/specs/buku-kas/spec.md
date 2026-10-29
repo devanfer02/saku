@@ -43,6 +43,32 @@ The Stats tab SHALL show, for the selected side and period, the total as the lar
 - **WHEN** the previous period has no transactions
 - **THEN** the comparison line says there is nothing in that period to compare with
 
+### Requirement: Six-month strip on Stats
+In the Monthly period mode, the Stats tab SHALL show, above the period total, the six months ending with the selected month as paired bars: income and expense per month on one shared scale, the month's short name under each pair, and the month's signed net under the name in compact form (`+2,5 jt`, `−1,4 jt`). The selected month SHALL be drawn at full strength and the other five muted. Tapping a month SHALL select it. The strip SHALL respect the active transaction filter, and SHALL exclude transfers and adjustments as the period totals do. Months before the first transaction SHALL render as empty slots, not as zero bars.
+
+#### Scenario: October 2026 selected
+- **WHEN** the user opens Stats in Monthly mode on October 2026
+- **THEN** May to October are drawn, October at full strength, and the labels under the months read `+0,8 jt`, `+7,1 jt`, `−0,3 jt`, `−1,4 jt`, `+1,4 jt`, `+2,5 jt`
+
+#### Scenario: Tapping a month
+- **WHEN** the user taps Aug in the strip
+- **THEN** the selected period becomes August 2026 and the strip now ends with August
+
+#### Scenario: Early history
+- **WHEN** the selected month is August 2025 and data starts in July 2025
+- **THEN** March to June 2025 show as empty slots and July and August show bars
+
+#### Scenario: Weekly or annual mode
+- **WHEN** the period mode is Weekly, Annually or Period
+- **THEN** the strip is not shown
+
+### Requirement: Compact money form
+The single money implementation SHALL offer a compact form for chart labels: the amount in millions (`jt`) with one decimal and a decimal comma, signed, computed from the rupiah `Long` with half-up rounding and no floating point.
+
+#### Scenario: Rounding
+- **WHEN** a month nets 2.473.600 and another nets −1.383.600
+- **THEN** they read `+2,5 jt` and `−1,4 jt`
+
 ### Requirement: Accounts leads with net worth and a split bar
 The Accounts tab SHALL show net worth as the largest figure, then one horizontal bar split into Spendable and Invested shares with both amounts labelled. Liabilities, when any exist, SHALL appear as a third labelled figure. The Accounts tab SHALL NOT show a donut.
 

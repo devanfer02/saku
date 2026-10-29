@@ -26,6 +26,13 @@ On 30 Oct 2026 the owner reviewed three UI directions on the "Saku UI Directions
 **Ranked bars replace the Stats donut.** With 8 slots and most slices under 10%, angle comparison fails; bars on a shared scale do not. `RankedRow` already renders colour, name, percent and amount; it gains a proportional bar scaled to the largest row.
 - Rejected: keep a small donut above the bars. It repeats the bars and pushes the list below the fold on a 412 dp phone.
 
+**Six-month strip from direction C, added by the owner after choosing A.** On the directions page the owner singled out C's "Six months" chart. It goes on Stats in Monthly mode only, above the period total: that is where a month is read against its neighbours, and Weekly/Annual modes have no natural six-unit window.
+- Data: one query of income and expense totals per month over the six-month window, through the same filter-aware totals path the period header uses (from `transaction-filter`), folded in `StatsAssembly`. If `transaction-filter` exposes per-day totals only, fold those; no new repository method unless the fold proves too slow on the 1,300-row database.
+- Bar heights: the assembly emits each bar as a share of the window maximum computed from `Long` values; only the drawing turns it into a float for geometry. No `Float` or `Double` touches a total or a label.
+- Compact labels (`+2,5 jt`) are a new mode of the one money formatter, not a second formatter. `jt` (juta) and the decimal comma match how Indonesian amounts are spoken and written.
+- Rejected: putting the strip on Trans as in direction C. Trans already leads with "Left over"; two headline devices compete, and Trans is the logging screen.
+- Rejected: a line chart. Paired bars show income against expense per month, which a line pair hides when they cross.
+
 **Accounts uses a split bar.** Net worth is one number; its composition is two or three shares, which a single bar shows exactly.
 - Rejected: keep the account donut with its new centre-fit fix. It answers "which account is biggest", which the sorted list already answers.
 
