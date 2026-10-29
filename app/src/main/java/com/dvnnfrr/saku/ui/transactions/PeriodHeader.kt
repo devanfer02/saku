@@ -40,12 +40,23 @@ fun PeriodHeader(
     onPrevious: () -> Unit,
     onNext: () -> Unit,
     modifier: Modifier = Modifier,
+    previousDescription: String = "Previous period",
+    nextDescription: String = "Next period",
+    /** The screen's actions beside the period, such as filter and search. */
+    trailing: (@Composable () -> Unit)? = null,
 ) {
     val colors = SakuTheme.colors
     val spacing = SakuTheme.spacing
 
     Column(modifier = modifier.fillMaxWidth().background(colors.surface)) {
-        PeriodBar(range = range, onPrevious = onPrevious, onNext = onNext)
+        PeriodBar(
+            range = range,
+            onPrevious = onPrevious,
+            onNext = onNext,
+            previousDescription = previousDescription,
+            nextDescription = nextDescription,
+            trailing = trailing,
+        )
 
         Row(
             modifier = Modifier

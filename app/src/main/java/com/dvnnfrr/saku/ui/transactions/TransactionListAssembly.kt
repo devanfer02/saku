@@ -111,6 +111,23 @@ fun List<Transaction>.toDaySections(zone: TimeZone, index: DisplayIndex): List<D
         }
 
 /**
+ * The list index Daily scrolls to for [target]: that day's header, or the nearest earlier
+ * day with rows when [target] has none, which is what a week opened from Monthly needs.
+ * Falls back to the oldest day when everything is later, and null for an empty list.
+ *
+ * Each section is one header plus its rows, so an index is counted rather than looked up.
+ */
+fun scrollIndexFor(days: List<DaySection>, target: LocalDate): Int? {
+    if (days.isEmpty()) return null
+    var index = 0
+    for (section in days) {
+        if (section.date <= target) return index
+        index += 1 + section.rows.size
+    }
+    return index - 1 - days.last().rows.size
+}
+
+/**
  * Every day in [range], carrying a net only where the day actually holds rows.
  *
  * A day whose transactions are all transfers has a net of zero but is NOT empty, so

@@ -23,16 +23,16 @@
 
 ## 4. Trans and Stats under the filter
 
-- [ ] 4.1 `TransactionListViewModel`: combine `SharedFilter.state` into the month key; pass it to `observeInRange`; extend its tests
-- [ ] 4.2 Trans screen: filter action, `FilterBar` under the header, the filtered empty state with clear
-- [ ] 4.3 `StatsViewModel`: combine the filter into the period key, the comparison and the drill; close a category drill whose category leaves the selection; extend its tests
-- [ ] 4.4 Stats screen: filter action, `FilterBar`, the filtered empty state
+- [x] 4.1 `TransactionListViewModel`: combine `SharedFilter.state` into the month key; pass it to `observeInRange`; extend its tests
+- [x] 4.2 Trans screen: filter action, `FilterBar` under the header, the filtered empty state with clear
+- [x] 4.3 `StatsViewModel`: combine the filter into the period key, the comparison and the drill; close a category drill whose category leaves the selection; extend its tests
+- [x] 4.4 Stats screen: filter action, `FilterBar`, the filtered empty state
 
 ## 5. Monthly view
 
-- [ ] 5.1 Add `ui/transactions/MonthlyAssembly.kt`: the year widened to whole weeks, year header, month rows (started months only, empty versus zero), week rows from `DateRange.ofWeek` (started weeks only, full-span labels), current week; unit-test the October 2026, September edge and January year-edge scenarios
-- [ ] 5.2 `TransactionTab.MONTHLY`; `Selection.expandedMonth`; year stepping by 12 months; the year query keyed on the year and subscribed only while Monthly is open; `openDay` also sets the month; ViewModel tests
-- [ ] 5.3 `MonthlyTab` composable with the year header, expandable month rows, highlighted current week (not by colour alone), and the week tap into Daily; confirm Daily's scroll target falls back to the nearest earlier day with rows
+- [x] 5.1 Add `ui/transactions/MonthlyAssembly.kt`: the year widened to whole weeks, year header, month rows (started months only, empty versus zero), week rows from `DateRange.ofWeek` (started weeks only, full-span labels), current week; unit-test the October 2026, September edge and January year-edge scenarios
+- [x] 5.2 `TransactionTab.MONTHLY`; `Selection.expandedMonth`; year stepping by 12 months; the year query keyed on the year and subscribed only while Monthly is open; `openDay` also sets the month; ViewModel tests
+- [x] 5.3 `MonthlyTab` composable with the year header, expandable month rows, highlighted current week (not by colour alone), and the week tap into Daily; confirm Daily's scroll target falls back to the nearest earlier day with rows
 
 ## 6. Search
 

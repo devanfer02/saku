@@ -7,8 +7,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -24,22 +26,29 @@ import com.dvnnfrr.saku.R
 import com.dvnnfrr.saku.domain.DateRange
 import com.dvnnfrr.saku.domain.Money
 import com.dvnnfrr.saku.domain.PeriodTotals
+import com.dvnnfrr.saku.domain.TransactionFilter
 import com.dvnnfrr.saku.ui.entry.EntrySheet
+import com.dvnnfrr.saku.ui.filter.FilterAction
+import com.dvnnfrr.saku.ui.filter.FilterBar
+import com.dvnnfrr.saku.ui.filter.FilterSheet
 import com.dvnnfrr.saku.ui.shared.SegmentedTabs
 import com.dvnnfrr.saku.ui.theme.SakuPreview
 import com.dvnnfrr.saku.ui.theme.SakuPreviewSurface
 import com.dvnnfrr.saku.ui.theme.SakuTheme
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.Month
 
 /**
- * The Trans. destination: a month header over one of two views of that month.
+ * The Trans. destination: a period header over one of three views of that period.
  *
- * Both tabs read the same [TransactionListUiState], so the header, the day subtotals
- * and the calendar cells cannot disagree about what the month holds.
+ * Daily and Calendar read the same month of rows, so the header, the day subtotals and
+ * the calendar cells cannot disagree about what the month holds. Monthly reads the year's
+ * day totals under the same filter.
  */
 @Composable
 fun TransactionsScreen(
     modifier: Modifier = Modifier,
+    onOpenSearch: () -> Unit = {},
     viewModel: TransactionListViewModel = viewModel(factory = TransactionListViewModel.Factory),
 ) {
     // collectAsState rather than collectAsStateWithLifecycle: the upstream is already
@@ -50,6 +59,7 @@ fun TransactionsScreen(
     // NOT_OPEN rather than a nullable id: null is a legitimate value here, meaning
     // "open on a new transaction", so nullability cannot also encode "closed".
     var editing by rememberSaveable { mutableStateOf(NOT_OPEN) }
+    var filtering by rememberSaveable { mutableStateOf(false) }
 
     Box(modifier = modifier.fillMaxSize()) {
         TransactionsScreen(
@@ -60,6 +70,10 @@ fun TransactionsScreen(
             onDayClick = viewModel::openDay,
             onScrollHandled = viewModel::consumeScrollTarget,
             onRowClick = { editing = it },
+            onOpenFilter = { filtering = true },
+            onClearFilter = viewModel::clearFilter,
+            onOpenSearch = onOpenSearch,
+            onToggleMonth = viewModel::toggleMonth,
         )
 
         FloatingActionButton(
@@ -80,6 +94,10 @@ fun TransactionsScreen(
             onDismiss = { editing = NOT_OPEN },
         )
     }
+
+    if (filtering) {
+        FilterSheet(range = state.headerRange, onDismiss = { filtering = false })
+    }
 }
 
 /** Sentinels for the entry sheet's open state. Real transaction ids are positive. */
@@ -96,23 +114,47 @@ fun TransactionsScreen(
     onScrollHandled: () -> Unit,
     onRowClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
+    onOpenFilter: () -> Unit = {},
+    onClearFilter: () -> Unit = {},
+    onOpenSearch: () -> Unit = {},
+    onToggleMonth: (Month) -> Unit = {},
 ) {
     val tabs = listOf(
         stringResource(R.string.transactions_tab_daily),
         stringResource(R.string.transactions_tab_calendar),
+        stringResource(R.string.transactions_tab_monthly),
     )
     // Hoisted out of DailyTab. Inside the `when`, the tab leaves composition on every
     // switch and its saved scroll entry is discarded, so Daily -> Calendar -> Daily
     // came back at the top.
     val dailyListState = rememberLazyListState()
+    val filtered = state.filter.isActive
+    val inMonthly = state.tab == TransactionTab.MONTHLY
 
     Column(modifier = modifier.fillMaxSize()) {
         PeriodHeader(
-            range = state.range,
-            totals = state.totals,
+            range = state.headerRange,
+            totals = state.headerTotals,
             onPrevious = onPrevious,
             onNext = onNext,
+            previousDescription = stringResource(
+                if (inMonthly) R.string.transactions_previous_year else R.string.stats_previous_period,
+            ),
+            nextDescription = stringResource(
+                if (inMonthly) R.string.transactions_next_year else R.string.stats_next_period,
+            ),
+            trailing = {
+                IconButton(onClick = onOpenSearch) {
+                    Icon(
+                        imageVector = Icons.Filled.Search,
+                        contentDescription = stringResource(R.string.search_action),
+                        tint = SakuTheme.colors.ink2,
+                    )
+                }
+                FilterAction(active = filtered, onClick = onOpenFilter)
+            },
         )
+        FilterBar(filter = state.filter, onClear = onClearFilter)
 
         SegmentedTabs(
             options = tabs,
@@ -128,10 +170,20 @@ fun TransactionsScreen(
                 scrollTo = state.pendingScrollTo,
                 onScrollHandled = onScrollHandled,
                 onRowClick = onRowClick,
+                onClearFilter = onClearFilter.takeIf { filtered },
             )
 
             TransactionTab.CALENDAR -> state.calendar?.let { month ->
                 CalendarTab(month = month, onDayClick = onDayClick)
+            }
+
+            TransactionTab.MONTHLY -> state.monthly?.let { year ->
+                MonthlyTab(
+                    year = year,
+                    onToggleMonth = onToggleMonth,
+                    onOpenWeek = onDayClick,
+                    onClearFilter = onClearFilter.takeIf { filtered },
+                )
             }
         }
     }
@@ -148,6 +200,7 @@ private fun TransactionsScreenPreview() {
                 totals = PeriodTotals(income = Money(8_000_000), expense = Money(5_061_400)),
                 calendar = emptyList<com.dvnnfrr.saku.domain.Transaction>()
                     .toCalendarMonth(august, kotlinx.datetime.TimeZone.UTC),
+                filter = TransactionFilter(accountIds = setOf(1L, 2L)),
                 loading = false,
             ),
             onPrevious = {},

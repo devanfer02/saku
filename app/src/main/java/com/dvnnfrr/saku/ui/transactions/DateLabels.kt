@@ -1,5 +1,6 @@
 package com.dvnnfrr.saku.ui.transactions
 
+import com.dvnnfrr.saku.domain.DateRange
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.Month
@@ -22,6 +23,15 @@ private fun String.titleCase(): String = first() + drop(1).lowercase()
 /** Day header: `14 Fri Aug 2026`, as the spec spells it out. */
 fun LocalDate.dayHeaderLabel(): String =
     "$dayOfMonth ${dayOfWeek.shortLabel()} ${month.shortLabel()} $year"
+
+/**
+ * A Monthly row's span: `28.09 ~ 04.10`, the full week even across a month edge, so a
+ * row that counts days of the next month says so.
+ */
+fun DateRange.dottedSpanLabel(): String = "${start.dotted()} ~ ${endInclusive.dotted()}"
+
+private fun LocalDate.dotted(): String =
+    "${dayOfMonth.toString().padStart(2, '0')}.${monthNumber.toString().padStart(2, '0')}"
 
 /** Column headings for the calendar grid, Monday first to match DateRange.ofWeek. */
 val WEEKDAY_HEADINGS: List<String> = listOf(

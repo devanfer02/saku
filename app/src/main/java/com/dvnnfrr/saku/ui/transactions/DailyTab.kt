@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import com.dvnnfrr.saku.R
 import com.dvnnfrr.saku.domain.Money
 import com.dvnnfrr.saku.domain.TxnType
+import com.dvnnfrr.saku.ui.filter.FilteredEmptyState
 import com.dvnnfrr.saku.ui.shared.EmptyState
 import com.dvnnfrr.saku.ui.shared.TransactionRow
 import com.dvnnfrr.saku.ui.theme.SakuTheme
@@ -45,20 +46,22 @@ fun DailyTab(
     onScrollHandled: () -> Unit = {},
     onRowClick: (Long) -> Unit = {},
     listState: LazyListState = rememberLazyListState(),
+    /** Set while a filter is active, so an empty month says the filter is why. */
+    onClearFilter: (() -> Unit)? = null,
 ) {
-    // Each section contributes one header plus its rows, so a date's index has to be
-    // counted rather than looked up.
     LaunchedEffect(scrollTo, days) {
         val target = scrollTo ?: return@LaunchedEffect
-        var index = 0
-        for (section in days) {
-            if (section.date == target) {
-                listState.animateScrollToItem(index)
-                break
-            }
-            index += 1 + section.rows.size
-        }
+        scrollIndexFor(days, target)?.let { listState.animateScrollToItem(it) }
         onScrollHandled()
+    }
+
+    if (days.isEmpty() && onClearFilter != null) {
+        FilteredEmptyState(
+            message = stringResource(R.string.filter_empty_month),
+            onClear = onClearFilter,
+            modifier = modifier.fillMaxSize(),
+        )
+        return
     }
 
     if (days.isEmpty()) {
