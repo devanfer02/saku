@@ -11,6 +11,11 @@
     <string name="transactions_tab_daily">Daily</string>
     <string name="transactions_tab_calendar">Calendar</string>
     <string name="transactions_empty">No transactions in %1$s. Tap + to add one.</string>
+    <string name="calendar_hint">Tap a date, or two to see a range. Long-press and drag to sweep across days.</string>
+    <string name="calendar_select_date">select</string>
+    <string name="calendar_clear">Clear</string>
+    <string name="calendar_clear_description">Clear selected dates</string>
+    <string name="calendar_range_empty">Nothing recorded on these dates.</string>
 
     <!-- Period figures -->
     <string name="label_income">Income</string>

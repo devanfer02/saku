@@ -75,6 +75,9 @@ fun TransactionsScreen(
             onClearFilter = viewModel::clearFilter,
             onOpenSearch = onOpenSearch,
             onToggleMonth = viewModel::toggleMonth,
+            onCalendarTap = viewModel::tapCalendarDay,
+            onCalendarSweep = viewModel::sweepCalendarDays,
+            onClearCalendarSelection = viewModel::clearCalendarSelection,
         )
 
         FloatingActionButton(
@@ -119,6 +122,9 @@ fun TransactionsScreen(
     onClearFilter: () -> Unit = {},
     onOpenSearch: () -> Unit = {},
     onToggleMonth: (Month) -> Unit = {},
+    onCalendarTap: (LocalDate) -> Unit = {},
+    onCalendarSweep: (LocalDate, LocalDate) -> Unit = { _, _ -> },
+    onClearCalendarSelection: () -> Unit = {},
 ) {
     val tabs = listOf(
         stringResource(R.string.transactions_tab_daily),
@@ -129,6 +135,7 @@ fun TransactionsScreen(
     // switch and its saved scroll entry is discarded, so Daily -> Calendar -> Daily
     // came back at the top.
     val dailyListState = rememberLazyListState()
+    val calendarListState = rememberLazyListState()
     val filtered = state.filter.isActive
     val inMonthly = state.tab == TransactionTab.MONTHLY
 
@@ -176,7 +183,15 @@ fun TransactionsScreen(
             )
 
             TransactionTab.CALENDAR -> state.calendar?.let { month ->
-                CalendarTab(month = month, onDayClick = onDayClick)
+                CalendarTab(
+                    month = month,
+                    selection = state.calendarRange,
+                    onDayTap = onCalendarTap,
+                    onSweep = onCalendarSweep,
+                    onClearSelection = onClearCalendarSelection,
+                    onRowClick = onRowClick,
+                    listState = calendarListState,
+                )
             }
 
             TransactionTab.MONTHLY -> state.monthly?.let { year ->
