@@ -107,6 +107,24 @@ data class DateRange(
         return best
     }
 
+    /**
+     * The same month under another month basis, for when the pay cycle or the month view
+     * changes underneath a screen. A month holding [today] becomes the month holding today;
+     * any other keeps its name, so switching on "October 2026" lands on the pay month
+     * called October rather than on whichever one holds 1 Oct.
+     */
+    fun rebased(payStartDay: Int?, today: LocalDate): DateRange {
+        val target = payStartDay.takeIf { it != 1 }
+        if (target == this.payStartDay) return this
+        if (today in this) return monthOf(today, target)
+        val name = majorityMonth()
+        val first = monthOf(name, target)
+        // A pay month named after [name] overlaps it, so it holds the 1st or follows the
+        // one that does. Start days 15 and 16 can leave a month with no pay month of its
+        // name at all; the one holding the 1st is then the nearest.
+        return listOf(first, first.next()).firstOrNull { it.majorityMonth() == name } ?: first
+    }
+
     companion object {
         /** Weeks run Monday to Sunday. */
         fun ofWeek(anyDayInWeek: LocalDate): DateRange {

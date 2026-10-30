@@ -161,6 +161,37 @@ class PayMonthTest {
     }
 
     @Test
+    fun `rebasing onto pay months keeps the month holding today`() {
+        val today = LocalDate(2026, 10, 30)
+
+        assertEquals(DateRange.ofPayMonth(today, 30), DateRange.ofMonth(today).rebased(30, today))
+        assertEquals(DateRange.ofMonth(today), DateRange.ofPayMonth(today, 30).rebased(null, today))
+    }
+
+    @Test
+    fun `rebasing a past month keeps its name`() {
+        val today = LocalDate(2026, 10, 30)
+        val march = DateRange.ofMonth(LocalDate(2026, 3, 1))
+
+        // Start day 5: the pay month holding 1 Mar is called February, so March is the next.
+        assertEquals(DateRange.ofPayMonth(LocalDate(2026, 3, 5), 5), march.rebased(5, today))
+        // Start day 30: the pay month holding 1 Mar is already called March.
+        assertEquals(DateRange.ofPayMonth(LocalDate(2026, 3, 1), 30), march.rebased(30, today))
+        // And back again.
+        assertEquals(march, march.rebased(5, today).rebased(null, today))
+    }
+
+    @Test
+    fun `rebasing to the same basis or to start day 1 changes nothing`() {
+        val today = LocalDate(2026, 10, 30)
+        val pay = DateRange.ofPayMonth(LocalDate(2026, 3, 1), 30)
+        val march = DateRange.ofMonth(LocalDate(2026, 3, 1))
+
+        assertEquals(pay, pay.rebased(30, today))
+        assertEquals(march, march.rebased(1, today))
+    }
+
+    @Test
     fun `a calendar month and a year are their own majority`() {
         assertEquals(LocalDate(2026, 2, 1), DateRange.ofMonth(LocalDate(2026, 2, 10)).majorityMonth())
         assertEquals(2026, DateRange.ofYear(2026).majorityMonth().year)
