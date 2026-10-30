@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Restore
+import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -153,6 +154,12 @@ enum class MoreEntry(
     CATEGORIES(R.string.more_categories, R.string.more_categories_subtitle, Icons.Filled.Category, MoreGroup.ORGANISE),
     BACKUP(R.string.more_backup, R.string.more_backup_subtitle, Icons.Filled.Backup, MoreGroup.YOUR_DATA),
     RESTORE(R.string.more_restore, R.string.more_restore_subtitle, Icons.Filled.Restore, MoreGroup.YOUR_DATA),
+    IMPORT_DATABASE(
+        R.string.more_import_database,
+        R.string.more_import_database_subtitle,
+        Icons.Filled.Storage,
+        MoreGroup.YOUR_DATA,
+    ),
     IMPORT_MONEY_MANAGER(
         R.string.more_import_money_manager,
         R.string.more_import_money_manager_subtitle,

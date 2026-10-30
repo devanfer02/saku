@@ -21,6 +21,7 @@ enum class MoreRoute(val route: String, val entry: MoreEntry) {
     IMPORT_HISTORY("more/import-history", MoreEntry.IMPORT_HISTORY),
     BACKUP("more/backup", MoreEntry.BACKUP),
     RESTORE("more/restore", MoreEntry.RESTORE),
+    IMPORT_DATABASE("more/import-database", MoreEntry.IMPORT_DATABASE),
     ;
 
     companion object {

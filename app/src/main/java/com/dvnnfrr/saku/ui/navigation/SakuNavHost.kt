@@ -10,6 +10,7 @@ import com.dvnnfrr.saku.domain.ThemePreference
 import com.dvnnfrr.saku.ui.accounts.AccountsScreen
 import com.dvnnfrr.saku.ui.categories.CategoriesScreen
 import com.dvnnfrr.saku.ui.importexport.BackupScreen
+import com.dvnnfrr.saku.ui.importexport.DatabaseImportScreen
 import com.dvnnfrr.saku.ui.importexport.ExportScreen
 import com.dvnnfrr.saku.ui.importexport.ImportEntryPoint
 import com.dvnnfrr.saku.ui.importexport.ImportHistoryScreen
@@ -85,6 +86,7 @@ fun SakuNavHost(
         composable(MoreRoute.IMPORT_HISTORY.route) { ImportHistoryScreen() }
         composable(MoreRoute.BACKUP.route) { BackupScreen() }
         composable(MoreRoute.RESTORE.route) { RestoreScreen() }
+        composable(MoreRoute.IMPORT_DATABASE.route) { DatabaseImportScreen() }
     }
 }
 
