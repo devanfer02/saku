@@ -78,7 +78,12 @@ fun EntrySheet(
     val suggestions by viewModel.suggestions.collectAsState()
 
     LaunchedEffect(editingId) { viewModel.open(editingId) }
-    LaunchedEffect(state.saved) { if (state.saved) onDismiss() }
+    LaunchedEffect(state.saved) {
+        if (state.saved) {
+            viewModel.closedAfterSave()
+            onDismiss()
+        }
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
