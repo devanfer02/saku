@@ -16,6 +16,7 @@ com.dvnnfrr.saku
 ├── domain/         Money, DateRange, TxnType, Account… pure Kotlin, no Android
 ├── data/           Room entities, DAOs, repositories, FirstRunSeed, AppearanceStore
 ├── excel/          import parsing and export, pure JVM, no Android and no UI copy
+├── receipt/        receipt and payment-screenshot parsing from OCR lines, pure JVM
 └── ui/
     ├── theme/      SakuTheme: colours, spacing, typography; the only place colour literals live
     ├── shared/     MoneyText, Donut, RankedRow, SegmentedTabs, EmptyState…
@@ -23,6 +24,10 @@ com.dvnnfrr.saku
     ├── shell/      the Scaffold and bottom bar; owns no feature
     └── <feature>/  transactions, entry, stats, accounts, categories, importexport
 ```
+
+Receipt scan uses ML Kit's bundled text recognizer; `data/receipt/ReceiptRecognizer.kt` is the only
+file that imports it. Its logging backend merges `INTERNET` and `ACCESS_NETWORK_STATE`, which the
+manifest removes with `tools:node="remove"`; keep those two lines, or the network gate fails.
 
 Excel import uses fastexcel, which needs a StAX shim because Android ships no `javax.xml.stream`
 (see `excel/XlsxReader.kt`). Only a classloader test covers the shim, so check import on a device
@@ -114,6 +119,12 @@ conflicts with Saku; the note wins over the skill body. Sources and licences are
 `.claude/skills/SOURCES.md`.
 
 ## Test data
+
+`data/mock-receipt-indomaret.png` and `data/mock-receipt-ewallet.png` are drawn by
+`data/make-mock-receipts.py` with invented items, for the receipt-scan Maestro flow. The receipt
+parser's accuracy bar runs on OCR text from the CORD v2 test split in
+`app/src/test/resources/receipt/cord/` (CC BY 4.0, see its `CORD-NOTICE.md`). Web photos of real
+receipts and wallet screenshots are a local-only set (`RECEIPT_LOCAL_SET`); never commit them.
 
 `data/mock-money-manager.xlsx` is a mock Money Manager export with invented rows (Jul to Oct
 2026), used by tests and Maestro. Tests pin its counts, so changing it means updating them. It keeps

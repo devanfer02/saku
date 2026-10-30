@@ -38,6 +38,10 @@ money.
   themselves. This replaces subcategories, which Saku does not ask for.
 - **Entry**: amount keypad with `+` and `-` for quick sums, note suggestions from what you typed
   before, and category and account pickers laid out as a grid.
+- **Scan receipt**: take a photo of a paper receipt or pick a payment screenshot (m-BCA, BRImo, GoPay,
+  OVO, DANA and the like). Saku reads it on the phone and fills the amount, the date and the store.
+  Other amounts on the receipt show as chips, and lines it could not place can be added to the note
+  with a tap. You check everything before saving, and the photo is never kept.
 - **Stats**: the period total over ranked categories, a pie you can switch on and tap, and a strip of
   periods with a real Y axis. Tap the period name to jump to any week, month or year.
 - **Accounts**: Cash, Bank, Investment and Liability, with net worth split into spendable and
@@ -54,7 +58,9 @@ Import only ever adds rows. Nothing is deleted or overwritten by an import or a 
 ## Privacy
 
 - The app has no `INTERNET` permission. A Gradle check fails the build if one shows up in the merged
-  manifest, including from a dependency.
+  manifest, including from a dependency. ML Kit's text recognition, used to scan receipts, brings
+  `INTERNET` and `ACCESS_NETWORK_STATE` for its usage logging; Saku's manifest removes both, so
+  that logging cannot send anything, and recognition runs entirely on the phone.
 - Android cloud backup is off, so `saku.db` stays on the phone.
 - Exports and backups are written through the system file picker, to the place you choose.
 
