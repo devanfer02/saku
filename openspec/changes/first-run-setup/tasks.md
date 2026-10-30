@@ -10,9 +10,9 @@
 
 ## 3. ViewModels
 
-- [ ] 3.1 Add `FirstRunGateViewModel` (`Checking`, `Offer`, `Done`; `skip`, `complete`, `onImportLeft`) and `FirstRunSetupViewModel` (drafts, step, ticks, custom names, `next`, `back`, `done`)
-- [ ] 3.2 Robolectric tests on the in-memory database: Done writes opening balances as of the start of today and creates the chosen categories; Skip writes nothing and marks setup complete; setup is not offered when transactions exist; the flag persists; leaving an import with rows completes first run, without rows does not; a retried Done creates no duplicate
-- [ ] 3.3 Test that history imported after setup keeps the stated balance, and that an older transfer is refused with nothing written
+- [x] 3.1 Add `FirstRunGateViewModel` (`CHECKING`, `OFFER`, `CLOSED`; `skip`, `complete`, `onImportLeft`) and `FirstRunSetupViewModel` (drafts, step, ticks, custom names, `next`, `back`, `done`)
+- [x] 3.2 Robolectric tests on the in-memory database: Done writes opening balances as of the start of today and creates the chosen categories; Skip writes nothing and marks setup complete; setup is not offered when transactions exist; the flag persists; leaving an import with rows completes first run, without rows does not; a retried Done creates no duplicate
+- [x] 3.3 Test that history imported after setup keeps the stated balance, and that an older transfer is refused with nothing written
 
 ## 4. UI
 
