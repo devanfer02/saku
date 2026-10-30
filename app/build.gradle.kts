@@ -35,8 +35,8 @@ abstract class CheckNoNetworkPermission : DefaultTask() {
         //
         // AndroidX adds <appId>.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION, a signature
         // permission namespaced to this app and granted to nobody else. Anything under
-        // our own namespace is allowed; anything else — every android.permission.* in
-        // particular — is not, apart from the named allowlist.
+        // our own namespace is allowed. Anything else, every android.permission.* in
+        // particular, is not, apart from the named allowlist.
         //
         // The allowlist holds the two the weekly reminder needs (logging-reminder):
         // POST_NOTIFICATIONS to show it and RECEIVE_BOOT_COMPLETED to re-arm it after a
