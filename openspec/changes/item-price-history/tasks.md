@@ -2,7 +2,7 @@ Depends on `receipt-items`.
 
 ## 1. Assembly
 
-- [ ] 1.1 `PriceHistoryAssembly.kt`: item key, unit price, points per day, latest, lowest, highest, change; tests from the spec scenarios
+- [x] 1.1 `PriceHistoryAssembly.kt`: item key, unit price, points per day, latest, lowest, highest, change; tests from the spec scenarios
 
 ## 2. UI
 

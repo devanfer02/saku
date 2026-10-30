@@ -95,6 +95,8 @@ data class SearchUiState(
     val months: List<SearchPeriod> = emptyList(),
     /** The matches year by year, newest first, gaps included. Empty when nothing matched. */
     val years: List<SearchPeriod> = emptyList(),
+    /** The price card, when the matches are one item bought at least twice; see `priceHistory`. */
+    val price: PriceHistory? = null,
 ) {
     /**
      * The tab shown until the user picks one: Monthly when the matches span two months
@@ -216,5 +218,6 @@ fun assembleSearch(
         hiddenCount = (allMatches - matches.size).coerceAtLeast(0),
         months = matches.toSearchMonths(zone),
         years = matches.toSearchYears(zone),
+        price = matches.priceHistory(zone),
     )
 }
