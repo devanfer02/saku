@@ -130,4 +130,16 @@ class SearchViewModelTest {
         assertEquals(0, vm.state.first { it.searched && it.count == 0 }.count)
         assertEquals("grab 25000", vm.query.value)
     }
+
+    @Test
+    fun `a picked tab is kept across queries`() {
+        val vm = viewModel()
+        assertEquals(null, vm.tab.value)
+
+        vm.selectTab(SearchTab.YEARLY)
+        vm.setQuery("kopi")
+        vm.setQuery("teh")
+
+        assertEquals(SearchTab.YEARLY, vm.tab.value)
+    }
 }

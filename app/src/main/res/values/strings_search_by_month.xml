@@ -3,7 +3,10 @@
         Copy for the search-by-month change: the per-month breakdown under the search
         summary. Kept out of strings.xml so concurrent changes do not collide.
     -->
-    <string name="search_by_month">By month</string>
+    <!-- The result tabs, the same names as the Trans tabs. -->
+    <string name="search_tab_daily">Daily</string>
+    <string name="search_tab_monthly">Monthly</string>
+    <string name="search_tab_yearly">Yearly</string>
     <plurals name="search_month_count">
         <item quantity="one">%d transaction</item>
         <item quantity="other">%d transactions</item>

@@ -79,6 +79,9 @@ fun Searchable.matches(words: List<QueryWord>): Boolean = words.all { word ->
     }
 }
 
+/** The three ways to read the matches, the same tabs as Trans: day rows, months, years. */
+enum class SearchTab { DAILY, MONTHLY, YEARLY }
+
 data class SearchUiState(
     val filter: TransactionFilter = TransactionFilter.ALL,
     /** False while the query is blank, which shows no results rather than all of them. */
@@ -88,22 +91,31 @@ data class SearchUiState(
     val totals: PeriodTotals = PeriodTotals.EMPTY,
     /** Matches the active filter hides; zero while no filter is active. */
     val hiddenCount: Int = 0,
-    /** The matches month by month, newest first. Empty unless they span two months or more. */
-    val months: List<SearchMonth> = emptyList(),
-)
+    /** The matches month by month, newest first, gaps included. Empty when nothing matched. */
+    val months: List<SearchPeriod> = emptyList(),
+    /** The matches year by year, newest first, gaps included. Empty when nothing matched. */
+    val years: List<SearchPeriod> = emptyList(),
+) {
+    /**
+     * The tab shown until the user picks one: Monthly when the matches span two months
+     * or more, where a trend is the useful first view, else Daily, where the rows are.
+     */
+    val defaultTab: SearchTab
+        get() = if (months.count { it.count > 0 } >= 2) SearchTab.MONTHLY else SearchTab.DAILY
+}
 
 /**
- * One month of the matches. [count] includes transfers and adjustments; [income] and
- * [expense] do not, the same rule as [SearchUiState.totals].
+ * One month or year of the matches. [count] includes transfers and adjustments; [income]
+ * and [expense] do not, the same rule as [SearchUiState.totals].
  */
-data class SearchMonth(
+data class SearchPeriod(
     val range: DateRange,
     val income: Money,
     val expense: Money,
     val count: Int,
-    /** Which side the row's value and bar show, the same for every month of one search. */
+    /** Which side the row's value and bar show, the same for every row of one search. */
     val side: TxnType,
-    /** Thousandths of the largest month on [side], from `barPermille`. */
+    /** Thousandths of the largest row on [side], from `barPermille`. */
     val barPermille: Int,
 ) {
     val value: Money get() = if (side == TxnType.INCOME) income else expense
@@ -114,30 +126,41 @@ data class SearchMonth(
 
 /**
  * Every month from the newest match back to the oldest, newest first, months with no
- * match included so a gap reads as a gap. Empty when the matches fall in fewer than two
- * months, where the breakdown would only repeat the summary.
+ * match included so a gap reads as a gap.
  *
  * The side is money out unless the matches brought in more than they spent, so a search
  * for a salary does not draw a column of empty bars.
  */
-fun List<Transaction>.toSearchMonths(zone: TimeZone): List<SearchMonth> {
-    val byMonth = groupBy { firstOfMonth(it.occurredAt.toLocalDateTime(zone).date) }
-    if (byMonth.size < 2) return emptyList()
+fun List<Transaction>.toSearchMonths(zone: TimeZone): List<SearchPeriod> =
+    toSearchPeriods(zone, step = DateTimeUnit.MONTH, startOf = ::firstOfMonth) { DateRange.ofMonth(it) }
+
+/** Every year from the newest match back to the oldest, newest first, gaps included. */
+fun List<Transaction>.toSearchYears(zone: TimeZone): List<SearchPeriod> =
+    toSearchPeriods(zone, step = DateTimeUnit.YEAR, startOf = { LocalDate(it.year, 1, 1) }) { DateRange.ofYear(it.year) }
+
+private fun List<Transaction>.toSearchPeriods(
+    zone: TimeZone,
+    step: DateTimeUnit.DateBased,
+    startOf: (LocalDate) -> LocalDate,
+    rangeOf: (LocalDate) -> DateRange,
+): List<SearchPeriod> {
+    if (isEmpty()) return emptyList()
+    val byStart = groupBy { startOf(it.occurredAt.toLocalDateTime(zone).date) }
 
     val totals = periodTotals()
     val side = if (totals.income > totals.expense) TxnType.INCOME else TxnType.EXPENSE
-    val newest = byMonth.keys.max()
-    val oldest = byMonth.keys.min()
+    val newest = byStart.keys.max()
+    val oldest = byStart.keys.min()
 
-    val months = generateSequence(newest) { it.minus(1, DateTimeUnit.MONTH) }
+    val periods = generateSequence(newest) { it.minus(1, step) }
         .takeWhile { it >= oldest }
-        .map { first ->
-            val txns = byMonth[first].orEmpty()
-            val monthTotals = txns.periodTotals()
-            SearchMonth(
-                range = DateRange.ofMonth(first),
-                income = monthTotals.income,
-                expense = monthTotals.expense,
+        .map { start ->
+            val txns = byStart[start].orEmpty()
+            val periodTotals = txns.periodTotals()
+            SearchPeriod(
+                range = rangeOf(start),
+                income = periodTotals.income,
+                expense = periodTotals.expense,
                 count = txns.size,
                 side = side,
                 barPermille = 0,
@@ -145,26 +168,26 @@ fun List<Transaction>.toSearchMonths(zone: TimeZone): List<SearchMonth> {
         }
         .toList()
 
-    val largest = months.maxOf { it.value }
-    return months.map { it.copy(barPermille = barPermille(it.value, largest)) }
+    val largest = periods.maxOf { it.value }
+    return periods.map { it.copy(barPermille = barPermille(it.value, largest)) }
 }
 
 private fun firstOfMonth(date: LocalDate): LocalDate = LocalDate(date.year, date.month, 1)
 
 /**
- * The list position of [month]'s newest day when the screen lays out [leadingItems]
- * items, then one item per month in [months], then the day sections. Null when the
- * month holds no match, which the screen does not make tappable.
+ * The Daily list position of [period]'s newest day header. Null when the period holds
+ * no match, which the screen does not make tappable.
  */
-fun searchScrollIndex(
-    leadingItems: Int,
-    months: List<SearchMonth>,
-    days: List<DaySection>,
-    month: SearchMonth,
-): Int? {
-    if (month.count == 0) return null
-    val inDays = scrollIndexFor(days, month.range.endInclusive) ?: return null
-    return leadingItems + months.size + inDays
+fun dailyScrollIndex(days: List<DaySection>, period: SearchPeriod): Int? {
+    if (period.count == 0) return null
+    return scrollIndexFor(days, period.range.endInclusive)
+}
+
+/** The Monthly list position of [year]'s newest month with a match, or null for an empty year. */
+fun monthlyScrollIndex(months: List<SearchPeriod>, year: SearchPeriod): Int? {
+    if (year.count == 0) return null
+    return months.indexOfFirst { it.count > 0 && it.range.start.year == year.range.start.year }
+        .takeIf { it >= 0 }
 }
 
 /**
@@ -192,5 +215,6 @@ fun assembleSearch(
         totals = matches.periodTotals(),
         hiddenCount = (allMatches - matches.size).coerceAtLeast(0),
         months = matches.toSearchMonths(zone),
+        years = matches.toSearchYears(zone),
     )
 }

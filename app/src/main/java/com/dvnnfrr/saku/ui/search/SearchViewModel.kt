@@ -28,7 +28,8 @@ import kotlinx.datetime.TimeZone
 internal const val SEARCH_DEBOUNCE_MS = 150L
 
 /**
- * State for search. Holds only the query text; the filter comes from [SharedFilter].
+ * State for search. Holds only the query text and the picked tab; the filter comes from
+ * [SharedFilter].
  *
  * The query is matched after a short pause so a fast typist does not re-match every
  * keystroke, but [query] itself is exposed undebounced for the text field. Notes are
@@ -47,6 +48,11 @@ class SearchViewModel(
 
     /** What the field shows, as typed. */
     val query: StateFlow<String> = text.asStateFlow()
+
+    private val pickedTab = MutableStateFlow<SearchTab?>(null)
+
+    /** The tab the user picked, or null to follow [SearchUiState.defaultTab]. Kept across queries. */
+    val tab: StateFlow<SearchTab?> = pickedTab.asStateFlow()
 
     private data class Sources(
         val filter: TransactionFilter,
@@ -84,6 +90,10 @@ class SearchViewModel(
 
     fun setQuery(value: String) {
         text.value = value
+    }
+
+    fun selectTab(tab: SearchTab) {
+        pickedTab.value = tab
     }
 
     fun clearFilter() = sharedFilter.clear()
