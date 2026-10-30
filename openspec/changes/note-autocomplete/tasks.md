@@ -14,7 +14,7 @@
 
 ## 4. Sheet
 
-- [ ] 4.1 Add the stateless `NoteSuggestions` list with a preview and strings; one spoken description per row
+- [x] 4.1 Add the stateless `NoteSuggestions` list with a preview and strings; one spoken description per row
 - [ ] 4.2 Wire it under the note field: Done dismisses, outside tap and focus loss dismiss, pick clears focus
 
 ## 5. Verification

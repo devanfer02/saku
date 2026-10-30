@@ -76,6 +76,9 @@
     <string name="entry_duplicate_notice">"%1$s" already exists, so it was selected instead</string>
     <string name="entry_delete_title">Delete this transaction?</string>
     <string name="entry_delete_body">It is removed from the list and the account balance recalculates. Nothing else changes.</string>
+    <!-- Note autocomplete. One spoken string per suggestion: note, category, last amount. -->
+    <string name="entry_suggestion_spoken">%1$s, %2$s, %3$s</string>
+    <string name="entry_suggestion_spoken_no_category">%1$s, %2$s</string>
 
     <!-- Entry validation -->
     <string name="entry_error_amount_missing">Enter an amount</string>
