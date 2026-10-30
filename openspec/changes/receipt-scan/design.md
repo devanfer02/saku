@@ -131,7 +131,12 @@ Notes from implementation, rejected turns included:
 - **APK size.** v1.0 is 13.6 MB. With ML Kit and both ARM ABIs the release is 34.5 MB, over the
   15 MB growth limit in the risks. The native library is stored uncompressed (11.1 MB arm64,
   6.8 MB armeabi-v7a; 4.4 and 3.5 MB compressed). Options measured or estimated: compress the
-  libraries (about 24.5 MB), arm64 only (about 27.7 MB), both (about 21.1 MB). Owner to choose.
+  libraries (about 24.5 MB), arm64 only (about 27.7 MB), both (about 21.1 MB). Owner chose both:
+  release `abiFilters` arm64-v8a only and `jniLibs.useLegacyPackaging = true`. Measured release:
+  21.0 MB (20,971,576 bytes), 7.4 MB over v1.0. Debug keeps x86_64 for the emulator.
+- **Maestro not run.** It is not installed, and the owner chose not to install it now. The steps of
+  `scan-receipt.yaml` were run by hand through adb on the emulator (paper receipt, line to note,
+  category, save, row on the list; wallet screenshot; Income hides the action) and passed.
 
 ## Migration Plan
 

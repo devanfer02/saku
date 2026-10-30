@@ -3,7 +3,7 @@
 - [x] 1.1 Measure the current release APK size (`assembleRelease`, unsigned is fine) and write it down for the PR
 - [x] 1.2 Add `com.google.mlkit:text-recognition` to `gradle/libs.versions.toml` and `app/build.gradle.kts`
 - [x] 1.3 Remove `INTERNET` and `ACCESS_NETWORK_STATE` in `AndroidManifest.xml` with `tools:node="remove"` and a comment naming `transport-backend-cct`; leave `CheckNoNetworkPermission` unchanged
-- [x] 1.4 (release 34.5 MB vs 13.6 MB; size choice pending with the owner) Add `abiFilters` (release: `arm64-v8a`, `armeabi-v7a`; debug adds `x86_64`), measure the release APK again, record both sizes
+- [x] 1.4 (release 21.0 MB after the owner's choice: arm64 only, compressed native libraries; v1.0 is 13.6 MB) Add `abiFilters` (release: `arm64-v8a`, `armeabi-v7a`; debug adds `x86_64`), measure the release APK again, record both sizes
 - [x] 1.5 Run `checkDebugNoNetworkPermission` and `NoNetworkPermissionTest`; both pass
 
 ## 2. Parser in `receipt/` (pure JVM)
@@ -43,7 +43,7 @@
 - [x] 6.1 Script that draws `data/mock-receipt-indomaret.png`: invented items, `TOTAL 52.300`, `TUNAI 100.000`, `KEMBALI 47.700`, a date, `INDOMARET` header, one item line used by the flow
 - [x] 6.2 `.maestro/flows/scan-receipt.yaml`: header documents the `adb push` to `/sdcard/Pictures/` and the photo-picker block; scan, assert `Rp 52.300` and `Indomaret`, tap an unplaced line, pick a category, Save, assert the row
 - [x] 6.2a Script that draws `data/mock-receipt-ewallet.png` (DANA-style screen, invented merchant, `Total Bayar Rp46.500`), and a second case in the flow (or `scan-ewallet.yaml`) asserting the amount and the merchant note
-- [ ] 6.3 (blocked: Maestro is not installed; the same steps were run by hand through adb and passed) Run the new flow and the existing 7 flows on the emulator; all pass
+- [ ] 6.3 (skipped by the owner, 31 Oct 2026: Maestro not installed; the same steps were run by hand through adb and passed) Run the new flow and the existing 7 flows on the emulator; all pass
 - [x] 6.4 Check the camera path once by hand on the emulator and with logcat open (no crash, no network retries)
 
 ## 7. Done
