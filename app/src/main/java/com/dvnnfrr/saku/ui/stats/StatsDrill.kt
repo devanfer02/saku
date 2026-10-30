@@ -259,7 +259,6 @@ private fun CategoryBody(
                 accountName = row.account.name,
                 categorySlot = row.categorySlot,
                 category = row.categoryName,
-                subcategory = row.subcategoryName,
                 note = row.note,
                 toAccountName = row.toAccount?.name,
             )

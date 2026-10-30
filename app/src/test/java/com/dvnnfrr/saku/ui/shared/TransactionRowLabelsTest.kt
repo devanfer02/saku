@@ -11,7 +11,6 @@ class TransactionRowLabelsTest {
     private fun labels(
         type: TxnType,
         category: String? = null,
-        subcategory: String? = null,
         note: String? = null,
         accountName: String = "BCA",
         toAccountName: String? = null,
@@ -19,7 +18,6 @@ class TransactionRowLabelsTest {
     ) = transactionRowLabels(
         type = type,
         category = category,
-        subcategory = subcategory,
         note = note,
         accountName = accountName,
         toAccountName = toAccountName,
@@ -36,18 +34,12 @@ class TransactionRowLabelsTest {
     }
 
     @Test
-    fun `the account leads, then the subcategory, then the note`() {
-        val result = labels(
-            TxnType.EXPENSE,
-            category = "Pemberian",
-            subcategory = "Rutin keluarga",
-            note = "Agustus",
-        )
+    fun `the account leads, then the note`() {
+        val result = labels(TxnType.EXPENSE, category = "Pemberian", note = "Uang Arisan")
 
-        // The line ellipsises from the end, so a long note is cut before the account
-        // or the subcategory.
-        assertEquals("BCA · Rutin keluarga · Agustus", result.secondary)
-        assertEquals("BCA, Rutin keluarga, Agustus", result.spokenSecondary)
+        // The line ellipsises from the end, so a long note is cut before the account.
+        assertEquals("BCA · Uang Arisan", result.secondary)
+        assertEquals("BCA, Uang Arisan", result.spokenSecondary)
     }
 
     @Test
@@ -108,16 +100,16 @@ class TransactionRowLabelsTest {
     }
 
     @Test
-    fun `a transfer names both accounts and still carries its subcategory`() {
+    fun `a transfer names both accounts, then its note`() {
         val result = labels(
             TxnType.TRANSFER,
-            subcategory = "Rutin keluarga",
+            note = "Tabungan",
             accountName = "BCA",
             toAccountName = "RDPU",
         )
 
-        assertEquals("BCA → RDPU · Rutin keluarga", result.secondary)
-        assertEquals("BCA to RDPU, Rutin keluarga", result.spokenSecondary)
+        assertEquals("BCA → RDPU · Tabungan", result.secondary)
+        assertEquals("BCA to RDPU, Tabungan", result.spokenSecondary)
     }
 
     @Test
@@ -139,8 +131,8 @@ class TransactionRowLabelsTest {
     }
 
     @Test
-    fun `blank subcategory and note leave the account alone`() {
-        val result = labels(TxnType.EXPENSE, subcategory = "   ", note = " ", accountName = "BCA")
+    fun `a blank note leaves the account alone`() {
+        val result = labels(TxnType.EXPENSE, note = " ", accountName = "BCA")
         assertEquals("BCA", result.secondary)
     }
 }

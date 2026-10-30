@@ -38,7 +38,7 @@ private const val SEPARATOR = " · "
 @Immutable
 data class TransactionRowLabels(
     val primary: String,
-    /** `Account · Subcategory · note`, never empty: every row names its account. */
+    /** `Account · note`, never empty: every row names its account. */
     val secondary: String,
     val spokenSecondary: String,
     val showsBothAccounts: Boolean,
@@ -47,10 +47,10 @@ data class TransactionRowLabels(
 /**
  * Works out a row's two lines.
  *
- * The second line leads with the account, then the subcategory, then the note. That
- * order is deliberate: the line ellipsises from the end, so a long note is what gets
- * cut, never the account (gap 2, a wrong account is how a bad import gets noticed) or
- * the subcategory (the field the old app never captured).
+ * The second line leads with the account, then the note. That order is deliberate: the
+ * line ellipsises from the end, so a long note is what gets cut, never the account (gap
+ * 2, a wrong account is how a bad import gets noticed). A stored subcategory is not
+ * shown: the owner dropped subcategories in favour of search on 30 Oct 2026.
  *
  * A transfer names both accounts with an arrow between them, because "which account"
  * is the whole content of a transfer. Pure, and every string it can produce arrives as a
@@ -59,7 +59,6 @@ data class TransactionRowLabels(
 fun transactionRowLabels(
     type: TxnType,
     category: String?,
-    subcategory: String?,
     note: String?,
     accountName: String,
     toAccountName: String?,
@@ -68,7 +67,6 @@ fun transactionRowLabels(
 ): TransactionRowLabels {
     val showsBoth = type == TxnType.TRANSFER && !toAccountName.isNullOrBlank()
     val primary = category?.takeIf { it.isNotBlank() } ?: titleFallback
-    val sub = subcategory?.takeIf { it.isNotBlank() }
     val text = note?.takeIf { it.isNotBlank() }
 
     val accounts = if (showsBoth) "$accountName $ARROW $toAccountName" else accountName
@@ -77,9 +75,9 @@ fun transactionRowLabels(
 
     return TransactionRowLabels(
         primary = primary,
-        secondary = listOfNotNull(accounts, sub, text).joinToString(SEPARATOR),
+        secondary = listOfNotNull(accounts, text).joinToString(SEPARATOR),
         // Commas, so TalkBack pauses where the eye sees a dot and never reads the arrow.
-        spokenSecondary = listOfNotNull(spokenAccounts, sub, text).joinToString(", "),
+        spokenSecondary = listOfNotNull(spokenAccounts, text).joinToString(", "),
         showsBothAccounts = showsBoth,
     )
 }
@@ -101,7 +99,6 @@ fun TransactionRow(
     modifier: Modifier = Modifier,
     categorySlot: ColorSlot? = null,
     category: String? = null,
-    subcategory: String? = null,
     note: String? = null,
     toAccountName: String? = null,
     titleFallback: String = type.defaultTitle,
@@ -113,7 +110,6 @@ fun TransactionRow(
     val labels = transactionRowLabels(
         type = type,
         category = category,
-        subcategory = subcategory,
         note = note,
         accountName = accountName,
         toAccountName = toAccountName,
@@ -201,7 +197,6 @@ private fun TransactionRowPreview() {
                 accountName = "BCA",
                 categorySlot = ColorSlot(1),
                 category = "Makan & Minum",
-                subcategory = "Warung",
                 note = "Nasi padang",
             )
             TransactionRow(

@@ -103,7 +103,6 @@ internal fun LazyListScope.daySectionItems(days: List<DaySection>, onRowClick: (
                 accountName = row.account.name,
                 categorySlot = row.categorySlot,
                 category = row.categoryName,
-                subcategory = row.subcategoryName,
                 note = row.note,
                 toAccountName = row.toAccount?.name,
                 onClick = { onRowClick(row.id) },
