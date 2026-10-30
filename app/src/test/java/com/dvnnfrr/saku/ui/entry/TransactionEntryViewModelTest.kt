@@ -96,7 +96,7 @@ class TransactionEntryViewModelTest {
         rdpu = accounts.create("RDPU", AccountType.INVESTMENT, Money.ZERO, asOf)
         makan = categories.createCategory("Makan & Minum", CategoryKind.EXPENSE)
         gaji = categories.createCategory("Gaji", CategoryKind.INCOME)
-        restoran = categories.createSubcategory(makan, "Restoran")
+        restoran = categories.findOrCreateSubcategory(makan, "Restoran")
     }
 
     private fun viewModel() = TransactionEntryViewModel(
@@ -144,7 +144,6 @@ class TransactionEntryViewModelTest {
             assertEquals(listOf("Cash", "Card"), opened.accounts.map { it.name })
             assertEquals(opened.accounts.first().id, opened.form.accountId)
             assertTrue(opened.categories.isEmpty())
-            assertTrue(opened.subcategories.isEmpty())
 
             type(vm, "25000")
             vm.createCategory("Food")
@@ -263,44 +262,73 @@ class TransactionEntryViewModelTest {
         assertNull(vm.state.value.form.categoryId)
     }
 
-    @Test
-    fun `selecting a category recalls the subcategory last used with it`() = runTest(dispatcher) {
-        seed()
-        transactions.record(
+    /** A row from before subcategories were dropped, still carrying Restoran. */
+    private suspend fun recordWithStoredSubcategory(): Long {
+        val id = transactions.record(
             occurredAt = LocalDateTime(2026, 8, 10, 12, 0).toInstant(zone),
             type = TxnType.EXPENSE,
             amount = Money(50_000),
             accountId = bca,
             categoryId = makan,
-            subcategoryId = restoran,
+            note = "Padang",
         )
-
-        val vm = viewModel()
-        vm.open()
-        advanceUntilIdle()
-        vm.selectCategory(makan)
-        advanceUntilIdle()
-
-        assertEquals(restoran, vm.state.value.form.subcategoryId)
+        transactions.update(requireNotNull(transactions.byId(id)).copy(subcategoryId = restoran))
+        return id
     }
 
     @Test
-    fun `changing the category clears a subcategory that has no recall`() = runTest(dispatcher) {
+    fun `a new transaction saves no subcategory even where one was used before`() =
+        runTest(dispatcher) {
+            seed()
+            recordWithStoredSubcategory()
+            val vm = viewModel()
+            vm.open()
+            advanceUntilIdle()
+            vm.selectCategory(makan)
+            type(vm, "25000")
+            vm.save()
+            advanceUntilIdle()
+
+            val saved = transactions.observeInRange(august, zone, TransactionFilter.ALL).first()
+                .single { it.amount == Money(25_000) }
+            assertNull(saved.subcategoryId)
+        }
+
+    @Test
+    fun `editing an old row's note keeps its stored subcategory`() = runTest(dispatcher) {
         seed()
-        val lain = categories.createCategory("Jajan", CategoryKind.EXPENSE)
+        val id = recordWithStoredSubcategory()
         val vm = viewModel()
-        vm.open()
-        advanceUntilIdle()
-        vm.selectCategory(makan)
-        advanceUntilIdle()
-        vm.selectSubcategory(restoran)
-
-        vm.selectCategory(lain)
+        vm.open(editingId = id)
         advanceUntilIdle()
 
-        assertNull(vm.state.value.form.subcategoryId)
-        assertEquals(lain, vm.state.value.form.categoryId)
+        vm.setNote("Padang Sederhana")
+        vm.save()
+        advanceUntilIdle()
+
+        val stored = requireNotNull(transactions.byId(id))
+        assertEquals("Padang Sederhana", stored.note)
+        assertEquals(restoran, stored.subcategoryId)
     }
+
+    @Test
+    fun `moving an old row to another category clears its stored subcategory`() =
+        runTest(dispatcher) {
+            seed()
+            val lain = categories.createCategory("Jajan", CategoryKind.EXPENSE)
+            val id = recordWithStoredSubcategory()
+            val vm = viewModel()
+            vm.open(editingId = id)
+            advanceUntilIdle()
+
+            vm.selectCategory(lain)
+            vm.save()
+            advanceUntilIdle()
+
+            val stored = requireNotNull(transactions.byId(id))
+            assertEquals(lain, stored.categoryId)
+            assertNull(stored.subcategoryId)
+        }
 
     @Test
     fun `creating a category inline selects it and keeps the other fields`() = runTest(dispatcher) {

@@ -23,7 +23,6 @@ class EntryFormStateTest {
         accountId: Long? = 1,
         toAccountId: Long? = null,
         categoryId: Long? = 3,
-        subcategoryId: Long? = null,
         note: String = "",
     ) = EntryFormState(
         type = type,
@@ -32,7 +31,6 @@ class EntryFormStateTest {
         accountId = accountId,
         toAccountId = toAccountId,
         categoryId = categoryId,
-        subcategoryId = subcategoryId,
         note = note,
     )
 
@@ -52,7 +50,7 @@ class EntryFormStateTest {
 
     @Test
     fun `switching Expense to Income keeps the amount, time and note`() {
-        val state = form(note = "Padang", subcategoryId = 5).withType(TxnType.INCOME)
+        val state = form(note = "Padang").withType(TxnType.INCOME)
 
         assertEquals(Money(187_000), state.amount.value)
         assertEquals(now, state.occurredAt)
@@ -61,21 +59,19 @@ class EntryFormStateTest {
 
     @Test
     fun `switching Expense to Income drops the category`() {
-        val state = form(categoryId = 3, subcategoryId = 5).withType(TxnType.INCOME)
+        val state = form(categoryId = 3).withType(TxnType.INCOME)
 
         // An expense category is not an income category; carrying it over would save
         // income against "Makan & Minum".
         assertNull(state.categoryId)
-        assertNull(state.subcategoryId)
         assertEquals(CategoryKind.INCOME, state.categoryKind)
     }
 
     @Test
     fun `switching to Transfer drops the category and asks for a destination`() {
-        val state = form(categoryId = 3, subcategoryId = 5).withType(TxnType.TRANSFER)
+        val state = form(categoryId = 3).withType(TxnType.TRANSFER)
 
         assertNull(state.categoryId)
-        assertNull(state.subcategoryId)
         assertNull(state.categoryKind)
         assertTrue(EntryProblem.DESTINATION_MISSING in state.problems())
     }
@@ -92,56 +88,9 @@ class EntryFormStateTest {
 
     @Test
     fun `switching to the same type changes nothing`() {
-        val original = form(subcategoryId = 5)
+        val original = form(note = "Padang")
 
         assertEquals(original, original.withType(TxnType.EXPENSE))
-    }
-
-    // --- Category and subcategory -----------------------------------------
-
-    @Test
-    fun `changing the category clears the subcategory`() {
-        val state = form(categoryId = 3, subcategoryId = 5).withCategory(next = 4)
-
-        assertEquals(4L, state.categoryId)
-        assertNull(state.subcategoryId)
-    }
-
-    @Test
-    fun `changing the category prefills the last subcategory used with it`() {
-        val state = form(categoryId = 3, subcategoryId = 5).withCategory(next = 4, recalled = 9)
-
-        assertEquals(9L, state.subcategoryId)
-    }
-
-    @Test
-    fun `reselecting the same category leaves the subcategory alone`() {
-        val state = form(categoryId = 3, subcategoryId = 5).withCategory(next = 3, recalled = 9)
-
-        assertEquals(5L, state.subcategoryId)
-    }
-
-    @Test
-    fun `clearing the category clears the subcategory regardless of recall`() {
-        val state = form(categoryId = 3, subcategoryId = 5).withCategory(next = null, recalled = 9)
-
-        assertNull(state.categoryId)
-        assertNull(state.subcategoryId)
-    }
-
-    @Test
-    fun `inline creation selects what it made and disturbs nothing else`() {
-        val before = form(amount = 45_000, note = "Kopi", categoryId = null)
-
-        val withCategory = before.withCreatedCategory(id = 12)
-        assertEquals(12L, withCategory.categoryId)
-        assertEquals(Money(45_000), withCategory.amount.value)
-        assertEquals("Kopi", withCategory.note)
-
-        val withSubcategory = withCategory.withCreatedSubcategory(id = 13)
-        assertEquals(13L, withSubcategory.subcategoryId)
-        assertEquals(12L, withSubcategory.categoryId)
-        assertEquals("Kopi", withSubcategory.note)
     }
 
     // --- Validation --------------------------------------------------------
@@ -206,11 +155,6 @@ class EntryFormStateTest {
     }
 
     @Test
-    fun `a subcategory is never required`() {
-        assertTrue(form(subcategoryId = null).canSave)
-    }
-
-    @Test
     fun `every problem is reported at once`() {
         val problems = form(amount = null, accountId = null, categoryId = null).problems()
 
@@ -247,8 +191,52 @@ class EntryFormStateTest {
         assertEquals(42L, state.id)
         assertEquals(Money(170_000), state.amount.value)
         assertEquals(3L, state.categoryId)
-        assertEquals(5L, state.subcategoryId)
         assertEquals("Warung", state.note)
         assertTrue(state.canSave)
+    }
+
+    // --- Saving an edit ----------------------------------------------------
+    // The sheet shows no subcategory any more, but an older row may carry one.
+
+    private val stored = Transaction(
+        id = 42,
+        occurredAt = Instant.parse("2026-08-14T05:00:00Z"),
+        type = TxnType.EXPENSE,
+        amount = Money(500_000),
+        accountId = 1,
+        categoryId = 3,
+        subcategoryId = 5,
+        note = "Uang Arisan",
+        createdAt = Instant.parse("2026-08-14T05:00:00Z"),
+    )
+
+    private fun edited(transform: (EntryFormState) -> EntryFormState): Transaction =
+        transform(EntryFormState.editing(stored, LocalDateTime(2026, 8, 14, 12, 0)))
+            .toTransaction(stored, stored.occurredAt)
+
+    @Test
+    fun `fixing the note keeps the stored subcategory`() {
+        val saved = edited { it.copy(note = "Uang Arisan Agustus") }
+
+        assertEquals("Uang Arisan Agustus", saved.note)
+        assertEquals(5L, saved.subcategoryId)
+    }
+
+    @Test
+    fun `moving to another category clears the stored subcategory`() {
+        val saved = edited { it.copy(categoryId = 4) }
+
+        // A subcategory belongs to exactly one category; keeping it would file the row
+        // under a child of the category it just left.
+        assertEquals(4L, saved.categoryId)
+        assertNull(saved.subcategoryId)
+    }
+
+    @Test
+    fun `turning it into a transfer clears category and subcategory`() {
+        val saved = edited { it.withType(TxnType.TRANSFER).copy(toAccountId = 2) }
+
+        assertNull(saved.categoryId)
+        assertNull(saved.subcategoryId)
     }
 }

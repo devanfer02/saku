@@ -35,7 +35,6 @@ import com.dvnnfrr.saku.domain.Category
 import com.dvnnfrr.saku.domain.CategoryKind
 import com.dvnnfrr.saku.domain.ColorSlot
 import com.dvnnfrr.saku.domain.Money
-import com.dvnnfrr.saku.domain.Subcategory
 import com.dvnnfrr.saku.ui.theme.SakuPreview
 import com.dvnnfrr.saku.ui.theme.SakuPreviewSurface
 import com.dvnnfrr.saku.ui.theme.SakuTheme
@@ -80,34 +79,6 @@ fun CategoryPicker(
                 slot = category.colorSlot,
                 selected = category.id == selectedId,
                 onClick = { onSelect(category) },
-            )
-        }
-    }
-}
-
-/** Subcategories of one category. The caller filters by parent; archived are dropped here. */
-@Composable
-fun SubcategoryPicker(
-    subcategories: List<Subcategory>,
-    onSelect: (Subcategory) -> Unit,
-    onCreateNew: (() -> Unit)?,
-    modifier: Modifier = Modifier,
-    selectedId: Long? = null,
-    createLabel: String = "New subcategory",
-) {
-    val visible = subcategories.filterNot { it.archived }
-    PickerList(
-        modifier = modifier,
-        itemCount = visible.size,
-        onCreateNew = onCreateNew,
-        createLabel = createLabel,
-    ) {
-        items(visible, key = { it.id }) { subcategory ->
-            PickerRow(
-                label = subcategory.name,
-                slot = null,
-                selected = subcategory.id == selectedId,
-                onClick = { onSelect(subcategory) },
             )
         }
     }
@@ -279,24 +250,6 @@ private fun CategoryPickerPreview() {
                 onSelect = {},
                 onCreateNew = {},
                 selectedId = 2,
-            )
-        }
-    }
-}
-
-@SakuPreview
-@Composable
-private fun SubcategoryPickerPreview() {
-    SakuPreviewSurface(padded = false) {
-        Column(modifier = Modifier.width(360.dp).heightIn(max = 320.dp)) {
-            SubcategoryPicker(
-                subcategories = listOf(
-                    Subcategory(1, 1, "Rutin keluarga", 0, archived = false),
-                    Subcategory(2, 1, "Sekali jalan", 1, archived = false),
-                ),
-                onSelect = {},
-                onCreateNew = {},
-                selectedId = 1,
             )
         }
     }

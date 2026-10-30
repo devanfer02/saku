@@ -69,14 +69,11 @@
     <string name="entry_field_account">Account</string>
     <string name="entry_field_destination">To account</string>
     <string name="entry_field_category">Category</string>
-    <string name="entry_field_subcategory">Subcategory</string>
     <string name="entry_field_note">Note</string>
     <string name="entry_field_unset">Choose</string>
-    <string name="entry_field_none">None</string>
     <string name="entry_title_new">New transaction</string>
     <string name="entry_title_edit">Edit transaction</string>
     <string name="entry_new_category">New category</string>
-    <string name="entry_new_subcategory">New subcategory</string>
     <string name="entry_name_hint">Name</string>
     <string name="entry_duplicate_notice">"%1$s" already exists, so it was selected instead</string>
     <string name="entry_delete_title">Delete this transaction?</string>

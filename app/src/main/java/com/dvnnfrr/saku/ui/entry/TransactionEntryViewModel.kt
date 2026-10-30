@@ -9,7 +9,6 @@ import com.dvnnfrr.saku.data.repository.TransactionRepository
 import com.dvnnfrr.saku.domain.Account
 import com.dvnnfrr.saku.domain.Category
 import com.dvnnfrr.saku.domain.CategoryKind
-import com.dvnnfrr.saku.domain.Subcategory
 import com.dvnnfrr.saku.domain.Transaction
 import com.dvnnfrr.saku.domain.TxnType
 import com.dvnnfrr.saku.sakuViewModelFactory
@@ -28,7 +27,6 @@ import kotlinx.datetime.toLocalDateTime
 data class EntryUiState(
     val form: EntryFormState,
     val categories: List<Category> = emptyList(),
-    val subcategories: List<Subcategory> = emptyList(),
     val accounts: List<Account> = emptyList(),
     /**
      * Problems stay hidden until the first save attempt. Marking every empty field
@@ -96,7 +94,6 @@ class TransactionEntryViewModel(
             }
             _state.value = EntryUiState(form = form, accounts = accounts)
             refreshCategories(form.categoryKind)
-            refreshSubcategories(form.categoryId)
         }
     }
 
@@ -105,17 +102,9 @@ class TransactionEntryViewModel(
         _state.update { it.copy(categories = list) }
     }
 
-    private suspend fun refreshSubcategories(categoryId: Long?) {
-        val list = categoryId?.let { categoryRepository.observeSubcategories(it).first() }.orEmpty()
-        _state.update { it.copy(subcategories = list) }
-    }
-
     fun setType(type: TxnType) {
         val next = _state.updateAndGetForm { it.withType(type) }
-        viewModelScope.launch {
-            refreshCategories(next.categoryKind)
-            refreshSubcategories(next.categoryId)
-        }
+        viewModelScope.launch { refreshCategories(next.categoryKind) }
     }
 
     fun setAmount(amount: AmountInput) = updateForm { it.copy(amount = amount) }
@@ -143,51 +132,22 @@ class TransactionEntryViewModel(
 
     fun setDestination(id: Long) = updateForm { it.copy(toAccountId = id) }
 
-    /**
-     * Selecting a category recalls the subcategory last used with it. The lookup is a
-     * suspend call, so the category lands immediately and the recall follows — the
-     * picker never appears to hang on a database read.
-     */
-    fun selectCategory(id: Long?) {
-        viewModelScope.launch {
-            val recalled = id?.let { transactions.lastSubcategoryFor(it) }
-            updateForm { it.withCategory(next = id, recalled = recalled) }
-            refreshSubcategories(id)
-        }
-    }
-
-    fun selectSubcategory(id: Long?) = updateForm { it.copy(subcategoryId = id) }
+    fun selectCategory(id: Long?) = updateForm { it.copy(categoryId = id) }
 
     fun createCategory(name: String) {
         val kind = _state.value.form.categoryKind ?: return
         viewModelScope.launch {
             try {
                 val id = categoryRepository.createCategory(name, kind)
-                updateForm { it.withCreatedCategory(id) }
+                updateForm { it.copy(categoryId = id) }
                 refreshCategories(kind)
-                refreshSubcategories(id)
             } catch (clash: DuplicateNameException) {
                 // Offer the existing one rather than refusing outright: the user's
                 // intent was to file under that name, and it already exists.
-                updateForm { it.withCreatedCategory(clash.existingId) }
+                updateForm { it.copy(categoryId = clash.existingId) }
                 refreshCategories(kind)
-                refreshSubcategories(clash.existingId)
                 _state.update { it.copy(duplicateName = clash.name) }
             }
-        }
-    }
-
-    fun createSubcategory(name: String) {
-        val categoryId = _state.value.form.categoryId ?: return
-        viewModelScope.launch {
-            try {
-                val id = categoryRepository.createSubcategory(categoryId, name)
-                updateForm { it.withCreatedSubcategory(id) }
-            } catch (clash: DuplicateNameException) {
-                updateForm { it.withCreatedSubcategory(clash.existingId) }
-                _state.update { it.copy(duplicateName = clash.name) }
-            }
-            refreshSubcategories(categoryId)
         }
     }
 
@@ -209,7 +169,6 @@ class TransactionEntryViewModel(
                     accountId = requireNotNull(form.accountId),
                     toAccountId = form.toAccountId,
                     categoryId = form.categoryId,
-                    subcategoryId = form.subcategoryId,
                     note = form.note.takeIf { it.isNotBlank() },
                 )
             } else {
@@ -253,6 +212,11 @@ class TransactionEntryViewModel(
  * Carries [Transaction.createdAt] and [Transaction.importBatchId] across an edit.
  * Rebuilding the row from the form alone would silently detach an imported
  * transaction from its batch, and reversing that batch would then leave it behind.
+ *
+ * The sheet no longer shows subcategories (dropped for search, 30 Oct 2026), but older
+ * rows may still carry one. It is kept while the category is unchanged, so fixing a
+ * note does not wipe a value the user cannot see, and cleared when the category
+ * changes, because a subcategory belongs to exactly one category.
  */
 internal fun EntryFormState.toTransaction(
     original: Transaction,
@@ -264,6 +228,6 @@ internal fun EntryFormState.toTransaction(
     accountId = requireNotNull(accountId),
     toAccountId = toAccountId,
     categoryId = categoryId,
-    subcategoryId = subcategoryId,
+    subcategoryId = original.subcategoryId.takeIf { categoryId == original.categoryId },
     note = note.takeIf { it.isNotBlank() },
 )

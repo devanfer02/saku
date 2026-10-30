@@ -40,7 +40,6 @@ import com.dvnnfrr.saku.ui.shared.AccountPicker
 import com.dvnnfrr.saku.ui.shared.CategoryPicker
 import com.dvnnfrr.saku.ui.shared.ConfirmDialog
 import com.dvnnfrr.saku.ui.shared.SegmentedTabs
-import com.dvnnfrr.saku.ui.shared.SubcategoryPicker
 import com.dvnnfrr.saku.ui.theme.SakuTheme
 import com.dvnnfrr.saku.ui.theme.forDirection
 import com.dvnnfrr.saku.ui.theme.formatIdr
@@ -48,7 +47,7 @@ import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
 
 /** Which field's picker is expanded. Only one at a time; the sheet is not tall. */
-private enum class OpenPicker { NONE, ACCOUNT, DESTINATION, CATEGORY, SUBCATEGORY }
+private enum class OpenPicker { NONE, ACCOUNT, DESTINATION, CATEGORY }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -81,7 +80,7 @@ private fun EntrySheetBody(
     val form = state.form
     val spacing = SakuTheme.spacing
     var openPicker by rememberSaveable { mutableStateOf(OpenPicker.NONE) }
-    var creating by rememberSaveable { mutableStateOf<OpenPicker?>(null) }
+    var creatingCategory by rememberSaveable { mutableStateOf(false) }
     var confirmingDelete by rememberSaveable { mutableStateOf(false) }
     var pickingDate by rememberSaveable { mutableStateOf(false) }
     var pickingTime by rememberSaveable { mutableStateOf(false) }
@@ -135,26 +134,12 @@ private fun EntrySheetBody(
                     onClick = { openPicker = openPicker.toggle(OpenPicker.DESTINATION) },
                 )
 
-                else -> {
-                    FieldRow(
-                        label = stringResource(R.string.entry_field_category),
-                        value = state.categories.firstOrNull { it.id == form.categoryId }?.name,
-                        problem = state.problemFor(EntryField.CATEGORY),
-                        onClick = { openPicker = openPicker.toggle(OpenPicker.CATEGORY) },
-                    )
-                    // Only once a category exists: a subcategory belongs to one, and
-                    // offering the field before then invites a selection with no home.
-                    if (form.categoryId != null) {
-                        FieldRow(
-                            label = stringResource(R.string.entry_field_subcategory),
-                            value = state.subcategories
-                                .firstOrNull { it.id == form.subcategoryId }?.name,
-                            unsetLabel = stringResource(R.string.entry_field_none),
-                            problem = null,
-                            onClick = { openPicker = openPicker.toggle(OpenPicker.SUBCATEGORY) },
-                        )
-                    }
-                }
+                else -> FieldRow(
+                    label = stringResource(R.string.entry_field_category),
+                    value = state.categories.firstOrNull { it.id == form.categoryId }?.name,
+                    problem = state.problemFor(EntryField.CATEGORY),
+                    onClick = { openPicker = openPicker.toggle(OpenPicker.CATEGORY) },
+                )
             }
 
             NoteField(value = form.note, onChange = viewModel::setNote)
@@ -165,7 +150,7 @@ private fun EntrySheetBody(
             state = state,
             viewModel = viewModel,
             onClose = { openPicker = OpenPicker.NONE },
-            onCreate = { creating = openPicker },
+            onCreateCategory = { creatingCategory = true },
         )
         }
 
@@ -178,23 +163,15 @@ private fun EntrySheetBody(
         )
     }
 
-    creating?.let { which ->
+    if (creatingCategory) {
         NameDialog(
-            titleRes = if (which == OpenPicker.CATEGORY) {
-                R.string.entry_new_category
-            } else {
-                R.string.entry_new_subcategory
-            },
+            titleRes = R.string.entry_new_category,
             onConfirm = { name ->
-                if (which == OpenPicker.CATEGORY) {
-                    viewModel.createCategory(name)
-                } else {
-                    viewModel.createSubcategory(name)
-                }
-                creating = null
+                viewModel.createCategory(name)
+                creatingCategory = false
                 openPicker = OpenPicker.NONE
             },
-            onDismiss = { creating = null },
+            onDismiss = { creatingCategory = false },
         )
     }
 
@@ -324,7 +301,6 @@ private fun FieldRow(
     value: String?,
     problem: EntryProblem?,
     onClick: () -> Unit,
-    unsetLabel: String = stringResource(R.string.entry_field_unset),
 ) {
     val spacing = SakuTheme.spacing
     Column(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
@@ -342,7 +318,7 @@ private fun FieldRow(
                 modifier = Modifier.weight(1f),
             )
             Text(
-                text = value ?: unsetLabel,
+                text = value ?: stringResource(R.string.entry_field_unset),
                 style = SakuTheme.typography.body,
                 color = if (value == null) SakuTheme.colors.ink2 else SakuTheme.colors.ink,
             )
@@ -400,7 +376,7 @@ private fun ExpandedPicker(
     state: EntryUiState,
     viewModel: TransactionEntryViewModel,
     onClose: () -> Unit,
-    onCreate: () -> Unit,
+    onCreateCategory: () -> Unit,
 ) {
     if (open == OpenPicker.NONE) return
     val maxHeight = 260.dp
@@ -428,14 +404,7 @@ private fun ExpandedPicker(
                 categories = state.categories,
                 selectedId = state.form.categoryId,
                 onSelect = { viewModel.selectCategory(it.id); onClose() },
-                onCreateNew = onCreate,
-            )
-
-            OpenPicker.SUBCATEGORY -> SubcategoryPicker(
-                subcategories = state.subcategories,
-                selectedId = state.form.subcategoryId,
-                onSelect = { viewModel.selectSubcategory(it.id); onClose() },
-                onCreateNew = onCreate,
+                onCreateNew = onCreateCategory,
             )
 
             OpenPicker.NONE -> Unit
