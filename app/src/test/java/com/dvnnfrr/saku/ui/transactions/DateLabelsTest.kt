@@ -15,6 +15,16 @@ class DateLabelsTest {
     }
 
     @Test
+    fun `a calendar selection names one day, or both ends of a range`() {
+        val day = LocalDate(2026, 8, 12)
+        val end = LocalDate(2026, 8, 18)
+
+        assertEquals("Wed 12 Aug", DateRange.custom(day, day).selectionLabel())
+        assertEquals("Wed 12 Aug ~ Tue 18 Aug", DateRange.custom(day, end).selectionLabel())
+        assertEquals("Wed 12 Aug to Tue 18 Aug", DateRange.custom(day, end).spokenSelectionLabel())
+    }
+
+    @Test
     fun `a date on its own carries its year`() {
         assertEquals("29 Oct 2026", LocalDate(2026, 10, 29).dateLabel())
     }

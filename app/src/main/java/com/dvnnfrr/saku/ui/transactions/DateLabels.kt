@@ -50,6 +50,17 @@ fun DateRange.stripColumnLabel(): String = when (mode) {
  */
 fun DateRange.dottedSpanLabel(): String = "${start.dotted()} ~ ${endInclusive.dotted()}"
 
+/**
+ * A Calendar selection: one day as its header (`Wed 12 Aug`), a range as both ends with
+ * the Monthly span's tilde between them (`Wed 12 Aug ~ Tue 18 Aug`).
+ */
+fun DateRange.selectionLabel(): String =
+    if (start == endInclusive) start.dayHeaderLabel() else "${start.dayHeaderLabel()} ~ ${endInclusive.dayHeaderLabel()}"
+
+/** [selectionLabel] for TalkBack, which reads a tilde as "tilde". */
+fun DateRange.spokenSelectionLabel(): String =
+    if (start == endInclusive) start.dayHeaderLabel() else "${start.dayHeaderLabel()} to ${endInclusive.dayHeaderLabel()}"
+
 private fun LocalDate.dotted(): String =
     "${dayOfMonth.toString().padStart(2, '0')}.${monthNumber.toString().padStart(2, '0')}"
 
