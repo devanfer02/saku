@@ -7,10 +7,15 @@ import kotlinx.datetime.minus
 /** A date read from [rows], and the row it was on. */
 data class DatePick(val date: LocalDate, val rowIndex: Int)
 
-private val DAY_FIRST = Regex("""(?<!\d)(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{4}|\d{2})(?!\d)""")
+// A year never runs on into a price: `1/10/26.500` is not a date.
+private const val YEAR_END = """(?!\d|[.,]\d)"""
+private val DAY_FIRST = Regex("""(?<!\d)(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{4}|\d{2})$YEAR_END""")
 private val YEAR_FIRST = Regex("""(?<!\d)(\d{4})[/.\-](\d{1,2})[/.\-](\d{1,2})(?!\d)""")
+// Whole month words only, so an item line such as `1 DESSERT 25.000` is not 1 Des 25.
 private val MONTH_NAME = Regex(
-    """(?<!\d)(\d{1,2})\s*(jan|feb|mar|apr|mei|may|jun|jul|agu|agt|aug|sep|okt|oct|nov|des|dec)[a-z]*\.?\s*(\d{4}|\d{2})(?!\d)""",
+    """(?<!\d)(\d{1,2})\s*(jan(?:uari|uary)?|feb(?:ruari|ruary)?|mar(?:et|ch)?|apr(?:il)?|mei|may|""" +
+        """jun(?:i|e)?|jul(?:i|y)?|agu(?:stus)?|agt|aug(?:ust)?|sep(?:t|tember)?|okt(?:ober)?|""" +
+        """oct(?:ober)?|nov(?:ember)?|des(?:ember)?|dec(?:ember)?)\b\.?\s*(\d{4}|\d{2})$YEAR_END""",
     RegexOption.IGNORE_CASE,
 )
 
@@ -37,9 +42,13 @@ fun pickDate(rows: List<ReceiptRow>, today: LocalDate): DatePick? {
     return null
 }
 
+/** [text] with every date-shaped run removed, so `30 Okt 2026` does not read as Rp 2.026. */
+internal fun withoutDates(text: String): String =
+    listOf(MONTH_NAME, YEAR_FIRST, DAY_FIRST).fold(text) { acc, pattern -> acc.replace(pattern, " ") }
+
 private fun datesIn(text: String): List<LocalDate> {
     val named = MONTH_NAME.findAll(text).mapNotNull { m ->
-        val month = MONTHS[m.groupValues[2].lowercase()] ?: return@mapNotNull null
+        val month = MONTHS[m.groupValues[2].take(3).lowercase()] ?: return@mapNotNull null
         date(m.groupValues[3], month, m.groupValues[1].toInt())
     }
     val yearFirst = YEAR_FIRST.findAll(text).mapNotNull { m ->

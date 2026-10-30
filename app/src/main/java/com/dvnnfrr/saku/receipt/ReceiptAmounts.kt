@@ -18,7 +18,7 @@ private val AMOUNT = Regex(
 private const val MIN_RUPIAH = 100L
 
 /** Every amount on [text], left to right. */
-fun amountsIn(text: String): List<Money> = AMOUNT.findAll(text)
+fun amountsIn(text: String): List<Money> = AMOUNT.findAll(withoutDates(text))
     .mapNotNull { match -> match.groupValues[1].filter(Char::isDigit).toLongOrNull() }
     .filter { it >= MIN_RUPIAH }
     .map(::Money)

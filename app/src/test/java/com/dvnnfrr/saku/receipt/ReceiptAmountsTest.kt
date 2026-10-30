@@ -34,6 +34,20 @@ class ReceiptAmountsTest {
     }
 
     @Test
+    fun `the year of a printed date is not an amount`() {
+        assertEquals(emptyList<Money>(), amountsIn("30 Okt 2026 • 13:33"))
+        assertEquals(emptyList<Money>(), amountsIn("2026-09-01 12:00"))
+        assertEquals(listOf(Money(15_000)), amountsIn("30/10/2026 PARKIR 15.000"))
+    }
+
+    @Test
+    fun `an item named like a month keeps its price`() {
+        assertEquals(listOf(Money(25_000)), amountsIn("1 DESSERT 25.000"))
+        assertEquals(listOf(Money(12_000)), amountsIn("2 MARGARIN 12.000"))
+        assertEquals(listOf(Money(9_500)), amountsIn("3 JULY JUICE 9.500"))
+    }
+
+    @Test
     fun `a cut off amount is not guessed`() {
         assertEquals(emptyList<Money>(), amountsIn("GRANDTOTAL 24.0"))
     }
