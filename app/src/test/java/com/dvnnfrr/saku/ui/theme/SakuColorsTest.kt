@@ -35,6 +35,12 @@ class SakuColorsTest {
         "netSpendable" to colors.netSpendable,
         "netInvested" to colors.netInvested,
         "inkDisabled" to colors.inkDisabled,
+        "artBlue" to colors.artBlue,
+        "artBlueWash" to colors.artBlueWash,
+        "artYellow" to colors.artYellow,
+        "artYellowWash" to colors.artYellowWash,
+        "artRed" to colors.artRed,
+        "artRedWash" to colors.artRedWash,
     )
 
     private val expectedLight = mapOf(
@@ -56,6 +62,12 @@ class SakuColorsTest {
         "netSpendable" to Color(0xFF1B5AD9),
         "netInvested" to Color(0xFFC9541A),
         "inkDisabled" to Color(0xFFB3BBCB),
+        "artBlue" to Color(0xFF3F78E0),
+        "artBlueWash" to Color(0xFFD8E3FA),
+        "artYellow" to Color(0xFFEFC650),
+        "artYellowWash" to Color(0xFFFBEDC4),
+        "artRed" to Color(0xFFDE6479),
+        "artRedWash" to Color(0xFFF9D5DB),
     )
 
     private val expectedLightChart = listOf(
@@ -88,6 +100,12 @@ class SakuColorsTest {
         "netSpendable" to Color(0xFF6C9BF0),
         "netInvested" to Color(0xFFF08A52),
         "inkDisabled" to Color(0xFF4C566E),
+        "artBlue" to Color(0xFF5A86E0),
+        "artBlueWash" to Color(0xFF1A2A50),
+        "artYellow" to Color(0xFFD9B44A),
+        "artYellowWash" to Color(0xFF3A3420),
+        "artRed" to Color(0xFFCC6680),
+        "artRedWash" to Color(0xFF3D1E2A),
     )
 
     private val expectedDarkChart = listOf(
@@ -207,6 +225,24 @@ class SakuColorsTest {
         }
     }
 
+    /**
+     * The welcome art's red and yellow are decorative. Within 15 degrees of OKLCH hue of
+     * `expense` or `warning` they would read as a loss or an alarm, so they are kept apart.
+     */
+    @Test
+    fun `the art red and yellow stay apart in hue from expense and warning`() {
+        for (colors in listOf(LightSakuColors, DarkSakuColors)) {
+            assertTrue(
+                "artRed ${colors.artRed} is within 15 degrees of expense",
+                hueDistance(colors.artRed, colors.expense) >= 15.0,
+            )
+            assertTrue(
+                "artYellow ${colors.artYellow} is within 15 degrees of warning",
+                hueDistance(colors.artYellow, colors.warning) >= 15.0,
+            )
+        }
+    }
+
     @Test
     fun `the accent is a blue in both themes`() {
         for (colors in listOf(LightSakuColors, DarkSakuColors)) {
@@ -215,5 +251,28 @@ class SakuColorsTest {
                 colors.accent.blue > colors.accent.red && colors.accent.blue > colors.accent.green,
             )
         }
+    }
+
+    private fun hueDistance(a: Color, b: Color): Double {
+        val d = Math.abs(oklchHue(a) - oklchHue(b)) % 360.0
+        return if (d > 180.0) 360.0 - d else d
+    }
+
+    /** OKLCH hue in degrees, from sRGB, per Björn Ottosson's published matrices. */
+    private fun oklchHue(color: Color): Double {
+        fun linear(c: Float): Double {
+            val v = c.toDouble()
+            return if (v <= 0.04045) v / 12.92 else Math.pow((v + 0.055) / 1.055, 2.4)
+        }
+        val r = linear(color.red)
+        val g = linear(color.green)
+        val b = linear(color.blue)
+        val l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b)
+        val m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b)
+        val s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b)
+        val aAxis = 1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s
+        val bAxis = 0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s
+        val degrees = Math.toDegrees(Math.atan2(bAxis, aAxis))
+        return if (degrees < 0) degrees + 360.0 else degrees
     }
 }

@@ -62,6 +62,14 @@ fun TokenReference(modifier: Modifier = Modifier) {
         Swatch("expense", colors.expense)
         Swatch("transfer", colors.transfer)
 
+        Text("Welcome art", style = SakuTheme.typography.title, color = colors.ink)
+        Swatch("artBlue", colors.artBlue)
+        Swatch("artBlueWash", colors.artBlueWash)
+        Swatch("artYellow", colors.artYellow)
+        Swatch("artYellowWash", colors.artYellowWash)
+        Swatch("artRed", colors.artRed)
+        Swatch("artRedWash", colors.artRedWash)
+
         Text("Chart slots", style = SakuTheme.typography.title, color = colors.ink)
         for (index in 0 until ColorSlot.COUNT) {
             Swatch("slot ${index + 1}", colors.forSlot(ColorSlot(index)))
