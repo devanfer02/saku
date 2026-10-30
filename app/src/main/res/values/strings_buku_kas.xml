@@ -11,6 +11,10 @@
     <string name="stats_compare_more">%1$d%% more than %2$s</string>
     <string name="stats_compare_same">The same as %1$s</string>
 
+    <!-- Stats rows that open a detail, appended to the spoken row -->
+    <string name="stats_row_opens_category">Opens the category</string>
+    <string name="stats_row_opens_other">Opens the categories in Other</string>
+
     <!-- Period strip, spoken per column -->
     <string name="stats_strip_month">%1$s. In %2$s, out %3$s, net %4$s</string>
     <string name="stats_strip_month_empty">%1$s. Nothing recorded yet</string>

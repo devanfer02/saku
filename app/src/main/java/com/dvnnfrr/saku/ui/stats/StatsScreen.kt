@@ -9,8 +9,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -22,7 +24,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -281,6 +285,10 @@ private const val OTHER_KEY = -1L
 /**
  * One ranked category: colour, name, whole percent, amount and a bar scaled to the
  * largest row. The bar replaced the donut; the row was already its legend.
+ *
+ * Every row opens a detail, so every row ends in a chevron and says so when spoken:
+ * a category opens its own detail, "Other" opens the categories it combines. The
+ * pressed state is the ripple `RankedRow` gets from being clickable.
  */
 @Composable
 internal fun CategoryRow(
@@ -295,7 +303,7 @@ internal fun CategoryRow(
         name,
         row.percent,
         formatIdr(row.total),
-    )
+    ) + ". " + stringResource(if (row.isOther) R.string.stats_row_opens_other else R.string.stats_row_opens_category)
     RankedRow(
         colorSlot = row.colorSlot,
         name = name,
@@ -303,9 +311,19 @@ internal fun CategoryRow(
         sharePercent = row.percent,
         barPermille = row.barPermille,
         onClick = onClick,
+        trailing = {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = SakuTheme.colors.ink2,
+            )
+        },
         // The swatch carries no name of its own, so without this the row is read out as
         // three loose fragments and the share is heard as a bare number.
-        modifier = modifier.semantics(mergeDescendants = true) { contentDescription = spoken },
+        modifier = modifier.semantics(mergeDescendants = true) {
+            contentDescription = spoken
+            role = Role.Button
+        },
     )
 }
 
