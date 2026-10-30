@@ -38,12 +38,12 @@ fun WelcomeArt(modifier: Modifier = Modifier) {
     val colors = SakuTheme.colors
     Canvas(modifier = modifier.clearAndSetSemantics {}) {
         if (size.height < MIN_HEIGHT.toPx() || size.width <= 0f) return@Canvas
-        val scale = minOf(size.width / ART_WIDTH, size.height / ART_HEIGHT)
-        val left = (size.width - ART_WIDTH * scale) / 2f
-        val top = (size.height - ART_HEIGHT * scale) / 2f
+        val factor = minOf(size.width / ART_WIDTH, size.height / ART_HEIGHT)
+        val left = (size.width - ART_WIDTH * factor) / 2f
+        val top = (size.height - ART_HEIGHT * factor) / 2f
         withTransform({
             translate(left, top)
-            scale(scale, scale, pivot = Offset.Zero)
+            scale(factor, factor, pivot = Offset.Zero)
         }) {
             drawArt(colors)
         }
