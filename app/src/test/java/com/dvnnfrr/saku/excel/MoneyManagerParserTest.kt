@@ -26,14 +26,14 @@ class MoneyManagerParserTest {
     @Test
     fun `every row of the mock export parses`() {
         assertEquals(emptyList<RejectedRow>(), sheet.rejected)
-        assertEquals(382, sheet.rows.size)
-        assertEquals(382, sheet.fileRowCount)
+        assertEquals(390, sheet.rows.size)
+        assertEquals(390, sheet.fileRowCount)
     }
 
     @Test
     fun `types map to the app's own three`() {
         assertEquals(
-            mapOf(TxnType.EXPENSE to 360, TxnType.INCOME to 16, TxnType.TRANSFER to 6),
+            mapOf(TxnType.EXPENSE to 368, TxnType.INCOME to 16, TxnType.TRANSFER to 6),
             sheet.rows.groupingBy { it.type }.eachCount(),
         )
     }
@@ -45,7 +45,7 @@ class MoneyManagerParserTest {
     @Test
     fun `the account comes from column two and never from column eleven`() {
         assertEquals(
-            mapOf("Card" to 334, "Cash" to 42, "OVO" to 6),
+            mapOf("Card" to 337, "Cash" to 46, "OVO" to 7),
             sheet.rows.groupingBy { it.accountName }.eachCount(),
         )
         // Column 11 is the IDR figure. If it had leaked into the account mapping there
@@ -62,16 +62,16 @@ class MoneyManagerParserTest {
         val parsed = sheet.rows.first().occurredAt
         assertEquals(0, parsed.nanosecondsOfSecond)
         val local = parsed.toLocalDateTime(JAKARTA)
-        assertEquals(LocalDateTime.of(2026, 10, 29, 16, 34, 46).toString(), local.toString())
+        assertEquals(LocalDateTime.of(2026, 10, 29, 18, 29, 48).toString(), local.toString())
     }
 
     @Test
     fun `amounts are whole rupiah`() {
-        assertEquals(Money(17_000), sheet.rows.first().amount)
+        assertEquals(Money(39_000), sheet.rows.first().amount)
         assertTrue(sheet.rows.all { it.amount.isPositive })
     }
 
-    /** Every one of the 382 rows agrees between IDR and Amount, so nothing is flagged. */
+    /** Every one of the 390 rows agrees between IDR and Amount, so nothing is flagged. */
     @Test
     fun `no discrepancy in the reference export`() {
         assertEquals(emptyList<Int>(), sheet.rows.filter { it.discrepancy != null }.map { it.sourceRow })
@@ -197,7 +197,7 @@ class MoneyManagerParserTest {
     }
 
     private fun moneyManagerRow(
-        at: LocalDateTime = LocalDateTime.of(2026, 10, 29, 16, 34, 46),
+        at: LocalDateTime = LocalDateTime.of(2026, 10, 29, 18, 29, 48),
         account: String = "Card",
         category: String = "Makan & Minum",
         note: String? = null,

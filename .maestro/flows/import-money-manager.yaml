@@ -40,7 +40,7 @@ name: Import from Money Manager
 
 # The preview. The file, its size and its span, before any mapping is done.
 - assertVisible: "mock-money-manager.xlsx"
-- assertVisible: "382"
+- assertVisible: "390"
 - assertVisible: "Date span"
 - assertVisible: "What importing will do"
 
@@ -49,7 +49,7 @@ name: Import from Money Manager
 - assertVisible: "Deleted"
 - assertVisible: "Import only ever adds. No existing transaction is changed or removed, which is why deleted reads zero."
 
-# Card covers 334 of the 382 rows and arrives on the seeded Card account, matched
+# Card covers 337 of the 390 rows and arrives on the seeded Card account, matched
 # by name and marked as prefilled so the user checks it. Cash matches the same way.
 - assertVisible: "Accounts in this file"
 - assertVisible: "Card"
@@ -82,11 +82,11 @@ name: Import from Money Manager
 # Everything is mapped, so the action turns on and says what it will do. The count is
 # in the label deliberately — a button reading just "Import" would let a preview the
 # user misread be confirmed without ever showing the number.
-- assertVisible: "Import 382 transactions"
-- tapOn: "Import 382 transactions"
+- assertVisible: "Import 390 transactions"
+- tapOn: "Import 390 transactions"
 
 - assertVisible: "Import finished"
-- assertVisible: "382 added from mock-money-manager.xlsx. 0 were already here."
+- assertVisible: "390 added from mock-money-manager.xlsx. 0 were already here."
 - assertVisible: "What was added"
 - assertVisible: "View transactions"
 

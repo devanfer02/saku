@@ -20,7 +20,7 @@ class ImportPlanTest {
     private val accounts = mapOf("Card" to 1L, "Cash" to 2L, "OVO" to 3L)
     private val destinations = mapOf<String?, Long>("Reksa Dana" to 4L, "Emas" to 5L)
 
-    /** Scenario: Reviewing an import — 382 rows of which 54 already exist. */
+    /** Scenario: Reviewing an import — 390 rows of which 54 already exist. */
     @Test
     fun `the tally splits new from already present and never reports a deletion`() {
         val hashes = ImportPlan.previewHashes(sheet.rows, accounts, destinations)
@@ -28,18 +28,18 @@ class ImportPlanTest {
 
         val tally = ImportPlan.tally(sheet, hashes, alreadyThere, excluded = 0)
 
-        assertEquals(382, tally.fileRowCount)
+        assertEquals(390, tally.fileRowCount)
         assertEquals(54, tally.alreadyPresent)
-        assertEquals(328, tally.insertable)
+        assertEquals(336, tally.insertable)
         assertEquals(0, tally.deleted)
         assertEquals(0, tally.collapsedInFile)
     }
 
-    /** Every one of the 382 rows is distinct on the key, so nothing collapses. */
+    /** Every one of the 390 rows is distinct on the key, so nothing collapses. */
     @Test
     fun `the reference export holds no internal duplicates`() {
         val hashes = ImportPlan.previewHashes(sheet.rows, accounts, destinations)
-        assertEquals(382, hashes.distinct().size)
+        assertEquals(390, hashes.distinct().size)
     }
 
     /**
@@ -119,7 +119,7 @@ class ImportPlanTest {
         val hashes = ImportPlan.previewHashes(sheet.rows.drop(3), accounts, destinations)
         val tally = ImportPlan.tally(sheet, hashes, emptySet(), excluded = 3)
         assertEquals(3, tally.excluded)
-        assertEquals(379, tally.insertable)
+        assertEquals(387, tally.insertable)
     }
 
     private fun row(

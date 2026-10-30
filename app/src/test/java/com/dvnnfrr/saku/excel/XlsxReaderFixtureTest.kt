@@ -19,7 +19,7 @@ class XlsxReaderFixtureTest {
 
     @Test
     fun `reads every data row from the mock export`() {
-        assertEquals(382, table.rows.size)
+        assertEquals(390, table.rows.size)
     }
 
     @Test
@@ -57,8 +57,8 @@ class XlsxReaderFixtureTest {
     @Test
     fun `the two Account columns hold different kinds of value`() {
         val row = table.rows.first()
-        assertEquals("Card", row.textAt(1))
-        assertEquals(0, BigDecimal("17000").compareTo(row.numberAt(10)))
+        assertEquals("Cash", row.textAt(1))
+        assertEquals(0, BigDecimal("39000").compareTo(row.numberAt(10)))
         assertEquals(0, row.numberAt(5)!!.compareTo(row.numberAt(10)))
     }
 
@@ -76,7 +76,7 @@ class XlsxReaderFixtureTest {
     @Test
     fun `transaction types match the known distribution`() {
         val byType = table.rows.groupingBy { it.textAt(6) }.eachCount()
-        assertEquals(mapOf("Expense" to 360, "Income" to 16, "Transfer-Out" to 6), byType)
+        assertEquals(mapOf("Expense" to 368, "Income" to 16, "Transfer-Out" to 6), byType)
     }
 
     @Test
@@ -87,7 +87,7 @@ class XlsxReaderFixtureTest {
     @Test
     fun `accounts collapse to three names, dominated by Card`() {
         val byAccount = table.rows.groupingBy { it.textAt(1) }.eachCount()
-        assertEquals(mapOf("Card" to 334, "Cash" to 42, "OVO" to 6), byAccount)
+        assertEquals(mapOf("Card" to 337, "Cash" to 46, "OVO" to 7), byAccount)
     }
 
     /** Gap 1 from the analysis: the column exists and was never once filled in. */
@@ -107,12 +107,12 @@ class XlsxReaderFixtureTest {
         assertEquals(2026, first.year)
         assertEquals(10, first.monthValue)
         assertEquals(29, first.dayOfMonth)
-        assertEquals(16, first.hour)
-        assertEquals(34, first.minute)
-        assertEquals(46, first.second)
+        assertEquals(18, first.hour)
+        assertEquals(29, first.minute)
+        assertEquals(48, first.second)
         assertTrue("expected sub-second precision, got $first", first.nano > 0)
 
-        assertEquals(382, table.rows.count { it.timestampAt(0) != null })
+        assertEquals(390, table.rows.count { it.timestampAt(0) != null })
     }
 
     /**
@@ -124,7 +124,7 @@ class XlsxReaderFixtureTest {
         val row = table.rows.first()
         assertTrue("Amount should be text", row[8] is CellValue.Text)
         assertTrue("IDR should be numeric", row[5] is CellValue.Number)
-        assertEquals("17000.0", row.textAt(8))
+        assertEquals("39000.0", row.textAt(8))
     }
 
     /** Nothing is fractional, which is what lets the app store rupiah as Long. */

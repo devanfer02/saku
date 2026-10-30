@@ -92,7 +92,7 @@ class XlsxAndroidRuntimeTest {
             val rows = sheet.javaClass.getMethod("read").invoke(sheet) as List<*>
             readableWorkbook.getMethod("close").invoke(workbook)
 
-            assertEquals("382 data rows plus the header", 383, rows.size)
+            assertEquals("390 data rows plus the header", 391, rows.size)
         }
     }
 

@@ -92,8 +92,8 @@ class ImportViewModelTest {
 
         assertEquals(Fixture.NAME, preview.fileName)
         assertEquals(SheetLayout.MONEY_MANAGER, preview.layout)
-        assertEquals(382, preview.tally.fileRowCount)
-        assertEquals(382, preview.tally.parsedRowCount)
+        assertEquals(390, preview.tally.fileRowCount)
+        assertEquals(390, preview.tally.parsedRowCount)
         assertEquals("2026-07-01", preview.dateSpan!!.first.toString())
         assertEquals("2026-10-29", preview.dateSpan.last.toString())
     }
@@ -136,7 +136,7 @@ class ImportViewModelTest {
         val card = preview.accounts.single { it.sourceName == "Card" }
         assertEquals("Card", card.choice?.displayName)
         assertTrue("Card should read as prefilled", card.prefilled)
-        assertEquals(334, card.rowCount)
+        assertEquals(337, card.rowCount)
 
         val cash = preview.accounts.single { it.sourceName == "Cash" }
         assertEquals("Cash", cash.choice?.displayName)
@@ -241,7 +241,7 @@ class ImportViewModelTest {
         FirstRunSeed.applyIfEmpty(db, openingAsOf = SEED_CUTOVER, zone = JAKARTA)
         assertEquals(0, db.categoryDao().all().size)
 
-        assertEquals(382, importEverything())
+        assertEquals(390, importEverything())
 
         assertTrue(db.categoryDao().all().any { it.name == "Makanan" })
         val seeded = setOf(accountId("Card"), accountId("Cash"))
@@ -256,7 +256,7 @@ class ImportViewModelTest {
     fun `importing the same file twice inserts nothing the second time`() = runFlow {
         seedAccounts()
         val first = importEverything()
-        assertEquals(382, first)
+        assertEquals(390, first)
         assertEquals(first, transactionCount())
 
         val model = loadFixture()
@@ -264,7 +264,7 @@ class ImportViewModelTest {
         val preview = model.preview()
 
         assertEquals(0, preview.tally.insertable)
-        assertEquals(382, preview.tally.alreadyPresent)
+        assertEquals(390, preview.tally.alreadyPresent)
         assertEquals(0, preview.tally.deleted)
         // Nothing left to add, so the action is off rather than being a no-op the user
         // has to tap to discover.
@@ -287,11 +287,11 @@ class ImportViewModelTest {
 
         val summary = (model.state.value as ImportUiState.Imported).summary
         assertEquals(Fixture.NAME, summary.fileName)
-        assertEquals(382, summary.added)
+        assertEquals(390, summary.added)
         assertEquals(0, summary.alreadyHere)
         assertEquals(DateSpan(LocalDate(2026, 7, 1), LocalDate(2026, 10, 29)), summary.span)
         assertEquals(
-            mapOf(TxnType.EXPENSE to 360, TxnType.INCOME to 16, TxnType.TRANSFER to 6),
+            mapOf(TxnType.EXPENSE to 368, TxnType.INCOME to 16, TxnType.TRANSFER to 6),
             summary.byType,
         )
         assertEquals(listOf("Card", "Cash", "Emas", "OVO", "Reksa Dana"), summary.accounts)
@@ -345,7 +345,7 @@ class ImportViewModelTest {
 
         val batch = imports().observeBatches().first().single()
         assertEquals(Fixture.NAME, batch.fileName)
-        assertEquals(382, batch.rowCount)
+        assertEquals(390, batch.rowCount)
         assertEquals(inserted, batch.insertedCount)
 
         val removed = imports().reverse(batch.id, now)
@@ -411,7 +411,7 @@ class ImportViewModelTest {
         val preview = model.preview()
         assertEquals(SheetLayout.MONEY_MANAGER, preview.layout)
         assertEquals(ImportEntryPoint.EXCEL, preview.entryPoint)
-        assertEquals(382, preview.tally.parsedRowCount)
+        assertEquals(390, preview.tally.parsedRowCount)
     }
 
     // -- Refusals ---------------------------------------------------------------
