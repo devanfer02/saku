@@ -9,6 +9,8 @@ import com.dvnnfrr.saku.excel.DatabaseImport
 import com.dvnnfrr.saku.excel.DatabaseReadOutcome
 import com.dvnnfrr.saku.excel.DatabaseRows
 import com.dvnnfrr.saku.excel.DatabaseSubcategoryRow
+import com.dvnnfrr.saku.excel.DatabaseTagRow
+import com.dvnnfrr.saku.excel.DatabaseTxnTagRow
 import com.dvnnfrr.saku.excel.DatabaseTxnRow
 import java.io.File
 
@@ -30,9 +32,9 @@ object DatabaseFileReader {
         val flags = SQLiteDatabase.OPEN_READONLY or SQLiteDatabase.NO_LOCALIZED_COLLATORS
         return SQLiteDatabase.openDatabase(file.path, null, flags).use { db ->
             val header = DatabaseHeader(userVersion = db.version, identityHash = identityHash(db))
-            DatabaseImport.refusalFor(header, SakuDatabase.VERSION, SakuDatabase.IDENTITY_HASH)
+            DatabaseImport.refusalFor(header, KNOWN_SCHEMAS, SakuDatabase.VERSION)
                 ?.let { return@use DatabaseReadOutcome.Refused(it) }
-            DatabaseImport.toBackup(rows(db), header.userVersion)
+            DatabaseImport.toBackup(rows(db, header.userVersion), header.userVersion)
         }
     }
 
@@ -48,7 +50,13 @@ object DatabaseFileReader {
 
     // Named columns, never `*`: a file that claims the right hash but lacks a column fails
     // here as unreadable instead of being read by position.
-    private fun rows(db: SQLiteDatabase) = DatabaseRows(
+    /** Every schema a file may come from: version 1 is read with no tags. */
+    private val KNOWN_SCHEMAS = mapOf(
+        1 to SakuDatabase.IDENTITY_HASH_V1,
+        SakuDatabase.VERSION to SakuDatabase.IDENTITY_HASH,
+    )
+
+    private fun rows(db: SQLiteDatabase, version: Int) = DatabaseRows(
         accounts = db.all(
             "SELECT id, name, type, openingBalance, openingAsOfEpochSec, colorSlot, sortOrder, " +
                 "archived, lastReconciledEpochSec FROM account ORDER BY id",
@@ -99,6 +107,20 @@ object DatabaseFileReader {
                 subcategoryId = getLongOrNull(7),
                 note = getStringOrNull(8),
             )
+        },
+        tags = if (version < DatabaseImport.TAGS_SINCE) {
+            emptyList()
+        } else {
+            db.all("SELECT id, name, sortOrder, archived FROM tag ORDER BY sortOrder, id") {
+                DatabaseTagRow(id = getLong(0), name = getString(1), sortOrder = getInt(2), archived = getInt(3) != 0)
+            }
+        },
+        txnTags = if (version < DatabaseImport.TAGS_SINCE) {
+            emptyList()
+        } else {
+            db.all("SELECT txnId, tagId FROM txn_tag ORDER BY txnId, tagId") {
+                DatabaseTxnTagRow(txnId = getLong(0), tagId = getLong(1))
+            }
         },
     )
 

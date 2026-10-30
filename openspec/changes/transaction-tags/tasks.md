@@ -17,9 +17,9 @@
 
 ## 4. Interchange
 
-- [ ] 4.1 `Tags` column in `SheetLayout.SAKU` and `ExportSheet`; `ImportParser` reads it when present; round-trip test
-- [ ] 4.2 `BackupSheets` format 2 with a `Tags` sheet; `RestorePlan` creates missing tags, insert-only; tests for format 1 and 2
-- [ ] 4.3 `DatabaseImport` accepts schema versions 1 and 2; test with a version 1 file
+- [x] 4.1 `Tags` column in `SheetLayout.SAKU` and `ExportSheet`; `ImportParser` reads it when present; round-trip test
+- [x] 4.2 `BackupSheets` format 2 with a `Tags` sheet; `RestorePlan` creates missing tags, insert-only; tests for format 1 and 2
+- [x] 4.3 `DatabaseImport` accepts schema versions 1 and 2; test with a version 1 file
 
 ## 5. End-to-end on the emulator (mock data only, run by adb, screenshot per step)
 

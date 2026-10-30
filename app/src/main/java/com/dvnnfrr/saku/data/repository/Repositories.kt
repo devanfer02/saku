@@ -323,6 +323,7 @@ data class BackupSnapshot(
     val categories: List<Category>,
     val subcategories: List<Subcategory>,
     val transactions: List<Transaction>,
+    val tags: List<Tag> = emptyList(),
 )
 
 /** What a restore created. The transactions are in [batch], so Import history can reverse them. */
@@ -331,6 +332,7 @@ data class RestoreResult(
     val categoriesCreated: Int,
     val subcategoriesCreated: Int,
     val batch: ImportBatch,
+    val tagsCreated: Int = 0,
 )
 
 /** A parsed, fully mapped row waiting on the user's confirmation. */
@@ -344,6 +346,8 @@ data class PendingRow(
     val subcategoryId: Long?,
     val note: String?,
     val dedupHash: String,
+    /** Found or created by name when the row is committed. Not part of [dedupHash]. */
+    val tagNames: List<String> = emptyList(),
 )
 
 class DuplicateNameException(val existingId: Long, val name: String) :
