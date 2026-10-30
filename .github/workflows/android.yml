@@ -4,7 +4,9 @@ name: Android
 #
 #   pull_request -> verify. Tests, lint, debug build. This is the gate.
 #   push: master -> ship.   Signed release, no tests. One artifact: saku-release-apk.
-#   workflow_dispatch -> ship plus Maestro e2e.
+#   workflow_dispatch -> ship, on demand.
+#
+# Maestro is not in CI yet (owner decision, 30 Oct 2026). Run the flows locally.
 #
 # A squash merge produces a new SHA over content the PR already proved, so
 # re-running the suite on master buys nothing and delays the artifact. The
@@ -123,59 +125,3 @@ jobs:
           path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error
 
-  e2e:
-    name: Maestro e2e
-    # On demand only. On master it failed the whole run (the runner's emulator never
-    # reached adb) and uploaded a second artifact, so a push to master read red and
-    # shipped two files. A push to master now yields one artifact, the release APK.
-    if: github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "21"
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
-
-      - name: Assemble debug
-        run: ./gradlew assembleDebug --stacktrace
-
-      - name: Install Maestro
-        run: |
-          curl -Ls "https://get.maestro.mobile.dev" | bash
-          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
-
-      - name: Enable KVM
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
-            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-
-      - name: Run Maestro flows
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 30
-          target: google_apis
-          arch: x86_64
-          profile: pixel_5
-          disable-animations: true
-          script: |
-            adb install -r app/build/outputs/apk/debug/app-debug.apk
-            maestro test .maestro --exclude-tags pending-shell \
-              --format junit --output maestro-report.xml
-
-      - name: Upload Maestro report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: maestro-report
-          path: |
-            maestro-report.xml
-            ~/.maestro/tests/
-          if-no-files-found: ignore

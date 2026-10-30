@@ -69,7 +69,7 @@ Then:
 
 Do not merge your own PR before the review comment has been posted and answered.
 
-CI has two lanes. A pull request into `master` runs unit tests, lint, the debug build and the no-network-permission gate. A push to `master` builds the signed release and uploads exactly one artifact, `saku-release-apk`. Maestro e2e runs only on `workflow_dispatch`; on push it failed on the runner's emulator and turned every master run red.
+CI has two lanes. A pull request into `master` runs unit tests, lint, the debug build and the no-network-permission gate. A push to `master` builds the signed release and uploads exactly one artifact, `saku-release-apk`. Maestro is not in CI (decided 30 Oct 2026); run the flows locally against the emulator.
 
 ### Before calling a session done
 
