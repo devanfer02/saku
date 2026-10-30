@@ -25,7 +25,6 @@ import kotlinx.datetime.toLocalDateTime
 data class BackupCounts(
     val accounts: Int,
     val categories: Int,
-    val subcategories: Int,
     val transactions: Int,
 )
 
@@ -73,7 +72,6 @@ class BackupViewModel(
                 BackupCounts(
                     accounts = snapshot.accounts.size,
                     categories = snapshot.categories.size,
-                    subcategories = snapshot.subcategories.size,
                     transactions = snapshot.transactions.size,
                 )
             }

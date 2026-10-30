@@ -125,7 +125,6 @@ fun RestoreScreen(
                     listOf(
                         stringResource(R.string.restore_new_accounts) to state.result.accountsCreated,
                         stringResource(R.string.restore_new_categories) to state.result.categoriesCreated,
-                        stringResource(R.string.restore_new_subcategories) to state.result.subcategoriesCreated,
                         stringResource(R.string.restore_new_transactions) to state.result.batch.insertedCount,
                     ),
                 )
@@ -164,7 +163,6 @@ private fun Preview(state: RestoreUiState.Ready, onConfirm: () -> Unit, onDiscar
         buildList {
             add(stringResource(R.string.restore_new_accounts) to preview.newAccounts)
             add(stringResource(R.string.restore_new_categories) to preview.newCategories)
-            add(stringResource(R.string.restore_new_subcategories) to preview.newSubcategories)
             add(stringResource(R.string.restore_new_transactions) to preview.newTransactions)
             add(stringResource(R.string.restore_already_present) to preview.alreadyPresent)
             if (preview.heldBack > 0) add(stringResource(R.string.restore_held_back) to preview.heldBack)

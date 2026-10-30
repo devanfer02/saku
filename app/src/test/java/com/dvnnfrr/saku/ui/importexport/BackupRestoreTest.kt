@@ -32,6 +32,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDate
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -126,7 +127,7 @@ class BackupRestoreTest {
         advanceUntilIdle()
 
         assertEquals(
-            BackupCounts(accounts = 4, categories = 4, subcategories = 3, transactions = 6),
+            BackupCounts(accounts = 4, categories = 4, transactions = 6),
             (model.state.value as BackupUiState.Written).counts,
         )
     }
@@ -159,6 +160,26 @@ class BackupRestoreTest {
         advanceUntilIdle()
         assertTrue("confirm must do nothing when nothing is new", model.state.value is RestoreUiState.Ready)
         assertEquals(6, RoomTransactionRepository(destination).all().size)
+    }
+
+    @Test
+    fun `a backup that would add only subcategories still has something to restore`() {
+        val preview = RestorePreview(
+            fileName = BACKUP_NAME,
+            writtenOn = LocalDate(2026, 10, 30),
+            formatVersion = 1,
+            appVersion = "1.0",
+            newAccounts = 0,
+            newCategories = 0,
+            newSubcategories = 1,
+            newTransactions = 0,
+            alreadyPresent = 6,
+            heldBack = 0,
+            conflicts = emptyList(),
+        )
+
+        // The screen no longer lists subcategories, but restoring must still write them.
+        assertTrue(preview.hasAnythingNew)
     }
 
     /** Scenario: Restore onto a database with data. */

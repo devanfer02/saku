@@ -284,7 +284,7 @@
     <string name="import_history_reverse_body">Only the transactions this import added are removed. Anything entered by hand, or added by another import, is left alone.</string>
 
     <!-- Export -->
-    <string name="export_intro">Writes every transaction to an .xlsx file you choose: date, type, amount, both accounts on a transfer, category, subcategory and note. Importing that file into an empty Saku rebuilds what you have now.</string>
+    <string name="export_intro">Writes every transaction to an .xlsx file you choose: date, type, amount, both accounts on a transfer, category and note. Importing that file into an empty Saku rebuilds what you have now.</string>
     <string name="export_action">Choose where to save</string>
     <string name="export_empty">There is nothing to export yet</string>
     <string name="export_writing">Writing %1$s…</string>

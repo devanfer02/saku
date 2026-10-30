@@ -4,7 +4,7 @@
     <string name="more_backup">Back up everything</string>
     <string name="more_restore">Restore from backup</string>
 
-    <string name="backup_intro">Writes one .xlsx file holding every account, category, subcategory and transaction, archived ones included, with opening balances, colours and reconcile dates. Restoring it on a new phone rebuilds Saku as it is now.</string>
+    <string name="backup_intro">Writes one .xlsx file holding every account, category and transaction, archived ones included, with opening balances, colours and reconcile dates. Restoring it on a new phone rebuilds Saku as it is now.</string>
     <string name="backup_action">Choose where to save</string>
     <string name="backup_writing">Writing %1$s…</string>
     <string name="backup_done">Saved to %1$s</string>
@@ -12,7 +12,6 @@
     <string name="backup_not_encrypted">The file is not encrypted. Anyone who can open it can read your whole history, so keep it somewhere private.</string>
     <string name="backup_count_accounts">Accounts</string>
     <string name="backup_count_categories">Categories</string>
-    <string name="backup_count_subcategories">Subcategories</string>
     <string name="backup_count_transactions">Transactions</string>
 
     <string name="restore_intro">Reads a Saku backup and adds what this phone does not have yet. Nothing here is deleted or changed, and the transactions arrive as one entry in Import history, so they can be reversed.</string>
@@ -25,7 +24,6 @@
     <string name="restore_preview_format_value">Version %1$d, Saku %2$s</string>
     <string name="restore_new_accounts">New accounts</string>
     <string name="restore_new_categories">New categories</string>
-    <string name="restore_new_subcategories">New subcategories</string>
     <string name="restore_new_transactions">New transactions</string>
     <string name="restore_already_present">Transactions already here</string>
     <string name="restore_held_back">Rows held back</string>

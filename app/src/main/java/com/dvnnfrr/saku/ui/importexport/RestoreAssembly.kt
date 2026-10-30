@@ -17,6 +17,10 @@ data class RestorePreview(
     val appVersion: String,
     val newAccounts: Int,
     val newCategories: Int,
+    /**
+     * Not shown: subcategories left the UI on 30 Oct 2026. Still counted, so a backup
+     * that would only add subcategory rows keeps its confirm button.
+     */
     val newSubcategories: Int,
     val newTransactions: Int,
     val alreadyPresent: Int,

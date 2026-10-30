@@ -116,7 +116,6 @@ fun BackupScreen(
                     listOf(
                         stringResource(R.string.backup_count_accounts) to state.counts.accounts,
                         stringResource(R.string.backup_count_categories) to state.counts.categories,
-                        stringResource(R.string.backup_count_subcategories) to state.counts.subcategories,
                         stringResource(R.string.backup_count_transactions) to state.counts.transactions,
                     ),
                 )
@@ -181,7 +180,7 @@ private fun BackupWrittenPreview() {
         BackupScreen(
             state = BackupUiState.Written(
                 fileName = "Saku backup 2026-10-30.xlsx",
-                counts = BackupCounts(accounts = 6, categories = 19, subcategories = 7, transactions = 1_300),
+                counts = BackupCounts(accounts = 6, categories = 19, transactions = 1_300),
             ),
         )
     }
