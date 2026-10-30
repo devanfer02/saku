@@ -5,10 +5,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -58,7 +60,11 @@ fun WelcomeScreen(
 
     // Below centre on purpose: the three choices land around the middle of the screen,
     // where a thumb reaches, and Skip sits under them rather than out of reach above.
-    ThumbZonePane(modifier = modifier, verticalBias = CHOICES_BIAS) {
+    // The free space is split by weight rather than by the pane's bias, so the art can
+    // fill the part above the title without ever sitting under it. The two weights are
+    // the split the bias gave, so the choices land where they did before the art.
+    ThumbZonePane(modifier = modifier) {
+        WelcomeArt(modifier = Modifier.fillMaxWidth().weight(ABOVE_CHOICES))
         Text(
             text = stringResource(R.string.first_run_title),
             style = SakuTheme.typography.display,
@@ -113,6 +119,7 @@ fun WelcomeScreen(
                 color = colors.ink2,
             )
         }
+        Spacer(modifier = Modifier.weight(BELOW_CHOICES))
     }
 }
 
@@ -152,6 +159,14 @@ fun SakuImportChooser(
  * welcome screen's three rows straddle the midline on a Pixel 8 at the default font size.
  */
 private const val CHOICES_BIAS = 0.35f
+
+/**
+ * The welcome screen's free space above and below its block, as weights. A bias of
+ * [CHOICES_BIAS] leaves (1 + bias) / 2 of the free space above the block and the rest
+ * below; the art takes the share above.
+ */
+private const val ABOVE_CHOICES = (1f + CHOICES_BIAS) / 2f
+private const val BELOW_CHOICES = 1f - ABOVE_CHOICES
 
 /** What Import from Saku offers, in the order More lists them. */
 val SAKU_IMPORTS: List<MoreEntry> =
@@ -219,7 +234,9 @@ private val CHOICE_ROW_MIN_HEIGHT = 80.dp
 @SakuPreview
 @Composable
 private fun WelcomeScreenPreview() {
-    SakuPreviewSurface(padded = false) { WelcomeScreen() }
+    // A phone-sized box: the pane splits the free space, and a preview's unbounded
+    // height would leave none for the art.
+    SakuPreviewSurface(padded = false) { WelcomeScreen(modifier = Modifier.size(412.dp, 892.dp)) }
 }
 
 @SakuPreview
