@@ -326,9 +326,10 @@ fun periodContaining(date: LocalDate, mode: PeriodMode): DateRange = when (mode)
  *
  * [days] is one filtered daily totals query over [stripHistory], so the first column is
  * the first period anything passing the filter happened, and every bar counts the same
- * rows the header does. Bars share one scale, the largest income or expense figure
- * across the whole history, as thousandths from `Long` arithmetic; only the drawing
- * makes geometry of them.
+ * rows the header does. Bars share one scale, the top of the [stripAxis] for the largest
+ * income or expense figure across the whole history, as thousandths from `Long`
+ * arithmetic; only the drawing makes geometry of them. Scaling to the axis top rather
+ * than to the largest figure is what makes the axis labels true.
  *
  * A quiet period after history began is a real zero and draws as one. With no history
  * up to [selected] at all, the strip is the selected period alone as an empty slot, so
@@ -355,7 +356,7 @@ fun foldStrip(days: List<DailyTotals>, selected: DateRange): List<StripColumn> {
         period = period.next()
     }
     val totals = periods.map { byPeriod[it.start] ?: PeriodTotals.EMPTY }
-    val max = totals.maxOfOrNull { maxOf(it.income, it.expense) } ?: Money.ZERO
+    val top = stripAxis(totals.maxOfOrNull { maxOf(it.income, it.expense) } ?: Money.ZERO).top
 
     return periods.mapIndexed { index, range ->
         val figures = totals[index]
@@ -363,13 +364,41 @@ fun foldStrip(days: List<DailyTotals>, selected: DateRange): List<StripColumn> {
             range = range,
             income = figures.income,
             expense = figures.expense,
-            incomePermille = barPermille(figures.income, max),
-            expensePermille = barPermille(figures.expense, max),
+            incomePermille = barPermille(figures.income, top),
+            expensePermille = barPermille(figures.expense, top),
             selected = range == selected,
             empty = false,
         )
     }
 }
+
+/** The axis [foldStrip] scaled [columns] against, for drawing its labels and gridlines. */
+fun stripAxis(columns: List<StripColumn>): StripAxis =
+    stripAxis(columns.maxOfOrNull { maxOf(it.income, it.expense) } ?: Money.ZERO)
+
+/**
+ * The Y axis for a strip whose tallest bar is [max]: the smallest round step (1, 2, 2,5 or
+ * 5 times a power of ten, at least Rp 1.000) that covers [max] in at most
+ * [MAX_AXIS_STEPS] steps, and the top as the first multiple of it at or above [max].
+ * `Long` arithmetic only. An empty history still gets one step, so the axis never
+ * divides by zero.
+ */
+internal fun stripAxis(max: Money): StripAxis {
+    val target = max.rupiah.coerceAtLeast(1)
+    var base = MIN_AXIS_STEP
+    while (true) {
+        for (step in longArrayOf(base, base * 2, base * 5 / 2, base * 5)) {
+            if (step * MAX_AXIS_STEPS >= target) {
+                val steps = ((target + step - 1) / step).coerceAtLeast(1)
+                return StripAxis(step = Money(step), top = Money(step * steps))
+            }
+        }
+        base *= 10
+    }
+}
+
+private const val MIN_AXIS_STEP = 1_000L
+private const val MAX_AXIS_STEPS = 4L
 
 private fun emptySlot(selected: DateRange) = StripColumn(
     range = selected,

@@ -202,4 +202,14 @@ class FormatIdrTest {
         assertEquals("−2m", formatIdrCell(Money(-1_980_000)))
         assertEquals("1k", formatIdrCell(Money(500)))
     }
+
+    @Test
+    fun `an axis tick shows a decimal only when it has one and thousands as rb`() {
+        assertEquals("0", formatIdrAxis(Money.ZERO))
+        assertEquals("250 rb", formatIdrAxis(Money(250_000)))
+        assertEquals("1 jt", formatIdrAxis(Money(1_000_000)))
+        assertEquals("2,5 jt", formatIdrAxis(Money(2_500_000)))
+        assertEquals("10 jt", formatIdrAxis(Money(10_000_000)))
+        assertEquals("1.000 jt", formatIdrAxis(Money(1_000_000_000)))
+    }
 }

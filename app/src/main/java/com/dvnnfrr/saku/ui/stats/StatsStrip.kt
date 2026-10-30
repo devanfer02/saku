@@ -26,7 +26,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -48,6 +51,7 @@ import com.dvnnfrr.saku.ui.theme.SakuPreview
 import com.dvnnfrr.saku.ui.theme.SakuPreviewSurface
 import com.dvnnfrr.saku.ui.theme.SakuTheme
 import com.dvnnfrr.saku.ui.theme.formatIdr
+import com.dvnnfrr.saku.ui.theme.formatIdrAxis
 import com.dvnnfrr.saku.ui.theme.formatIdrCompact
 import com.dvnnfrr.saku.ui.theme.formatIdrSigned
 import com.dvnnfrr.saku.ui.transactions.stripColumnLabel
@@ -72,6 +76,10 @@ import kotlinx.datetime.LocalDate
  *
  * Every column is a tap target the full column wide and speaks its own figures, so the
  * chart is never colour-only and never pointer-only.
+ *
+ * A Y axis the app works out itself ([stripAxis]) sits fixed at the left while the
+ * columns scroll past it, and each column draws its own share of the gridlines, so the
+ * lines scroll with the bars and always meet the labels.
  */
 @Composable
 fun PeriodStrip(
@@ -83,22 +91,64 @@ fun PeriodStrip(
     val selected = columns.firstOrNull { it.selected }?.range
     val listState = remember(selected) { LazyListState() }
     val newestFirst = columns.asReversed()
+    val axis = remember(columns) { stripAxis(columns) }
+    val spacing = SakuTheme.spacing
 
-    LazyRow(
-        state = listState,
-        reverseLayout = true,
-        contentPadding = PaddingValues(horizontal = SakuTheme.spacing.sm, vertical = SakuTheme.spacing.sm),
-        verticalAlignment = Alignment.Bottom,
-        modifier = modifier.fillMaxWidth(),
-    ) {
-        items(count = newestFirst.size, key = { index -> newestFirst[index].range.start.toEpochDays() }) { index ->
-            val column = newestFirst[index]
-            StripColumnView(
-                column = column,
-                side = side,
-                onClick = { onSelectPeriod(column.range) },
-                modifier = Modifier.width(COLUMN_WIDTH),
-            )
+    Row(modifier = modifier.fillMaxWidth()) {
+        // Down by the row's and the column's top padding, so tick 0 meets the baseline.
+        AxisLabels(axis, Modifier.padding(start = spacing.sm, top = spacing.sm + spacing.xs))
+        LazyRow(
+            state = listState,
+            reverseLayout = true,
+            contentPadding = PaddingValues(end = spacing.sm, top = spacing.sm, bottom = spacing.sm),
+            verticalAlignment = Alignment.Bottom,
+            modifier = Modifier.weight(1f),
+        ) {
+            items(count = newestFirst.size, key = { index -> newestFirst[index].range.start.toEpochDays() }) { index ->
+                val column = newestFirst[index]
+                StripColumnView(
+                    column = column,
+                    axis = axis,
+                    side = side,
+                    onClick = { onSelectPeriod(column.range) },
+                    modifier = Modifier.width(COLUMN_WIDTH),
+                )
+            }
+        }
+    }
+}
+
+/**
+ * The tick labels, each centred on its gridline's height in the bar area. Hidden from
+ * TalkBack: every column already speaks its exact figures, which say more than a scale.
+ */
+@Composable
+private fun AxisLabels(axis: StripAxis, modifier: Modifier = Modifier) {
+    val colors = SakuTheme.colors
+    Layout(
+        content = {
+            axis.ticks.forEach { tick ->
+                Text(
+                    text = formatIdrAxis(tick),
+                    style = SakuTheme.typography.caption,
+                    color = colors.ink2,
+                    maxLines = 1,
+                    softWrap = false,
+                )
+            }
+        },
+        modifier = modifier
+            .width(AXIS_WIDTH)
+            .height(BAR_AREA)
+            .clearAndSetSemantics {},
+    ) { measurables, constraints ->
+        val placeables = measurables.map { it.measure(constraints.copy(minWidth = 0, minHeight = 0)) }
+        layout(constraints.maxWidth, constraints.maxHeight) {
+            val top = axis.top.rupiah
+            placeables.forEachIndexed { index, placeable ->
+                val y = constraints.maxHeight - (constraints.maxHeight * axis.ticks[index].rupiah / top).toInt()
+                placeable.place(x = 0, y = y - placeable.height / 2)
+            }
         }
     }
 }
@@ -166,6 +216,7 @@ internal fun stripTitleRes(mode: PeriodMode?): Int = when (mode) {
 @Composable
 private fun StripColumnView(
     column: StripColumn,
+    axis: StripAxis,
     side: StatsSide?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -205,7 +256,7 @@ private fun StripColumnView(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(spacing.xs),
     ) {
-        Bars(column, side)
+        Bars(column, axis, side)
         Text(
             text = column.range.stripColumnLabel(),
             style = SakuTheme.typography.caption,
@@ -225,17 +276,28 @@ private fun StripColumnView(
 }
 
 @Composable
-private fun Bars(column: StripColumn, side: StatsSide?) {
+private fun Bars(column: StripColumn, axis: StripAxis, side: StatsSide?) {
     val colors = SakuTheme.colors
+    val gridColor = colors.line
     // Muted by alpha on the same tokens, so both themes keep their own validated hues.
     val strength = if (column.selected) 1f else MUTED_ALPHA
     val income = colors.income.copy(alpha = strength)
     val expense = colors.expense.copy(alpha = strength)
 
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
         Row(
-            modifier = Modifier.height(BAR_AREA),
-            horizontalArrangement = Arrangement.spacedBy(BAR_GAP),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(BAR_AREA)
+                .drawBehind {
+                    // Tick 0 is the baseline below; the rest cross the full column width.
+                    val top = axis.top.rupiah
+                    axis.ticks.drop(1).forEach { tick ->
+                        val y = size.height - size.height * tick.rupiah / top
+                        drawLine(gridColor, Offset(0f, y), Offset(size.width, y), strokeWidth = 1.dp.toPx())
+                    }
+                },
+            horizontalArrangement = Arrangement.spacedBy(BAR_GAP, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.Bottom,
         ) {
             if (!column.empty) {
@@ -253,7 +315,7 @@ private fun Bars(column: StripColumn, side: StatsSide?) {
         }
         Box(
             modifier = Modifier
-                .width(PAIR_WIDTH + BASELINE_OVERHANG)
+                .fillMaxWidth()
                 .height(1.dp)
                 .background(colors.line),
         )
@@ -276,10 +338,10 @@ private val BAR_AREA = 72.dp
 private val BAR_WIDTH = 10.dp
 private val BAR_GAP = 3.dp
 private val PAIR_WIDTH = BAR_WIDTH * 2 + BAR_GAP
-private val BASELINE_OVERHANG = 8.dp
 
-/** Six columns and the row's padding fit a 412 dp phone: 6 × 64 + 2 × 8 = 400. */
-private val COLUMN_WIDTH = 64.dp
+/** Six columns, the axis and the padding fit a 412 dp phone: 8 + 40 + 6 × 56 + 8 = 392. */
+private val COLUMN_WIDTH = 56.dp
+private val AXIS_WIDTH = 40.dp
 
 @SakuPreview
 @Composable

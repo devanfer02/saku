@@ -127,6 +127,26 @@ fun formatIdrCompact(money: Money, sign: MoneySign = MoneySign.NET): String {
 }
 
 /**
+ * A chart axis tick: `0`, `250 rb`, `2,5 jt`, `10 jt`. Ticks are round steps from
+ * `stripAxis`, so a juta shows a decimal only when it has one, and anything under a juta
+ * reads in thousands (`rb`, ribu) rather than as `0,3 jt`. Unsigned: an axis starts at 0.
+ */
+fun formatIdrAxis(tick: Money): String {
+    val rupiah = abs(tick.rupiah)
+    if (rupiah == 0L) return "0"
+    if (rupiah < RUPIAH_PER_JUTA) return "${roundedDiv(rupiah, 1_000)}$AXIS_THOUSANDS_SUFFIX"
+    val tenths = roundedDiv(rupiah, RUPIAH_PER_TENTH_JUTA)
+    return buildString {
+        appendGrouped((tenths / 10).toString())
+        if (tenths % 10 != 0L) append(DECIMAL_COMMA).append(tenths % 10)
+        append(COMPACT_SUFFIX)
+    }
+}
+
+private const val RUPIAH_PER_JUTA = 1_000_000L
+private const val AXIS_THOUSANDS_SUFFIX = " rb"
+
+/**
  * A day's net in a calendar cell, about a seventh of the screen wide, where
  * `Rp 5.061.400` cannot fit: `45k`, `−5m`. Rounded to the nearest thousand or million,
  * which is enough for a glance; the exact figure is one tap away in Daily.

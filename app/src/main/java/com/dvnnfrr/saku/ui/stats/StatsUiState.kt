@@ -194,7 +194,7 @@ sealed interface ComparisonLine {
  *
  * [empty] marks the lone slot shown when nothing has happened up to the selected period,
  * drawn as a slot rather than as two zero bars. The bar lengths are thousandths of the
- * largest figure across the strip's whole history.
+ * strip's axis top, shared across its whole history.
  */
 data class StripColumn(
     val range: DateRange,
@@ -208,6 +208,11 @@ data class StripColumn(
     val net: Money get() = income - expense
 
     val totals: PeriodTotals get() = PeriodTotals(income, expense)
+}
+
+/** A strip's Y axis: gridlines at every [step] from zero up to [top], which is where bars end at full height. */
+data class StripAxis(val step: Money, val top: Money) {
+    val ticks: List<Money> get() = (0..top.rupiah / step.rupiah).map { Money(it * step.rupiah) }
 }
 
 /**

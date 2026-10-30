@@ -508,11 +508,31 @@ class StatsAssemblyTest {
     fun `bars share one scale across the whole history`() {
         val strip = foldStrip(mayToOctober, october)
 
-        // September's 19.155.000 income is the tallest bar.
-        assertEquals(1_000, strip[4].incomePermille)
-        assertEquals(927, strip[4].expensePermille)
-        assertEquals(732, strip[5].expensePermille)
-        assertEquals(861, strip[5].incomePermille)
+        // September's 19.155.000 income is the tallest bar; the axis rounds it up to 20 jt,
+        // and every bar is a share of that top so the axis labels read true.
+        assertEquals(StripAxis(step = Money(5_000_000), top = Money(20_000_000)), stripAxis(strip))
+        assertEquals(958, strip[4].incomePermille)
+        assertEquals(888, strip[4].expensePermille)
+        assertEquals(701, strip[5].expensePermille)
+        assertEquals(825, strip[5].incomePermille)
+    }
+
+    @Test
+    fun `the axis takes the smallest round step that covers the tallest bar in four`() {
+        assertEquals(StripAxis(Money(5_000_000), Money(20_000_000)), stripAxis(Money(19_155_000)))
+        assertEquals(StripAxis(Money(2_000_000), Money(8_000_000)), stripAxis(Money(7_100_000)))
+        assertEquals(StripAxis(Money(2_500_000), Money(10_000_000)), stripAxis(Money(9_400_000)))
+        assertEquals(StripAxis(Money(100_000), Money(300_000)), stripAxis(Money(261_000)))
+        assertEquals(StripAxis(Money(10_000_000), Money(40_000_000)), stripAxis(Money(40_000_000)))
+        assertEquals(
+            listOf(0L, 2_500_000L, 5_000_000L, 7_500_000L, 10_000_000L),
+            stripAxis(Money(9_400_000)).ticks.map { it.rupiah },
+        )
+    }
+
+    @Test
+    fun `an empty history still gets an axis with one step`() {
+        assertEquals(StripAxis(Money(1_000), Money(1_000)), stripAxis(Money.ZERO))
     }
 
     @Test
