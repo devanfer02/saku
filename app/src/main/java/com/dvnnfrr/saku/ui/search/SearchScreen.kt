@@ -3,10 +3,13 @@ package com.dvnnfrr.saku.ui.search
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -24,6 +27,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -33,6 +37,8 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.dvnnfrr.saku.R
@@ -44,11 +50,15 @@ import com.dvnnfrr.saku.ui.entry.EntrySheet
 import com.dvnnfrr.saku.ui.filter.FilterBar
 import com.dvnnfrr.saku.ui.shared.EmptyState
 import com.dvnnfrr.saku.ui.shared.MoneyText
+import com.dvnnfrr.saku.ui.shared.RankedRow
+import com.dvnnfrr.saku.ui.shared.periodLabel
 import com.dvnnfrr.saku.ui.theme.MoneySign
 import com.dvnnfrr.saku.ui.theme.SakuPreview
 import com.dvnnfrr.saku.ui.theme.SakuPreviewSurface
 import com.dvnnfrr.saku.ui.theme.SakuTheme
-import com.dvnnfrr.saku.ui.transactions.DailyTab
+import com.dvnnfrr.saku.ui.theme.formatIdr
+import com.dvnnfrr.saku.ui.transactions.daySectionItems
+import kotlinx.coroutines.launch
 
 /**
  * Search over all history, pushed from Trans. Back returns to Trans as it was left,
@@ -162,13 +172,88 @@ fun SearchScreen(
                 message = stringResource(R.string.search_empty, query.trim()),
             )
 
-            else -> {
-                Summary(state)
-                if (state.hiddenCount > 0) HiddenLine(state.hiddenCount, onClearFilter)
-                if (state.count > 0) DailyTab(days = state.days, onRowClick = onRowClick)
-            }
+            else -> Results(state, onClearFilter, onRowClick)
         }
     }
+}
+
+/**
+ * The summary, the month breakdown and the day rows as one list, so the breakdown
+ * scrolls away like a header instead of pinning the rows below a tall block.
+ */
+@Composable
+private fun Results(
+    state: SearchUiState,
+    onClearFilter: () -> Unit,
+    onRowClick: (Long) -> Unit,
+) {
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+    val showHidden = state.hiddenCount > 0
+    val showMonths = state.months.isNotEmpty()
+    // Must match the items emitted before the month rows below.
+    val leadingItems = 1 + (if (showHidden) 1 else 0) + (if (showMonths) 1 else 0)
+
+    LazyColumn(
+        state = listState,
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = SakuTheme.spacing.xl),
+    ) {
+        item(key = "summary") { Summary(state) }
+        if (showHidden) item(key = "hidden") { HiddenLine(state.hiddenCount, onClearFilter) }
+        if (showMonths) {
+            item(key = "by-month") { MonthsHeading() }
+            items(count = state.months.size, key = { i -> "month-${state.months[i].range.start}" }) { i ->
+                val month = state.months[i]
+                val target = searchScrollIndex(leadingItems, state.months, state.days, month)
+                MonthRow(
+                    month = month,
+                    onClick = target?.let { index -> { scope.launch { listState.animateScrollToItem(index) } } },
+                )
+            }
+        }
+        daySectionItems(state.days, onRowClick)
+    }
+}
+
+@Composable
+private fun MonthsHeading() {
+    Text(
+        text = stringResource(R.string.search_by_month),
+        style = SakuTheme.typography.label,
+        color = SakuTheme.colors.ink2,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(
+                start = SakuTheme.spacing.screen,
+                end = SakuTheme.spacing.screen,
+                top = SakuTheme.spacing.md,
+                bottom = SakuTheme.spacing.xs,
+            )
+            .semantics { heading() },
+    )
+}
+
+/** One month: its money on the search's side, the count, and the other side when present. */
+@Composable
+private fun MonthRow(month: SearchMonth, onClick: (() -> Unit)?) {
+    val colors = SakuTheme.colors
+    val count = pluralStringResource(R.plurals.search_month_count, month.count, month.count)
+    val supporting = when {
+        month.count == 0 -> stringResource(R.string.search_month_none)
+        month.otherSide.isZero -> count
+        month.side == TxnType.INCOME -> stringResource(R.string.search_month_with_out, count, formatIdr(month.otherSide))
+        else -> stringResource(R.string.search_month_with_in, count, formatIdr(month.otherSide))
+    }
+    RankedRow(
+        colorSlot = null,
+        name = periodLabel(month.range),
+        value = month.value,
+        color = if (month.side == TxnType.INCOME) colors.income else colors.expense,
+        barPermille = month.barPermille,
+        supporting = supporting,
+        onClick = onClick,
+    )
 }
 
 /** The count and the matching rows' Income and Expenses; transfers count toward neither. */
