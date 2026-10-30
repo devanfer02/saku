@@ -6,9 +6,7 @@ import androidx.compose.ui.unit.dp
 
 /**
  * The spacing scale, plus the handful of fixed dimensions that more than one screen has
- * to agree on. [donutSegmentGap] lives here because the gap is a requirement, not a
- * styling choice: it is the second cue that stops a donut conveying identity by colour
- * alone, so every donut in the app reads it from the same token.
+ * to agree on: row height, touch target, swatch and corner.
  */
 @Immutable
 data class SakuSpacing(
@@ -24,9 +22,6 @@ data class SakuSpacing(
     val touchTarget: Dp = 48.dp,
     val swatch: Dp = 10.dp,
     val corner: Dp = 12.dp,
-    val donutSize: Dp = 176.dp,
-    val donutStroke: Dp = 18.dp,
-    val donutSegmentGap: Dp = 2.dp,
 )
 
 val SakuSpacingDefaults = SakuSpacing()

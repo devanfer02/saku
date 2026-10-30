@@ -33,7 +33,7 @@ data class SakuColors(
     /** Exactly [ColorSlot.COUNT] entries; the index is the [ColorSlot.index]. */
     /**
      * For a segment that owns no slot — the stats screen's aggregated "Other".
-     * Deliberately not `surfaceAlt`: that is the donut's unfilled track, so an arc
+     * Deliberately not `surfaceAlt`: that is a share bar's unfilled track, so a bar
      * painted in it would be invisible.
      */
     val chartNeutral: Color,
