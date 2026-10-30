@@ -350,14 +350,17 @@ private fun PeriodStripPreview() {
     val days = previewHistory()
     SakuPreviewSurface(padded = false) {
         Column {
-            PeriodStrip(foldStrip(days, october), onSelectPeriod = {})
-            PeriodStrip(foldStrip(days, october), onSelectPeriod = {}, side = StatsSide.EXPENSES)
-            PeriodStrip(foldStrip(days, DateRange.ofWeek(LocalDate(2026, 10, 26))), onSelectPeriod = {})
-            PeriodStrip(foldStrip(days, DateRange.ofYear(2026)), onSelectPeriod = {})
-            PeriodStrip(foldStrip(emptyList(), october), onSelectPeriod = {})
+            PeriodStrip(foldStrip(days, october, PREVIEW_TODAY), onSelectPeriod = {})
+            PeriodStrip(foldStrip(days, october, PREVIEW_TODAY), onSelectPeriod = {}, side = StatsSide.EXPENSES)
+            PeriodStrip(foldStrip(days, DateRange.ofWeek(LocalDate(2026, 10, 26)), PREVIEW_TODAY), onSelectPeriod = {})
+            PeriodStrip(foldStrip(days, DateRange.ofYear(2026), PREVIEW_TODAY), onSelectPeriod = {})
+            PeriodStrip(foldStrip(emptyList(), october, PREVIEW_TODAY), onSelectPeriod = {})
         }
     }
 }
+
+/** The day the previews stand on, inside the last month of [previewHistory]. */
+internal val PREVIEW_TODAY = LocalDate(2026, 10, 30)
 
 /** May to October 2026, one day a month carrying the month's totals. */
 internal fun previewHistory(): List<DailyTotals> = listOf(

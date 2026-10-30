@@ -455,7 +455,7 @@ private fun StatsScreenPreview() {
                     current = totals,
                 ),
                 composition = previewComposition(),
-                strip = foldStrip(previewHistory(), october),
+                strip = foldStrip(previewHistory(), october, PREVIEW_TODAY),
                 loading = false,
             ),
             onPrevious = {},

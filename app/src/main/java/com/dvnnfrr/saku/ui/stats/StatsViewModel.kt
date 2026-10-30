@@ -122,8 +122,8 @@ class StatsViewModel(
 
     /**
      * The strip, keyed on the period and the filter and queried in every mode but
-     * Period. One filtered daily totals query from the start of history to the end of
-     * the selected period, folded into weeks, months or years in [foldStrip]: one
+     * Period. One filtered daily totals query over all history, future-dated rows
+     * included, folded into weeks, months or years in [foldStrip]: one
      * aggregate instead of one per column, which over sixteen months of history would be
      * seventeen live queries (seventy weeks' worth in Weekly) all re-running on every
      * write. Switching side does not touch it: the strip shows both.
@@ -138,7 +138,7 @@ class StatsViewModel(
                 if (key == null) return@flatMapLatest flowOf(emptyList())
                 val (range, filter) = key
                 transactionRepository.observeDailyTotals(stripHistory(range), zone, filter)
-                    .map { days -> foldStrip(days, range) }
+                    .map { days -> foldStrip(days, range, today()) }
             }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -193,7 +193,7 @@ class StatsViewModel(
         if (!hasStrip(key.range.mode)) return flowOf(emptyList())
         val filter = categoryFilter(key.filter, key.side, categoryId)
         return transactionRepository.observeDailyTotals(stripHistory(key.range), zone, filter)
-            .map { days -> foldStrip(days, key.range) }
+            .map { days -> foldStrip(days, key.range, today()) }
     }
 
     /** The two display choices, kept apart from [selection] so neither re-runs a query. */

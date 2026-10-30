@@ -396,35 +396,51 @@ class StatsAssemblyTest {
     private fun day(year: Int, month: Int, day: Int, income: Long = 0, expense: Long = 0) =
         DailyTotals(LocalDate(year, month, day), Money(income), Money(expense))
 
+    /** Inside October 2026, so October is both selected and current in the month tests. */
+    private val today = LocalDate(2026, 10, 30)
+
+    private fun month(year: Int, month: Int) = DateRange.ofMonth(LocalDate(year, month, 1))
+
     @Test
-    fun `the strip reads from the start of history to the end of the selected period`() {
+    fun `the strip query reaches far past the selected period to catch future-dated rows`() {
         val history = stripHistory(october)
-        assertEquals(LocalDate(2026, 10, 31), history.endInclusive)
+        assertTrue(history.endInclusive >= LocalDate(2100, 1, 1))
         assertTrue(history.start < LocalDate(2000, 1, 1))
     }
 
     @Test
-    fun `October 2026 reads from the first month with a flow, October selected and last`() {
-        val strip = foldStrip(mayToOctober, october)
+    fun `October 2026 reads from the first month with a flow to three months past it`() {
+        val strip = foldStrip(mayToOctober, october, today)
 
-        assertEquals((5..10).map { DateRange.ofMonth(LocalDate(2026, it, 1)) }, strip.map { it.range })
-        assertEquals(listOf(false, false, false, false, false, true), strip.map { it.selected })
+        assertEquals((5..12).map { month(2026, it) } + month(2027, 1), strip.map { it.range })
+        assertEquals(listOf(5), strip.indices.filter { strip[it].selected })
         assertEquals(
             listOf("+0,8 jt", "+7,1 jt", "−0,3 jt", "−1,4 jt", "+1,4 jt", "+2,5 jt"),
-            strip.map { formatIdrCompact(it.net) },
+            strip.take(6).map { formatIdrCompact(it.net) },
         )
         assertTrue(strip.none { it.empty })
     }
 
     @Test
-    fun `history from July 2025 holds every month through October 2026`() {
+    fun `future columns are appended as real zeros`() {
+        val strip = foldStrip(mayToOctober, october, today)
+
+        val future = strip.takeLast(STRIP_FUTURE_PERIODS)
+        assertEquals(listOf(month(2026, 11), month(2026, 12), month(2027, 1)), future.map { it.range })
+        assertTrue(future.all { it.totals == PeriodTotals.EMPTY && !it.empty && !it.selected })
+        assertTrue(future.all { it.incomePermille == 0 && it.expensePermille == 0 })
+    }
+
+    @Test
+    fun `history from July 2025 holds every month through three past October 2026`() {
         val days = listOf(day(2025, 7, 20, expense = 50_000)) + mayToOctober
 
-        val strip = foldStrip(days, october)
+        val strip = foldStrip(days, october, today)
 
-        assertEquals(16, strip.size)
-        assertEquals(DateRange.ofMonth(LocalDate(2025, 7, 1)), strip.first().range)
-        assertEquals(october, strip.last().range)
+        assertEquals(19, strip.size)
+        assertEquals(month(2025, 7), strip.first().range)
+        assertEquals(october, strip.single { it.selected }.range)
+        assertEquals(month(2027, 1), strip.last().range)
         // August 2025 to April 2026 are quiet months after history began: real zeros.
         assertEquals(Money.ZERO, strip[1].expense)
         assertTrue(strip.none { it.empty })
@@ -432,7 +448,7 @@ class StatsAssemblyTest {
 
     @Test
     fun `bars share one scale across the whole history`() {
-        val strip = foldStrip(mayToOctober, october)
+        val strip = foldStrip(mayToOctober, october, today)
 
         // September's 19.155.000 income is the tallest bar; the axis rounds it up to 20 jt,
         // and every bar is a share of that top so the axis labels read true.
@@ -462,30 +478,62 @@ class StatsAssemblyTest {
     }
 
     @Test
-    fun `an earlier selected month ends the strip there`() {
-        val january = DateRange.ofMonth(LocalDate(2026, 1, 1))
+    fun `a selected period in the past still shows every later column`() {
+        val january = month(2026, 1)
         val days = listOf(day(2025, 7, 20, expense = 50_000)) + mayToOctober
 
-        val strip = foldStrip(days, january)
+        val strip = foldStrip(days, january, today)
 
-        assertEquals(january, strip.last().range)
-        assertTrue(strip.last().selected)
-        assertEquals(7, strip.size)
+        assertEquals(19, strip.size)
+        assertEquals(listOf(6), strip.indices.filter { strip[it].selected })
+        assertEquals(january, strip[6].range)
+        // October 2026 is after the selection and still carries its figures.
+        assertEquals(october, strip[15].range)
+        assertEquals(Money(16_500_000), strip[15].income)
+        assertEquals(month(2027, 1), strip.last().range)
     }
 
     @Test
-    fun `days after the selected month do not start history`() {
-        val april = DateRange.ofMonth(LocalDate(2026, 4, 1))
+    fun `a selected month before any history starts the strip there`() {
+        val april = month(2026, 4)
 
-        val strip = foldStrip(mayToOctober, april)
+        val strip = foldStrip(mayToOctober, april, today)
 
-        assertEquals(listOf(april), strip.map { it.range })
-        assertTrue(strip.single().empty)
+        assertEquals((4..12).map { month(2026, it) } + month(2027, 1), strip.map { it.range })
+        assertTrue(strip.first().selected)
+        assertEquals(PeriodTotals.EMPTY, strip.first().totals)
+        assertTrue(strip.none { it.empty })
+    }
+
+    @Test
+    fun `a future-dated transaction shows in its column and extends the strip`() {
+        val days = mayToOctober + day(2027, 3, 5, expense = 25_000_000)
+
+        val strip = foldStrip(days, october, today)
+
+        // March 2027 is the last month with data, so the strip runs three past it.
+        assertEquals(month(2027, 6), strip.last().range)
+        val march = strip.single { it.range == month(2027, 3) }
+        assertEquals(Money(25_000_000), march.expense)
+        // The future figure is the tallest, so the axis scales to it.
+        assertEquals(StripAxis(Money(10_000_000), Money(30_000_000)), stripAxis(strip))
+        assertTrue(strip.single { it.range == october }.selected)
+    }
+
+    @Test
+    fun `a selected period after today runs the strip three past it`() {
+        val february = month(2027, 2)
+
+        val strip = foldStrip(mayToOctober, february, today)
+
+        assertEquals(month(2026, 5), strip.first().range)
+        assertEquals(month(2027, 5), strip.last().range)
+        assertEquals(february, strip.single { it.selected }.range)
     }
 
     @Test
     fun `no history at all is the selected month alone as an empty slot`() {
-        val strip = foldStrip(emptyList(), october)
+        val strip = foldStrip(emptyList(), october, today)
 
         assertEquals(1, strip.size)
         assertTrue(strip.single().empty)
@@ -502,32 +550,34 @@ class StatsAssemblyTest {
             day(2026, 10, 27, income = 400_000),
         )
 
-        val strip = foldStrip(days, week)
+        val strip = foldStrip(days, week, today)
 
         assertEquals(
-            listOf(5, 12, 19, 26).map { DateRange.ofWeek(LocalDate(2026, 10, it)) },
+            listOf(5, 12, 19, 26).map { DateRange.ofWeek(LocalDate(2026, 10, it)) } +
+                listOf(2, 9, 16).map { DateRange.ofWeek(LocalDate(2026, 11, it)) },
             strip.map { it.range },
         )
-        assertEquals(listOf(100_000L, 500_000L, 0L, 0L), strip.map { it.expense.rupiah })
-        assertEquals(Money(400_000), strip.last().income)
-        assertTrue(strip.last().selected)
+        assertEquals(listOf(100_000L, 500_000L, 0L, 0L, 0L, 0L, 0L), strip.map { it.expense.rupiah })
+        assertEquals(Money(400_000), strip[3].income)
+        assertTrue(strip[3].selected)
     }
 
     @Test
-    fun `Annually reads 2025 and 2026`() {
+    fun `Annually reads 2025 through three years past 2026`() {
         val days = listOf(day(2025, 7, 20, expense = 50_000)) + mayToOctober
 
-        val strip = foldStrip(days, DateRange.ofYear(2026))
+        val strip = foldStrip(days, DateRange.ofYear(2026), today)
 
-        assertEquals(listOf(DateRange.ofYear(2025), DateRange.ofYear(2026)), strip.map { it.range })
+        assertEquals((2025..2029).map { DateRange.ofYear(it) }, strip.map { it.range })
         assertEquals(Money(50_000), strip.first().expense)
-        assertEquals(Money(76_655_000), strip.last().income)
+        assertEquals(Money(76_655_000), strip[1].income)
+        assertTrue(strip.drop(2).all { it.totals == PeriodTotals.EMPTY })
     }
 
     @Test
     fun `Period mode has no strip`() {
         val custom = DateRange.custom(LocalDate(2026, 10, 3), LocalDate(2026, 10, 20))
-        assertTrue(foldStrip(mayToOctober, custom).isEmpty())
+        assertTrue(foldStrip(mayToOctober, custom, today).isEmpty())
         assertTrue(!hasStrip(PeriodMode.CUSTOM))
     }
 

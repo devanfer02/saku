@@ -39,7 +39,10 @@ data class StatsUiState(
     val totals: PeriodTotals = PeriodTotals.EMPTY,
     val comparison: PeriodComparison = PeriodComparison.EMPTY,
     val composition: RankedComposition = RankedComposition.EMPTY,
-    /** Every week, month or year through the selected one. Empty in Period mode. */
+    /**
+     * Every week, month or year from the first with data to three past the latest of the
+     * last with data, today's and the selected one. Empty in Period mode.
+     */
     val strip: List<StripColumn> = emptyList(),
     /** Whether the strip shows its bars or only its header line. */
     val stripExpanded: Boolean = true,
@@ -159,8 +162,8 @@ sealed interface ComparisonLine {
 /**
  * One week, month or year of the strip, whichever the period mode steps by.
  *
- * [empty] marks the lone slot shown when nothing has happened up to the selected period,
- * drawn as a slot rather than as two zero bars. The bar lengths are thousandths of the
+ * [empty] marks the lone slot shown when there is no history at all, drawn as a slot
+ * rather than as two zero bars. A quiet or future period inside the strip is a real zero. The bar lengths are thousandths of the
  * strip's axis top, shared across its whole history.
  */
 data class StripColumn(
