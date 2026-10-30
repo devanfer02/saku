@@ -17,4 +17,4 @@
 
 - [x] 3.1 Import the owner's sample file in a unit test outside the repo, never committed (manual check only)
 - [x] 3.2 `./gradlew :app:testDebugUnitTest :app:assembleDebug` green
-- [ ] 3.3 On a device: fresh install, import the owner's file, check balances and Import history
+- [ ] 3.3 On a device: fresh install, import a database file holding the mock fixture `data/mock-money-manager.xlsx`, check balances and Import history (not done: device check)

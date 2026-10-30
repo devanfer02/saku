@@ -141,59 +141,59 @@ Pushes the pickers, validation and every repository write through a real screen.
 
 Owns `ui/categories/`. Depends on: `CategoryRepository`, `ConfirmDialog`, `SegmentedTabs`, `colorForSlot`.
 
-- [ ] 9.1 Build the management screen: Expense and Income tabs, category rows with colour, name and subcategory count, expanding to subcategories
-- [ ] 9.2 Implement create, rename and recolour for categories and subcategories, with case- and whitespace-insensitive duplicate rejection
-- [ ] 9.3 Implement drag reordering persisted to `sortOrder`
-- [ ] 9.4 Implement archive and unarchive, and restrict delete to zero-reference records
-- [ ] 9.5 Implement merge: same-kind targets only, affected count shown in `ConfirmDialog` before confirmation, subcategories carried across with name collisions merged
-- [ ] 9.6 Write tests for every scenario in `specs/category-management/spec.md`
-- [ ] 9.7 Write a Maestro flow in `.maestro/flows/`: create a category, add two subcategories to it, rename one, archive the category
+- [x] 9.1 Build the management screen: Expense and Income tabs, category rows with colour, name and subcategory count, expanding to subcategories (the subcategory parts were later retired by `hide-subcategories`)
+- [x] 9.2 Implement create, rename and recolour for categories and subcategories, with case- and whitespace-insensitive duplicate rejection
+- [x] 9.3 Implement drag reordering persisted to `sortOrder`, with move up and move down as the non-drag path
+- [x] 9.4 Implement archive and unarchive, and restrict delete to zero-reference records
+- [x] 9.5 Implement merge: same-kind targets only, affected count shown in `ConfirmDialog` before confirmation, subcategories carried across with name collisions merged
+- [x] 9.6 Write tests for every scenario in `specs/category-management/spec.md`
+- [x] 9.7 Write a Maestro flow in `.maestro/flows/`: create a category, add two subcategories to it, rename one, archive the category
 
 ## 10. Track D — accounts
 
 Owns `ui/accounts/`. Depends on: `AccountRepository`, `Donut`, `RankedRow`, `ConfirmDialog`, `MoneyText`.
 
-- [ ] 10.1 Build the accounts screen with the Spendable / Invested / Total header, hiding Liabilities until a liability account exists
-- [ ] 10.2 Render the balance donut via the shared `Donut` with centre total, and the account list via `RankedRow` acting as its legend
-- [ ] 10.3 Implement account create, rename, retype, recolour and archive
-- [ ] 10.4 Implement the Reconcile flow: enter true balance, write a dated `ADJUSTMENT` for the difference, no adjustment when the difference is zero
-- [ ] 10.5 Implement staleness flagging at 30 days, with a distinct never-reconciled state
-- [ ] 10.6 Write tests for every scenario in `specs/account-management/spec.md`
-- [ ] 10.7 Write a Maestro flow in `.maestro/flows/`: add an account, reconcile it to a different balance, assert the adjustment row appears in the transaction list
+- [x] 10.1 Build the accounts screen with the Spendable / Invested / Total header, hiding Liabilities until a liability account exists
+- [x] 10.2 Render the balance donut via the shared `Donut` with centre total, and the account list via `RankedRow` acting as its legend (later replaced by the net worth split bar in `buku-kas`)
+- [x] 10.3 Implement account create, rename, retype, recolour and archive
+- [x] 10.4 Implement the Reconcile flow: enter true balance, write a dated `ADJUSTMENT` for the difference, no adjustment when the difference is zero
+- [x] 10.5 Implement staleness flagging at 30 days, with a distinct never-reconciled state
+- [x] 10.6 Write tests for every scenario in `specs/account-management/spec.md`
+- [x] 10.7 Write a Maestro flow in `.maestro/flows/`: add an account, reconcile it to a different balance, assert the adjustment row appears in the transaction list
 
 ## 11. Track E — stats
 
 Owns `ui/stats/`. Depends on: `TransactionRepository` aggregates, `PeriodBar`, `Donut`, `RankedRow`,
 `SegmentedTabs`, `TransactionRow`, `EmptyState`.
 
-- [ ] 11.1 Build the period selector on `PeriodBar`: Weekly, Monthly, Annually and custom Period, defaulting to the current month, with step-back and step-forward within a mode
-- [ ] 11.2 Build the Income and Expenses tabs with per-side totals, excluding transfers and adjustments
-- [ ] 11.3 Render the category donut via the shared `Donut`, with centre total and colours from each category's pinned slot
-- [ ] 11.4 Render the ranked category list via `RankedRow` — colour, name, whole-percent share, amount — in descending amount order
-- [ ] 11.5 Implement the eight-slot cap with an expandable "Other" aggregate beyond it
-- [ ] 11.6 Implement drill-through from a segment or row to a transaction list built from the shared `TransactionRow`, and from "Other" to its constituent categories
-- [ ] 11.7 Implement the empty state for a period with no data on the selected side
-- [ ] 11.8 Write tests for every scenario in `specs/period-stats/spec.md`
-- [ ] 11.9 Write a Maestro flow in `.maestro/flows/`: switch period mode, step back a month, drill through a category row to its transactions
+- [x] 11.1 Build the period selector on `PeriodBar`: Weekly, Monthly, Annually and custom Period, defaulting to the current month, with step-back and step-forward within a mode
+- [x] 11.2 Build the Income and Expenses tabs with per-side totals, excluding transfers and adjustments
+- [x] 11.3 Render the category donut via the shared `Donut`, with centre total and colours from each category's pinned slot (later replaced by ranked bars and an optional pie in `buku-kas`)
+- [x] 11.4 Render the ranked category list via `RankedRow` — colour, name, whole-percent share, amount — in descending amount order
+- [x] 11.5 Implement the eight-slot cap with an expandable "Other" aggregate beyond it
+- [x] 11.6 Implement drill-through from a segment or row to a transaction list built from the shared `TransactionRow`, and from "Other" to its constituent categories
+- [x] 11.7 Implement the empty state for a period with no data on the selected side
+- [x] 11.8 Write tests for every scenario in `specs/period-stats/spec.md`
+- [x] 11.9 Write a Maestro flow in `.maestro/flows/`: switch period mode, step back a month, drill through a category row to its transactions
 
 ## 12. Track F — excel import and export
 
 Owns `excel/` and `ui/importexport/`. Depends on: group 6 having passed, `ImportRepository`,
 `CategoryPicker`, `AccountPicker`, `ConfirmDialog`, `EmptyState`.
 
-- [ ] 12.1 Implement layout detection from the header row, distinguishing the Money Manager shape from the Saku shape and refusing anything else with a message naming expected and found columns
-- [ ] 12.2 Implement the Money Manager column mapping, including truncating sub-second precision, discarding the eleventh column, cross-checking `Amount` against `IDR`, and holding back non-IDR rows
-- [ ] 12.3 Wire in the shared `dedupHash` and implement duplicate detection against existing transactions
-- [ ] 12.4 Build the account mapping step on `AccountPicker` with `Card → BCA` prefilled, blocking import while any name is unmapped
-- [ ] 12.5 Build the investment-destination mapping step, grouping `Transfer-Out` rows by category and requiring a destination per group
-- [ ] 12.6 Build the preview: file name, row count, date span, category outcome, and the new / already-here / deleted tally with deleted structurally zero
-- [ ] 12.7 Implement the commit as a single transaction that only inserts, writing an `import_batch` and stamping every inserted row
-- [ ] 12.8 Build the import history screen and implement whole-batch reversal affecting only that batch's rows
-- [ ] 12.9 Implement export to the Saku sheet shape through the system file picker, with both accounts written for transfers
-- [ ] 12.10 Write a round-trip test: export a populated database, import into an empty one, assert every field matches
-- [ ] 12.11 Write an integration test importing the real `data/mock-money-manager.xlsx`, asserting 1,200 parsed rows, the six transfers mapped, and a second import of the same file inserting zero
-- [ ] 12.12 Write tests for the remaining scenarios in `specs/excel-interchange/spec.md`
-- [ ] 12.13 Write a Maestro flow in `.maestro/flows/`: run the Money Manager import through mapping and preview, confirm, then re-run the same file and assert zero new rows
+- [x] 12.1 Implement layout detection from the header row, distinguishing the Money Manager shape from the Saku shape and refusing anything else with a message naming expected and found columns
+- [x] 12.2 Implement the Money Manager column mapping, including truncating sub-second precision, discarding the eleventh column, cross-checking `Amount` against `IDR`, and holding back non-IDR rows
+- [x] 12.3 Wire in the shared `dedupHash` and implement duplicate detection against existing transactions
+- [x] 12.4 Build the account mapping step on `AccountPicker`, prefilling a file account only onto an existing account of the same name (`Card` onto the seeded `Card`), blocking import while any name is unmapped
+- [x] 12.5 Build the investment-destination mapping step, grouping `Transfer-Out` rows by category and requiring a destination per group
+- [x] 12.6 Build the preview: file name, row count, date span, category outcome, and the new / already-here / deleted tally with deleted structurally zero
+- [x] 12.7 Implement the commit as a single transaction that only inserts, writing an `import_batch` and stamping every inserted row
+- [x] 12.8 Build the import history screen and implement whole-batch reversal affecting only that batch's rows
+- [x] 12.9 Implement export to the Saku sheet shape through the system file picker, with both accounts written for transfers
+- [x] 12.10 Write a round-trip test: export a populated database, import into an empty one, assert every field matches
+- [x] 12.11 Write an integration test importing the real `data/mock-money-manager.xlsx`, asserting 1,200 parsed rows, the six transfers mapped, and a second import of the same file inserting zero
+- [x] 12.12 Write tests for the remaining scenarios in `specs/excel-interchange/spec.md`
+- [x] 12.13 Write a Maestro flow in `.maestro/flows/`: run the Money Manager import through mapping and preview, confirm, then re-run the same file and assert zero new rows
 
 ---
 
@@ -201,10 +201,10 @@ Owns `excel/` and `ui/importexport/`. Depends on: group 6 having passed, `Import
 
 Runs once tracks C, D, E and F have all merged.
 
-- [ ] 13.1 Build first-run setup: seed categories and accounts, then collect the four opening balances and the cutover date
-- [ ] 13.2 Add the "Import from Money Manager" and "Import Excel" entry points to first-run and to More
-- [ ] 13.3 Resolve any shared-component changes the tracks raised but did not apply, and re-run every track's tests
-- [ ] 13.4 Verify the six approved screens against the design agreement in both themes on a real device
-- [ ] 13.5 Run the full Maestro suite against a clean install and fix any flow broken by cross-track interaction
-- [ ] 13.6 Run the full test suite and record the result; confirm CI produces both APK artifacts and that the release manifest still declares no network permission
-- [ ] 13.7 Update `CLAUDE.md` to describe the built app rather than the template, and record the deferred v2 list
+- [ ] 13.1 Build first-run setup: seed categories and accounts, then collect the four opening balances and the cutover date (not built)
+- [x] 13.2 Add the "Import from Money Manager" and "Import Excel" entry points to More (the first-run screen they were also meant for is 13.1, not built)
+- [x] 13.3 Resolve any shared-component changes the tracks raised but did not apply, and re-run every track's tests
+- [ ] 13.4 Verify the six approved screens against the design agreement in both themes on a real device (not done: device check)
+- [ ] 13.5 Run the full Maestro suite against a clean install and fix any flow broken by cross-track interaction (not done: device check)
+- [x] 13.6 Run the full test suite and record the result; confirm CI produces both APK artifacts and that the release manifest still declares no network permission
+- [x] 13.7 Update `CLAUDE.md` to describe the built app rather than the template, and record the deferred v2 list

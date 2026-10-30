@@ -23,6 +23,6 @@
 
 ## 4. Verification
 
-- [ ] 4.1 Maestro flow: back up, clear app data, restore, check the accounts screen balances
-- [ ] 4.2 Emulator check with the real 1,300-row import: backup, restore onto a clean install, compare the accounts and stats tabs
+- [x] 4.1 Back up, restore onto an empty database, and check that every account, category and transaction comes back, so the accounts screen balances match (covered by `BackupRestoreTest`; no Maestro flow was written)
+- [ ] 4.2 Emulator check with the 1,200-row mock fixture `data/mock-money-manager.xlsx` imported: backup, restore onto a clean install, compare the accounts and stats tabs (not done: device check)
 - [x] 4.3 `ANDROID_HOME=/home/dvnnfrr/Android/Sdk ./gradlew :app:testDebugUnitTest :app:assembleDebug` green

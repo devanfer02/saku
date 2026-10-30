@@ -42,6 +42,6 @@
 
 ## 7. Verification
 
-- [ ] 7.1 Maestro flows: filter to one account on Trans and see it on Stats, then clear; open Monthly and expand a month; search a note and an amount
-- [ ] 7.2 Emulator check with the real 1,200-row export: Pemberian-only Stats for 2026 matches the drill-through total; the BCA account row's four figures match a hand count for one month
+- [ ] 7.1 Maestro flows: filter to one account on Trans and see it on Stats, then clear; open Monthly and expand a month; search a note and an amount (not done: device check)
+- [ ] 7.2 Emulator check with the 1,200-row mock fixture `data/mock-money-manager.xlsx`: one category's Stats for 2026 matches its drill-through total; the Card account row's four figures match a hand count for one month (not done: device check)
 - [x] 7.3 `ANDROID_HOME=/home/dvnnfrr/Android/Sdk ./gradlew :app:testDebugUnitTest :app:assembleDebug` green

@@ -20,4 +20,4 @@
 ## 5. Verification
 
 - [x] 5.1 `:app:testDebugUnitTest :app:assembleDebug` green with the low-RAM flags
-- [ ] 5.2 On device: type "be" on Expense, pick a suggestion, check the fill; Enter and outside tap close the list; TalkBack reads each row; five rows with the keyboard up on a small screen
+- [ ] 5.2 On device: type "be" on Expense, pick a suggestion, check the fill; Enter and outside tap close the list; TalkBack reads each row; five rows with the keyboard up on a small screen (not done: device check)

@@ -32,4 +32,4 @@
 ## 7. Verification
 
 - [x] 7.1 `:app:testDebugUnitTest :app:assembleDebug` green with the low-RAM flags
-- [ ] 7.2 On device: edit an old transaction carrying a subcategory (from a restored backup) and confirm it survives a note edit and clears on a category change; run the three changed Maestro flows
+- [ ] 7.2 On device: edit an old transaction carrying a subcategory (from a restored backup) and confirm it survives a note edit and clears on a category change; run the three changed Maestro flows (not done: device check)
