@@ -14,6 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import com.dvnnfrr.saku.R
 import com.dvnnfrr.saku.domain.DateRange
@@ -40,7 +41,6 @@ import com.dvnnfrr.saku.ui.theme.formatIdrSigned
  * In and Out sit beside the figure when they fit and wrap beneath it when they do not,
  * which is what a large font scale on a narrow phone needs.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun PeriodHeader(
     range: DateRange,
@@ -55,7 +55,6 @@ fun PeriodHeader(
 ) {
     val colors = SakuTheme.colors
     val spacing = SakuTheme.spacing
-    val leftOverLabel = stringResource(R.string.label_left_over)
 
     Column(modifier = modifier.fillMaxWidth().background(colors.surface)) {
         PeriodBar(
@@ -67,32 +66,50 @@ fun PeriodHeader(
             trailing = trailing,
         )
 
-        FlowRow(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = spacing.screen, end = spacing.screen, bottom = spacing.md),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalArrangement = Arrangement.spacedBy(spacing.sm),
-        ) {
-            Column(modifier = Modifier.padding(end = spacing.lg)) {
-                Caption(leftOverLabel)
-                MoneyText(
-                    money = totals.net,
-                    sign = MoneySign.NET,
-                    style = SakuTheme.typography.amountLarge,
-                    contentDescription = "$leftOverLabel ${formatIdrSigned(totals.net)}",
-                )
-            }
-            Column(
-                modifier = Modifier.align(Alignment.Bottom),
-                verticalArrangement = Arrangement.spacedBy(spacing.xs),
-            ) {
-                Figure(stringResource(R.string.label_in), totals.income, TxnType.INCOME)
-                Figure(stringResource(R.string.label_out), totals.expense, TxnType.EXPENSE)
-            }
-        }
+        LeftOverFigures(
+            totals = totals,
+            modifier = Modifier.padding(start = spacing.screen, end = spacing.screen, bottom = spacing.md),
+        )
 
         HorizontalDivider(thickness = 1.dp, color = colors.line)
+    }
+}
+
+/**
+ * "Left over" beside In and Out, as the period header draws them. Shared with the
+ * Calendar's range summary, so a range reads the same way a month does.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun LeftOverFigures(
+    totals: PeriodTotals,
+    modifier: Modifier = Modifier,
+    leftOverStyle: TextStyle = SakuTheme.typography.amountLarge,
+) {
+    val spacing = SakuTheme.spacing
+    val leftOverLabel = stringResource(R.string.label_left_over)
+
+    FlowRow(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalArrangement = Arrangement.spacedBy(spacing.sm),
+    ) {
+        Column(modifier = Modifier.padding(end = spacing.lg)) {
+            Caption(leftOverLabel)
+            MoneyText(
+                money = totals.net,
+                sign = MoneySign.NET,
+                style = leftOverStyle,
+                contentDescription = "$leftOverLabel ${formatIdrSigned(totals.net)}",
+            )
+        }
+        Column(
+            modifier = Modifier.align(Alignment.Bottom),
+            verticalArrangement = Arrangement.spacedBy(spacing.xs),
+        ) {
+            Figure(stringResource(R.string.label_in), totals.income, TxnType.INCOME)
+            Figure(stringResource(R.string.label_out), totals.expense, TxnType.EXPENSE)
+        }
     }
 }
 
