@@ -8,6 +8,9 @@ package com.dvnnfrr.saku.ui.navigation
  */
 enum class TransRoute(val route: String) {
     SEARCH("transactions/search"),
+
+    /** The Receipt screen, with the first photo's URI as the `photo` argument. */
+    RECEIPT("transactions/receipt?photo={photo}"),
     ;
 
     companion object {
