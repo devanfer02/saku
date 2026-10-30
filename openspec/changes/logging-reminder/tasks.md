@@ -7,14 +7,14 @@
 ## 2. System glue
 
 - [x] 2.1 Allow `POST_NOTIFICATIONS` and `RECEIVE_BOOT_COMPLETED` in `CheckNoNetworkPermission` and `NoNetworkPermissionTest`; declare both in the manifest
-- [x] 2.2 Add `reminder/ReminderScheduler` (`sync`, `cancel`, `canNotify`), `ReminderReceiver` (post and re-arm), `ReminderRescheduleReceiver` (boot, time, zone, update) and the notifier with its channel, strings and icon
+- [x] 2.2 Add `reminder/ReminderScheduler` (`sync`, which cancels when off, and `canNotify`), `ReminderReceiver` (post and re-arm), `ReminderRescheduleReceiver` (boot, time, zone, update) and the notifier with its channel, strings and icon
 - [x] 2.3 Wire `reminders` and `reminderScheduler` into `AppContainer`; re-arm on application start
 - [x] 2.4 Run `checkDebugNoNetworkPermission` and read the merged manifest
 
 ## 3. Setting UI
 
-- [ ] 3.1 Add `ui/reminder/ReminderAssembly.kt` (`ReminderUiState`, `assembleReminder`) with tests
-- [ ] 3.2 Add `ReminderViewModel` (setEnabled, setDay, setTime, recheck) with Robolectric tests that read the scheduled alarm
+- [x] 3.1 Add `ui/reminder/ReminderAssembly.kt` (`ReminderUiState`, `assembleReminder`) with tests
+- [x] 3.2 Add `ReminderViewModel` (setEnabled, setDay, setTime, recheck) with Robolectric tests that read the scheduled alarm
 - [ ] 3.3 Add `ReminderDialog` (stateless and stateful): switch, day options, time picker, permission request, blocked line with a settings button, next-reminder line
 - [ ] 3.4 Add `MoreEntry.REMINDER` under Appearance and host the dialog in `MoreScreen`
 

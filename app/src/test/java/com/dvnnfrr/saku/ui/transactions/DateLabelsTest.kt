@@ -2,6 +2,7 @@ package com.dvnnfrr.saku.ui.transactions
 
 import com.dvnnfrr.saku.domain.DateRange
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalTime
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.util.Locale
@@ -22,6 +23,13 @@ class DateLabelsTest {
         assertEquals("Wed 12 Aug", DateRange.custom(day, day).selectionLabel())
         assertEquals("Wed 12 Aug ~ Tue 18 Aug", DateRange.custom(day, end).selectionLabel())
         assertEquals("Wed 12 Aug to Tue 18 Aug", DateRange.custom(day, end).spokenSelectionLabel())
+    }
+
+    @Test
+    fun `a time of day is zero-padded on the 24-hour clock`() {
+        assertEquals("07:30", LocalTime(7, 30).clockLabel())
+        assertEquals("20:00", LocalTime(20, 0).clockLabel())
+        assertEquals("00:05", LocalTime(0, 5).clockLabel())
     }
 
     @Test

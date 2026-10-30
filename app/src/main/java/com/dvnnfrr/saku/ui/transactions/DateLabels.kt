@@ -4,6 +4,7 @@ import com.dvnnfrr.saku.domain.DateRange
 import com.dvnnfrr.saku.domain.PeriodMode
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalTime
 import kotlinx.datetime.Month
 
 /*
@@ -30,6 +31,10 @@ fun LocalDate.dayHeaderLabel(): String =
 
 /** A date standing on its own, where no header supplies the year: `29 Oct 2026`. */
 fun LocalDate.dateLabel(): String = "$dayOfMonth ${month.shortLabel()} $year"
+
+/** A time of day on the 24-hour clock, as the time picker shows it: `07:30`, `20:00`. */
+fun LocalTime.clockLabel(): String =
+    "${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}"
 
 /**
  * A Stats strip column: a week by its Monday (`26 Oct`), a month by its short name
