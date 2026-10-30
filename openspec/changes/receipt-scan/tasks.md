@@ -1,0 +1,52 @@
+## 1. Dependency and the network gate
+
+- [ ] 1.1 Measure the current release APK size (`assembleRelease`, unsigned is fine) and write it down for the PR
+- [ ] 1.2 Add `com.google.mlkit:text-recognition` to `gradle/libs.versions.toml` and `app/build.gradle.kts`
+- [ ] 1.3 Remove `INTERNET` and `ACCESS_NETWORK_STATE` in `AndroidManifest.xml` with `tools:node="remove"` and a comment naming `transport-backend-cct`; leave `CheckNoNetworkPermission` unchanged
+- [ ] 1.4 Add `abiFilters` (release: `arm64-v8a`, `armeabi-v7a`; debug adds `x86_64`), measure the release APK again, record both sizes
+- [ ] 1.5 Run `checkDebugNoNetworkPermission` and `NoNetworkPermissionTest`; both pass
+
+## 2. Parser in `receipt/` (pure JVM)
+
+- [ ] 2.1 `OcrLine` and `ReceiptReading` types; `ReceiptRows.kt` rebuilds printed rows from line boxes, with tests for out-of-order blocks
+- [ ] 2.2 `ReceiptAmounts.kt`: read `25.000`, `25,000`, `Rp25.000`, `25000`, `25.000,00`, `O`-for-`0`; ignore values under Rp 100; tests for each form, returning `Money`
+- [ ] 2.3 `ReceiptTotal.kt`: label matching with OCR slips, exclusions, grand-total preference, next-row rule, repeat and largest fallbacks, and the 3 ranked chip amounts; tests from the spec scenarios
+- [ ] 2.4 `ReceiptDate.kt`: numeric and Indonesian month formats, the one-year and no-future window; tests
+- [ ] 2.5 `ReceiptStore.kt`: top-quarter row and the known-chain list with fuzzy match (`lNDOMARET`); tests
+- [ ] 2.6 `ReceiptParser.read(lines): ReceiptReading` with the unplaced list (printed order, at most 40); tests
+
+## 3. Fixtures and the accuracy bar
+
+- [ ] 3.1 Instrumented `ReceiptAccuracyTest` (androidTest, not in CI): reads every image in `/data/local/tmp/receipts/` through `ReceiptRecognizer`, writes OCR lines and the reading per image, prints exact-total and pick-or-chip rates
+- [ ] 3.2 Run it on the emulator over the CORD v2 test split; save the OCR-line files as `app/src/test/resources/receipt/cord/*.txt` with `totals.tsv`, and add `CORD-NOTICE.md` (CC BY 4.0 credit to NAVER CLOVA, link, "OCR text derived from the images")
+- [ ] 3.3 `ReceiptFixtureAccuracyTest` (JVM): fails below 70% exact or 75% pick-or-chip on the CORD fixtures and prints both rates
+- [ ] 3.4 Run the accuracy test over the local web set (Indomaret, Alfamart, Solaria, Waroeng Steak & Shake and others); record per-store rates for the PR; commit nothing from that set
+- [ ] 3.5 Fix the worst misses from 3.2 and 3.4 in the parser and keep both bars green; note what was tried in `design.md`
+
+## 4. Recognizer and wiring
+
+- [ ] 4.1 `data/receipt/ReceiptRecognizer.kt`: decode a `Uri` downscaled to a 2,000 px long side, run ML Kit, adapt `Text` to `List<OcrLine>`; the only file importing ML Kit
+- [ ] 4.2 Provide it from `AppContainer`
+- [ ] 4.3 `FileProvider` for `cache/receipts/`; delete the camera file after reading and clear the folder on app start
+- [ ] 4.4 `ui/entry/ReceiptScanAssembly.kt`: `ReceiptReading` plus form to the fill (amount unless typed, date in window, note if empty) and the chips and lines; JVM tests for each spec scenario
+
+## 5. Entry sheet UI
+
+- [ ] 5.1 Load `impeccable` (Android) and `better-writing`; place Scan receipt in the lower half of the sheet for a new Expense only; write copy for the action, reading state, no-total message, chips and the Lines Saku could not place list
+- [ ] 5.2 ViewModel: scan events, reading state, result handling that never overwrites a typed amount; ViewModel tests with a fake recognizer
+- [ ] 5.3 Stateless composables for the chips and the lines list; tapping a line appends `, <line>` to the note
+- [ ] 5.4 Camera (`TakePicture`) and photo picker (`PickVisualMedia`) launchers; cancel leaves the sheet unchanged
+- [ ] 5.5 TalkBack labels for the action, chips and lines; check with `android-accessibility`
+
+## 6. End-to-end
+
+- [ ] 6.1 Script that draws `data/mock-receipt-indomaret.png`: invented items, `TOTAL 52.300`, `TUNAI 100.000`, `KEMBALI 47.700`, a date, `INDOMARET` header, one item line used by the flow
+- [ ] 6.2 `.maestro/flows/scan-receipt.yaml`: header documents the `adb push` to `/sdcard/Pictures/` and the photo-picker block; scan, assert `Rp 52.300` and `Indomaret`, tap an unplaced line, pick a category, Save, assert the row
+- [ ] 6.3 Run the new flow and the existing 7 flows on the emulator; all pass
+- [ ] 6.4 Check the camera path once by hand on the emulator and with logcat open (no crash, no network retries)
+
+## 7. Done
+
+- [ ] 7.1 Full build: `:app:lintDebug :app:testDebugUnitTest :app:assembleDebug` green
+- [ ] 7.2 Update `README.md` features and the root `CLAUDE.md` package map with `receipt/`
+- [ ] 7.3 PR with APK sizes, CORD and web-set accuracy, and the e2e result; wait for checks
