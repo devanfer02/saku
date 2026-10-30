@@ -330,7 +330,7 @@ private fun AmountInputField(digits: String, amount: Money, label: String, onCha
                 decorationBox = { field ->
                     Box(contentAlignment = Alignment.CenterEnd, modifier = Modifier.fillMaxWidth()) {
                         if (digits.isEmpty()) {
-                            Text("0", style = SakuTheme.typography.amountMedium, color = colors.ink3)
+                            Text("0", style = SakuTheme.typography.amountMedium, color = colors.ink2)
                         }
                         field()
                     }
@@ -369,7 +369,7 @@ private fun TextInput(
         keyboardActions = KeyboardActions(onAny = { onImeAction() }),
         decorationBox = { field ->
             Box(contentAlignment = Alignment.CenterStart, modifier = Modifier.fillMaxWidth()) {
-                if (value.isEmpty()) Text(label, style = style, color = colors.ink3)
+                if (value.isEmpty()) Text(label, style = style, color = colors.ink2)
                 field()
             }
         },

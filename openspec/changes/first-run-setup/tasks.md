@@ -26,6 +26,6 @@
 
 ## 6. Verify
 
-- [ ] 6.1 `openspec validate first-run-setup --strict`
-- [ ] 6.2 No em dash in touched files; no colour literal outside `ui/theme/`
+- [x] 6.1 `openspec validate first-run-setup --strict`
+- [x] 6.2 No em dash in touched files; no colour literal outside `ui/theme/`
 - [ ] 6.3 Unit tests and debug build (main session; this branch did not run Gradle)
