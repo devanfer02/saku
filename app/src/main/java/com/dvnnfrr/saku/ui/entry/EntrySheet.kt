@@ -9,7 +9,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -23,14 +27,24 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -58,6 +72,7 @@ fun EntrySheet(
     viewModel: TransactionEntryViewModel = viewModel(factory = TransactionEntryViewModel.Factory),
 ) {
     val state by viewModel.state.collectAsState()
+    val suggestions by viewModel.suggestions.collectAsState()
 
     LaunchedEffect(editingId) { viewModel.open(editingId) }
     LaunchedEffect(state.saved) { if (state.saved) onDismiss() }
@@ -68,13 +83,14 @@ fun EntrySheet(
         containerColor = SakuTheme.colors.surface,
         modifier = modifier,
     ) {
-        EntrySheetBody(state = state, viewModel = viewModel)
+        EntrySheetBody(state = state, suggestions = suggestions, viewModel = viewModel)
     }
 }
 
 @Composable
 private fun EntrySheetBody(
     state: EntryUiState,
+    suggestions: List<NoteSuggestion>,
     viewModel: TransactionEntryViewModel,
 ) {
     val form = state.form
@@ -85,7 +101,20 @@ private fun EntrySheetBody(
     var pickingDate by rememberSaveable { mutableStateOf(false) }
     var pickingTime by rememberSaveable { mutableStateOf(false) }
 
-    Column(modifier = Modifier.fillMaxWidth().padding(bottom = spacing.sm)) {
+    val focusManager = LocalFocusManager.current
+    val leaveNote = {
+        viewModel.dismissSuggestions()
+        focusManager.clearFocus()
+    }
+    // The note field and its suggestions, as laid out; a press outside them closes the list.
+    var noteArea by remember { mutableStateOf<LayoutCoordinates?>(null) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = spacing.sm)
+            .dismissOnPressOutside(area = { noteArea }, onOutside = leaveNote),
+    ) {
         // The fields scroll and the keypad is pinned. With a picker expanded the
         // content exceeded the sheet height and the Save row was pushed off with no
         // way to reach it.
@@ -142,7 +171,22 @@ private fun EntrySheetBody(
                 )
             }
 
-            NoteField(value = form.note, onChange = viewModel::setNote)
+            Column(modifier = Modifier.onGloballyPositioned { noteArea = it }) {
+                NoteField(
+                    value = form.note,
+                    onChange = viewModel::setNote,
+                    onDone = leaveNote,
+                    onBlur = viewModel::dismissSuggestions,
+                )
+                NoteSuggestions(
+                    suggestions = suggestions,
+                    onPick = { suggestion ->
+                        viewModel.pickSuggestion(suggestion)
+                        // The keyboard drops so the in-sheet keypad shows for the amount.
+                        focusManager.clearFocus()
+                    },
+                )
+            }
         }
 
         ExpandedPicker(
@@ -230,6 +274,30 @@ private fun EntrySheetBody(
 
 private fun OpenPicker.toggle(target: OpenPicker): OpenPicker =
     if (this == target) OpenPicker.NONE else target
+
+/**
+ * Calls [onOutside] on any press that lands outside [area]. Watches the initial pass and
+ * consumes nothing, so the press still reaches whatever it landed on: tapping a field row
+ * both closes the suggestions and opens that row's picker.
+ */
+private fun Modifier.dismissOnPressOutside(
+    area: () -> LayoutCoordinates?,
+    onOutside: () -> Unit,
+): Modifier = composed {
+    var self by remember { mutableStateOf<LayoutCoordinates?>(null) }
+    val currentOnOutside by rememberUpdatedState(onOutside)
+    onGloballyPositioned { self = it }.pointerInput(Unit) {
+        awaitEachGesture {
+            val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+            val target = area()
+            val container = self
+            val measurable = target != null && container != null && target.isAttached && container.isAttached
+            if (!measurable) return@awaitEachGesture
+            val bounds = requireNotNull(container).localBoundingBoxOf(requireNotNull(target))
+            if (!bounds.contains(down.position)) currentOnOutside()
+        }
+    }
+}
 
 @Composable
 private fun Header(state: EntryUiState, onDelete: () -> Unit) {
@@ -338,7 +406,12 @@ private fun Problem(problem: EntryProblem) {
 }
 
 @Composable
-private fun NoteField(value: String, onChange: (String) -> Unit) {
+private fun NoteField(
+    value: String,
+    onChange: (String) -> Unit,
+    onDone: () -> Unit,
+    onBlur: () -> Unit,
+) {
     val spacing = SakuTheme.spacing
     val label = stringResource(R.string.entry_field_note)
     Row(
@@ -355,6 +428,8 @@ private fun NoteField(value: String, onChange: (String) -> Unit) {
             value = value,
             onValueChange = onChange,
             singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { onDone() }),
             textStyle = TextStyle(
                 color = SakuTheme.colors.ink,
                 textAlign = TextAlign.End,
@@ -365,6 +440,7 @@ private fun NoteField(value: String, onChange: (String) -> Unit) {
             modifier = Modifier
                 .weight(2f)
                 .padding(vertical = spacing.sm)
+                .onFocusChanged { if (!it.isFocused) onBlur() }
                 .semantics { contentDescription = label },
         )
     }
