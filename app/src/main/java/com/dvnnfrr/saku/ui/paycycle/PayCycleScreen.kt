@@ -94,7 +94,7 @@ fun PayCycleScreen(
             Text(
                 text = stringResource(R.string.pay_cycle_short_month_note),
                 style = SakuTheme.typography.caption,
-                color = colors.ink3,
+                color = colors.ink2,
             )
         }
 
@@ -173,7 +173,7 @@ private fun Preview(title: String, preview: PayMonthPreview) {
             .padding(spacing.md),
         verticalArrangement = Arrangement.spacedBy(spacing.xs),
     ) {
-        Text(text = title, style = SakuTheme.typography.caption, color = colors.ink3)
+        Text(text = title, style = SakuTheme.typography.caption, color = colors.ink2)
         Text(text = preview.label, style = SakuTheme.typography.bodyStrong, color = colors.ink)
         Text(text = preview.span, style = SakuTheme.typography.body, color = colors.ink2)
     }
