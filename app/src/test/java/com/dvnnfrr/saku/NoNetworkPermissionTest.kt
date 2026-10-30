@@ -1,5 +1,6 @@
 package com.dvnnfrr.saku
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -37,12 +38,26 @@ class NoNetworkPermissionTest {
         }
     }
 
+    /**
+     * The weekly reminder (logging-reminder) needs exactly these two: one to show the
+     * notification, one to re-arm it after a restart. Neither reaches the network.
+     */
+    private val allowed = setOf(
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+    )
+
     @Test
-    fun `manifest declares no permissions at all`() {
-        assertFalse(
-            "A <uses-permission> appeared in the manifest; if it is genuinely needed, " +
-                "update this test deliberately rather than deleting it",
-            manifest().contains("<uses-permission"),
+    fun `manifest declares only the allowlisted permissions`() {
+        val declared = Regex("""<uses-permission[^>]*android:name\s*=\s*"([^"]+)"""")
+            .findAll(manifest())
+            .map { it.groupValues[1] }
+            .toSet()
+        assertEquals(
+            "A <uses-permission> outside the allowlist appeared in the manifest; if it is " +
+                "genuinely needed, update this test deliberately rather than deleting it",
+            allowed,
+            declared,
         )
     }
 }
