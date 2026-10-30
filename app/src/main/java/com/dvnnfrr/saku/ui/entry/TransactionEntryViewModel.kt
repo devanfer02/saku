@@ -133,6 +133,15 @@ class TransactionEntryViewModel(
 
     private fun now(): LocalDateTime = clock.now().toLocalDateTime(zone)
 
+    init {
+        // Live, not read once in [open]: the ViewModel outlives the sheet, and [open] skips
+        // reloading for a sheet it already holds, so a tag archived or renamed on the Tags
+        // screen in between would otherwise be offered as it was.
+        viewModelScope.launch {
+            tagRepository.observeAll().collect { all -> _state.update { it.copy(allTags = all) } }
+        }
+    }
+
     /** What [open] last loaded, so re-composition does not throw away typed input. */
     private var openedFor: Long? = null
     private var opened = false

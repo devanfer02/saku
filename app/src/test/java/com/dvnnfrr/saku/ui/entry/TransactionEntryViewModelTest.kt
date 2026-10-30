@@ -762,4 +762,24 @@ class TransactionEntryViewModelTest {
         assertEquals(TxnType.TRANSFER, stored.type)
         assertEquals(1, stored.tagIds.size)
     }
+
+    /** Found on the emulator: the sheet reopened after an unarchive still hid the tag. */
+    @Test
+    fun `the picker follows a tag unarchived while the sheet was closed`() = runTest(dispatcher) {
+        seed()
+        val tags = RoomTagRepository(db)
+        val bali = tags.findOrCreate("Trip Bali")
+        tags.setArchived(bali, true)
+        val vm = viewModel()
+        vm.open()
+        advanceUntilIdle()
+        vm.setTagQuery("Trip")
+        assertTrue(vm.state.value.tagPickerUi.matches.isEmpty())
+
+        tags.setArchived(bali, false)
+        vm.open()
+        advanceUntilIdle()
+
+        assertEquals(listOf("Trip Bali"), vm.state.value.tagPickerUi.matches.map { it.name })
+    }
 }
