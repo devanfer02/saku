@@ -38,8 +38,8 @@ data class StatsUiState(
     val totals: PeriodTotals = PeriodTotals.EMPTY,
     val comparison: PeriodComparison = PeriodComparison.EMPTY,
     val composition: RankedComposition = RankedComposition.EMPTY,
-    /** The six months ending with the selected one. Empty outside Monthly mode. */
-    val strip: List<StripMonth> = emptyList(),
+    /** Every week, month or year through the selected one. Empty in Period mode. */
+    val strip: List<StripColumn> = emptyList(),
     /** Whether the strip shows its bars or only its header line. */
     val stripExpanded: Boolean = true,
     /** Null while the overview is showing; set once the user drills into a slice. */
@@ -172,12 +172,13 @@ sealed interface ComparisonLine {
 }
 
 /**
- * One month of the six-month strip.
+ * One week, month or year of the strip, whichever the period mode steps by.
  *
- * [empty] marks a month before any history, drawn as a slot rather than as two zero
- * bars. The bar lengths are thousandths of the largest figure in the window.
+ * [empty] marks the lone slot shown when nothing has happened up to the selected period,
+ * drawn as a slot rather than as two zero bars. The bar lengths are thousandths of the
+ * largest figure across the strip's whole history.
  */
-data class StripMonth(
+data class StripColumn(
     val range: DateRange,
     val income: Money,
     val expense: Money,
@@ -187,6 +188,8 @@ data class StripMonth(
     val empty: Boolean,
 ) {
     val net: Money get() = income - expense
+
+    val totals: PeriodTotals get() = PeriodTotals(income, expense)
 }
 
 /**

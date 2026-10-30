@@ -516,7 +516,7 @@ class StatsViewModelTest {
         assertEquals(Money.ZERO, drill?.total)
     }
 
-    // buku-kas: the six-month strip.
+    // buku-kas: the strip over all history.
 
     @Test
     fun `the strip ends on the selected month and agrees with the header`() = runTest(dispatcher) {
@@ -527,14 +527,15 @@ class StatsViewModelTest {
 
         val state = viewModel().state.first { !it.loading && it.strip.isNotEmpty() }
 
-        assertEquals((3..8).map { DateRange.ofMonth(LocalDate(2026, it, 1)) }, state.strip.map { it.range })
+        // June holds the first transaction, so the strip starts there.
+        assertEquals((6..8).map { DateRange.ofMonth(LocalDate(2026, it, 1)) }, state.strip.map { it.range })
         val august = state.strip.last()
         assertTrue(august.selected)
         assertEquals(state.totals.expense, august.expense)
         assertEquals(state.totals.income, august.income)
-        // March to May precede the first transaction; July is a quiet month after it.
-        assertEquals(listOf(true, true, true, false, false, false), state.strip.map { it.empty })
-        assertEquals(Money.ZERO, state.strip[4].expense)
+        // July is a quiet month after history began: a zero, not an empty slot.
+        assertTrue(state.strip.none { it.empty })
+        assertEquals(Money.ZERO, state.strip[1].expense)
     }
 
     @Test
@@ -554,11 +555,12 @@ class StatsViewModelTest {
     @Test
     fun `tapping a month in the strip selects it`() = runTest(dispatcher) {
         seed()
+        record(LocalDateTime(2026, 5, 10, 12, 0), 500_000)
         spend(day = 5, amount = 300_000)
         val vm = viewModel()
         vm.state.first { it.strip.isNotEmpty() }
 
-        vm.selectMonth(DateRange.ofMonth(LocalDate(2026, 6, 1)))
+        vm.selectPeriod(DateRange.ofMonth(LocalDate(2026, 6, 1)))
 
         val state = vm.state.first { it.range.start == LocalDate(2026, 6, 1) && it.strip.lastOrNull()?.range == it.range }
         assertTrue(state.strip.last().selected)
@@ -566,15 +568,40 @@ class StatsViewModelTest {
     }
 
     @Test
-    fun `the strip is not shown outside Monthly mode`() = runTest(dispatcher) {
+    fun `the strip follows Weekly and Annually and leaves Period`() = runTest(dispatcher) {
         seed()
+        record(LocalDateTime(2025, 7, 20, 12, 0), 500_000)
         spend(day = 5, amount = 300_000)
         val vm = viewModel()
         vm.state.first { it.strip.isNotEmpty() }
 
         vm.selectMode(PeriodMode.WEEKLY)
+        val weekly = vm.state.first { it.range.mode == PeriodMode.WEEKLY && it.strip.isNotEmpty() }
+        assertTrue(weekly.strip.all { it.range.mode == PeriodMode.WEEKLY })
+        assertEquals(DateRange.ofWeek(LocalDate(2025, 7, 20)), weekly.strip.first().range)
+        assertEquals(weekly.range, weekly.strip.last().range)
 
-        val state = vm.state.first { it.range.mode == PeriodMode.WEEKLY }
-        assertTrue(state.strip.isEmpty())
+        vm.selectMode(PeriodMode.ANNUALLY)
+        val annual = vm.state.first { it.range.mode == PeriodMode.ANNUALLY && it.strip.isNotEmpty() }
+        assertEquals(listOf(DateRange.ofYear(2025), DateRange.ofYear(2026)), annual.strip.map { it.range })
+
+        vm.selectRange(LocalDate(2026, 8, 1), LocalDate(2026, 8, 10))
+        val custom = vm.state.first { it.range.mode == PeriodMode.CUSTOM }
+        assertTrue(custom.strip.isEmpty())
+    }
+
+    @Test
+    fun `tapping a week in the strip selects that week`() = runTest(dispatcher) {
+        seed()
+        spend(day = 5, amount = 300_000)
+        val vm = viewModel()
+        vm.selectMode(PeriodMode.WEEKLY)
+        vm.state.first { it.range.mode == PeriodMode.WEEKLY && it.strip.isNotEmpty() }
+
+        val week = DateRange.ofWeek(LocalDate(2026, 8, 3))
+        vm.selectPeriod(week)
+
+        val state = vm.state.first { it.range == week && it.strip.lastOrNull()?.range == week }
+        assertEquals(Money(300_000), state.strip.last().expense)
     }
 }

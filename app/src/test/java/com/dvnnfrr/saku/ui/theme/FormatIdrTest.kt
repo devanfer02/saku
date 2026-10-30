@@ -157,6 +157,13 @@ class FormatIdrTest {
     }
 
     @Test
+    fun `a compact one-sided total carries no plus`() {
+        assertEquals("4,8 jt", formatIdrCompact(Money(4_821_600), MoneySign.BALANCE))
+        assertEquals("−0,3 jt", formatIdrCompact(Money(-300_000), MoneySign.BALANCE))
+        assertEquals("0 jt", formatIdrCompact(Money(10_000), MoneySign.BALANCE))
+    }
+
+    @Test
     fun `compact zero claims no direction`() {
         assertEquals("0 jt", formatIdrCompact(Money.ZERO))
     }

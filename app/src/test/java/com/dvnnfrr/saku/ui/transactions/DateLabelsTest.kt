@@ -1,5 +1,6 @@
 package com.dvnnfrr.saku.ui.transactions
 
+import com.dvnnfrr.saku.domain.DateRange
 import kotlinx.datetime.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -37,5 +38,13 @@ class DateLabelsTest {
             listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"),
             WEEKDAY_HEADINGS,
         )
+    }
+
+    @Test
+    fun `strip columns name a week by its Monday, a month by its short name, a year by its number`() {
+        assertEquals("26 Oct", DateRange.ofWeek(LocalDate(2026, 10, 29)).stripColumnLabel())
+        assertEquals("Oct", DateRange.ofMonth(LocalDate(2026, 10, 1)).stripColumnLabel())
+        assertEquals("Jan 26", DateRange.ofMonth(LocalDate(2026, 1, 1)).stripColumnLabel())
+        assertEquals("2026", DateRange.ofYear(2026).stripColumnLabel())
     }
 }

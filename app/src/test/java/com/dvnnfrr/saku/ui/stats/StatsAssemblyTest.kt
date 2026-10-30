@@ -2,6 +2,7 @@ package com.dvnnfrr.saku.ui.stats
 
 import com.dvnnfrr.saku.domain.CategoryTotal
 import com.dvnnfrr.saku.domain.ColorSlot
+import com.dvnnfrr.saku.domain.DailyTotals
 import com.dvnnfrr.saku.domain.DateRange
 import com.dvnnfrr.saku.domain.Money
 import com.dvnnfrr.saku.domain.PeriodMode
@@ -451,39 +452,35 @@ class StatsAssemblyTest {
         assertNull(comparisonLine(PeriodComparison.EMPTY, StatsSide.EXPENSES))
     }
 
-    // buku-kas: the six-month strip.
+    // buku-kas: the strip over all history, in weeks, months or years.
 
-    /** May to October 2026, with nets of +0,8, +7,1, −0,3, −1,4, +1,4 and +2,5 jt. */
+    /** One day a month carrying the month's totals, May to October 2026. */
     private val mayToOctober = listOf(
-        PeriodTotals(Money(9_000_000), Money(8_200_000)),
-        PeriodTotals(Money(16_000_000), Money(8_900_000)),
-        PeriodTotals(Money(8_000_000), Money(8_300_000)),
-        PeriodTotals(Money(8_000_000), Money(9_383_600)),
-        PeriodTotals(Money(19_155_000), Money(17_755_000)),
-        PeriodTotals(Money(16_500_000), Money(14_026_400)),
-    )
+        9_000_000L to 8_200_000L,
+        16_000_000L to 8_900_000L,
+        8_000_000L to 8_300_000L,
+        8_000_000L to 9_383_600L,
+        19_155_000L to 17_755_000L,
+        16_500_000L to 14_026_400L,
+    ).mapIndexed { index, (income, expense) ->
+        DailyTotals(LocalDate(2026, 5 + index, 3), Money(income), Money(expense))
+    }
+
+    private fun day(year: Int, month: Int, day: Int, income: Long = 0, expense: Long = 0) =
+        DailyTotals(LocalDate(year, month, day), Money(income), Money(expense))
 
     @Test
-    fun `the window is the six months ending with the selected one`() {
-        assertEquals(
-            (5..10).map { DateRange.ofMonth(LocalDate(2026, it, 1)) },
-            stripWindow(october),
-        )
-        assertEquals(
-            DateRange.ofMonth(LocalDate(2025, 11, 1)),
-            stripWindow(DateRange.ofMonth(LocalDate(2026, 4, 1))).first(),
-        )
+    fun `the strip reads from the start of history to the end of the selected period`() {
+        val history = stripHistory(october)
+        assertEquals(LocalDate(2026, 10, 31), history.endInclusive)
+        assertTrue(history.start < LocalDate(2000, 1, 1))
     }
 
     @Test
-    fun `history before the window ends the day before it starts`() {
-        assertEquals(LocalDate(2026, 4, 30), historyBefore(stripWindow(october)).endInclusive)
-    }
+    fun `October 2026 reads from the first month with a flow, October selected and last`() {
+        val strip = foldStrip(mayToOctober, october)
 
-    @Test
-    fun `October 2026 reads May to October with October selected`() {
-        val strip = foldStrip(stripWindow(october), mayToOctober, PeriodTotals(Money(1), Money.ZERO), october)
-
+        assertEquals((5..10).map { DateRange.ofMonth(LocalDate(2026, it, 1)) }, strip.map { it.range })
         assertEquals(listOf(false, false, false, false, false, true), strip.map { it.selected })
         assertEquals(
             listOf("+0,8 jt", "+7,1 jt", "−0,3 jt", "−1,4 jt", "+1,4 jt", "+2,5 jt"),
@@ -493,8 +490,22 @@ class StatsAssemblyTest {
     }
 
     @Test
-    fun `bars share one scale, the largest figure in the window`() {
-        val strip = foldStrip(stripWindow(october), mayToOctober, PeriodTotals(Money(1), Money.ZERO), october)
+    fun `history from July 2025 holds every month through October 2026`() {
+        val days = listOf(day(2025, 7, 20, expense = 50_000)) + mayToOctober
+
+        val strip = foldStrip(days, october)
+
+        assertEquals(16, strip.size)
+        assertEquals(DateRange.ofMonth(LocalDate(2025, 7, 1)), strip.first().range)
+        assertEquals(october, strip.last().range)
+        // August 2025 to April 2026 are quiet months after history began: real zeros.
+        assertEquals(Money.ZERO, strip[1].expense)
+        assertTrue(strip.none { it.empty })
+    }
+
+    @Test
+    fun `bars share one scale across the whole history`() {
+        val strip = foldStrip(mayToOctober, october)
 
         // September's 19.155.000 income is the tallest bar.
         assertEquals(1_000, strip[4].incomePermille)
@@ -504,29 +515,72 @@ class StatsAssemblyTest {
     }
 
     @Test
-    fun `months before the first transaction are empty slots`() {
-        val august2025 = DateRange.ofMonth(LocalDate(2025, 8, 1))
-        val totals = List(4) { PeriodTotals.EMPTY } +
-            listOf(PeriodTotals(Money(4_000_000), Money(3_000_000)), PeriodTotals(Money.ZERO, Money(2_000_000)))
+    fun `an earlier selected month ends the strip there`() {
+        val january = DateRange.ofMonth(LocalDate(2026, 1, 1))
+        val days = listOf(day(2025, 7, 20, expense = 50_000)) + mayToOctober
 
-        val strip = foldStrip(stripWindow(august2025), totals, PeriodTotals.EMPTY, august2025)
+        val strip = foldStrip(days, january)
 
-        assertEquals((3..8).map { DateRange.ofMonth(LocalDate(2025, it, 1)) }, strip.map { it.range })
-        assertEquals(listOf(true, true, true, true, false, false), strip.map { it.empty })
+        assertEquals(january, strip.last().range)
+        assertTrue(strip.last().selected)
+        assertEquals(7, strip.size)
     }
 
     @Test
-    fun `a quiet month after history began is a zero, not an empty slot`() {
-        val totals = listOf(PeriodTotals(Money(1_000_000), Money.ZERO)) + List(5) { PeriodTotals.EMPTY }
-        val strip = foldStrip(stripWindow(october), totals, PeriodTotals.EMPTY, october)
+    fun `days after the selected month do not start history`() {
+        val april = DateRange.ofMonth(LocalDate(2026, 4, 1))
 
-        assertEquals(listOf(false, false, false, false, false, false), strip.map { it.empty })
-        assertEquals(0, strip[3].incomePermille)
+        val strip = foldStrip(mayToOctober, april)
+
+        assertEquals(listOf(april), strip.map { it.range })
+        assertTrue(strip.single().empty)
     }
 
     @Test
-    fun `history before the window means no month is empty`() {
-        val strip = foldStrip(stripWindow(october), List(6) { PeriodTotals.EMPTY }, PeriodTotals(Money.ZERO, Money(10)), october)
-        assertTrue(strip.none { it.empty })
+    fun `no history at all is the selected month alone as an empty slot`() {
+        val strip = foldStrip(emptyList(), october)
+
+        assertEquals(1, strip.size)
+        assertTrue(strip.single().empty)
+        assertTrue(strip.single().selected)
+    }
+
+    @Test
+    fun `Weekly buckets days into Monday to Sunday weeks`() {
+        val week = DateRange.ofWeek(LocalDate(2026, 10, 26))
+        val days = listOf(
+            day(2026, 10, 11, expense = 100_000), // Sunday, week of 5 Oct
+            day(2026, 10, 12, expense = 200_000), // Monday, week of 12 Oct
+            day(2026, 10, 18, expense = 300_000), // Sunday, week of 12 Oct
+            day(2026, 10, 27, income = 400_000),
+        )
+
+        val strip = foldStrip(days, week)
+
+        assertEquals(
+            listOf(5, 12, 19, 26).map { DateRange.ofWeek(LocalDate(2026, 10, it)) },
+            strip.map { it.range },
+        )
+        assertEquals(listOf(100_000L, 500_000L, 0L, 0L), strip.map { it.expense.rupiah })
+        assertEquals(Money(400_000), strip.last().income)
+        assertTrue(strip.last().selected)
+    }
+
+    @Test
+    fun `Annually reads 2025 and 2026`() {
+        val days = listOf(day(2025, 7, 20, expense = 50_000)) + mayToOctober
+
+        val strip = foldStrip(days, DateRange.ofYear(2026))
+
+        assertEquals(listOf(DateRange.ofYear(2025), DateRange.ofYear(2026)), strip.map { it.range })
+        assertEquals(Money(50_000), strip.first().expense)
+        assertEquals(Money(76_655_000), strip.last().income)
+    }
+
+    @Test
+    fun `Period mode has no strip`() {
+        val custom = DateRange.custom(LocalDate(2026, 10, 3), LocalDate(2026, 10, 20))
+        assertTrue(foldStrip(mayToOctober, custom).isEmpty())
+        assertTrue(!hasStrip(PeriodMode.CUSTOM))
     }
 }

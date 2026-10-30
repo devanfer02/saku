@@ -74,7 +74,7 @@ fun StatsScreen(
         onCloseDrill = viewModel::closeDrill,
         onOpenFilter = { filtering = true },
         onClearFilter = viewModel::clearFilter,
-        onSelectMonth = viewModel::selectMonth,
+        onSelectPeriod = viewModel::selectPeriod,
         onToggleStrip = viewModel::toggleStrip,
         modifier = modifier,
     )
@@ -98,7 +98,7 @@ fun StatsScreen(
     modifier: Modifier = Modifier,
     onOpenFilter: () -> Unit = {},
     onClearFilter: () -> Unit = {},
-    onSelectMonth: (DateRange) -> Unit = {},
+    onSelectPeriod: (DateRange) -> Unit = {},
     onToggleStrip: () -> Unit = {},
 ) {
     var pickingRange by remember { mutableStateOf(false) }
@@ -133,7 +133,7 @@ fun StatsScreen(
             Overview(
                 state = state,
                 onSelectSide = onSelectSide,
-                onSelectMonth = onSelectMonth,
+                onSelectPeriod = onSelectPeriod,
                 onToggleStrip = onToggleStrip,
                 onOpenCategory = onOpenCategory,
                 onOpenOther = onOpenOther,
@@ -180,14 +180,14 @@ private fun SideTabs(side: StatsSide, onSelectSide: (StatsSide) -> Unit) {
 /**
  * The strip, the side, the headline and the ranked bars, scrolling as one list.
  *
- * One list rather than a fixed header over a short one: with the strip in Monthly mode
- * and a font scale of 1.3, a fixed header left the ranked rows a sliver of the screen.
+ * One list rather than a fixed header over a short one: with the strip showing and a
+ * font scale of 1.3, a fixed header left the ranked rows a sliver of the screen.
  */
 @Composable
 private fun Overview(
     state: StatsUiState,
     onSelectSide: (StatsSide) -> Unit,
-    onSelectMonth: (DateRange) -> Unit,
+    onSelectPeriod: (DateRange) -> Unit,
     onToggleStrip: () -> Unit,
     onOpenCategory: (Long) -> Unit,
     onOpenOther: () -> Unit,
@@ -209,8 +209,8 @@ private fun Overview(
     LazyColumn(state = listState, modifier = modifier.fillMaxSize()) {
         if (state.strip.isNotEmpty()) {
             item(key = "strip") {
-                StripHeader(months = state.strip, expanded = state.stripExpanded, onToggle = onToggleStrip)
-                if (state.stripExpanded) SixMonthStrip(months = state.strip, onSelectMonth = onSelectMonth)
+                StripHeader(columns = state.strip, expanded = state.stripExpanded, onToggle = onToggleStrip)
+                if (state.stripExpanded) PeriodStrip(columns = state.strip, onSelectPeriod = onSelectPeriod)
                 HorizontalDivider(thickness = 1.dp, color = SakuTheme.colors.line)
             }
         }
@@ -351,27 +351,19 @@ private fun previewTotal(id: Long, name: String, slot: Int, amount: Long, basisP
 @Composable
 private fun StatsScreenPreview() {
     val october = DateRange.ofMonth(LocalDate(2026, 10, 1))
-    val window = stripWindow(october)
-    val totals = listOf(
-        PeriodTotals(Money(9_000_000), Money(8_200_000)),
-        PeriodTotals(Money(16_000_000), Money(8_900_000)),
-        PeriodTotals(Money(8_000_000), Money(8_300_000)),
-        PeriodTotals(Money(8_000_000), Money(9_400_000)),
-        PeriodTotals(Money(9_000_000), Money(7_600_000)),
-        PeriodTotals(Money(16_500_000), Money(14_026_400)),
-    )
+    val totals = PeriodTotals(Money(16_500_000), Money(14_026_400))
     SakuPreviewSurface(padded = false) {
         StatsScreen(
             state = StatsUiState(
                 range = october,
-                totals = totals.last(),
+                totals = totals,
                 comparison = PeriodComparison(
                     previousRange = october.previous(),
                     previous = PeriodTotals(income = Money(9_000_000), expense = Money(17_755_000)),
-                    current = totals.last(),
+                    current = totals,
                 ),
                 composition = previewComposition(),
-                strip = foldStrip(window, totals, PeriodTotals(Money(1), Money.ZERO), october),
+                strip = foldStrip(previewHistory(), october),
                 loading = false,
             ),
             onPrevious = {},

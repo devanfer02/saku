@@ -2,6 +2,7 @@ package com.dvnnfrr.saku.ui.stats
 
 import com.dvnnfrr.saku.domain.CategoryTotal
 import com.dvnnfrr.saku.domain.ColorSlot
+import com.dvnnfrr.saku.domain.DailyTotals
 import com.dvnnfrr.saku.domain.DateRange
 import com.dvnnfrr.saku.domain.Money
 import com.dvnnfrr.saku.domain.PeriodMode
@@ -10,9 +11,7 @@ import com.dvnnfrr.saku.domain.Transaction
 import com.dvnnfrr.saku.domain.wholePercents
 import com.dvnnfrr.saku.domain.PeriodTotals
 import com.dvnnfrr.saku.domain.barPermille
-import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.minus
 
 /*
  * Pure assembly for the stats screen. No Compose, no Android, no coroutines — the cap,
@@ -213,63 +212,94 @@ fun comparisonLine(comparison: PeriodComparison, side: StatsSide): ComparisonLin
     }
 }
 
-/** How many months the Stats strip shows, ending with the selected one. */
-const val STRIP_MONTHS = 6
+/**
+ * Far enough back that no imported row predates it, and no further. The daily totals
+ * query buckets days with the zone offset at its range start; from 1900 that offset is
+ * Jakarta's local mean time, +07:07:12, which put every day's bucket seven minutes into
+ * the previous day. Jakarta has been +07:00 since 1964, and the seeded accounts open at
+ * the epoch anyway.
+ */
+private val HISTORY_START = LocalDate(1970, 1, 1)
 
-/** Far enough back that no imported row predates it. */
-private val HISTORY_START = LocalDate(1900, 1, 1)
+/**
+ * Whether [mode] has a strip. Period has none: a custom span has no natural neighbours
+ * to line up beside it.
+ */
+fun hasStrip(mode: PeriodMode): Boolean = mode != PeriodMode.CUSTOM
 
-/** The six months ending with [selected], oldest first. */
-fun stripWindow(selected: DateRange): List<DateRange> =
-    (STRIP_MONTHS - 1 downTo 0).map { back ->
-        DateRange.ofMonth(selected.start.minus(back, DateTimeUnit.MONTH))
+/**
+ * Everything up to the end of [selected], which is what the strip reads. The strip ends
+ * on the selected period, so nothing after it is queried.
+ */
+fun stripHistory(selected: DateRange): DateRange =
+    DateRange.custom(HISTORY_START, selected.endInclusive)
+
+/** The week, month or year holding [date], the same ranges the period arrows step. */
+fun periodContaining(date: LocalDate, mode: PeriodMode): DateRange = when (mode) {
+    PeriodMode.WEEKLY -> DateRange.ofWeek(date)
+    PeriodMode.MONTHLY -> DateRange.ofMonth(date)
+    PeriodMode.ANNUALLY -> DateRange.ofYear(date.year)
+    PeriodMode.CUSTOM -> DateRange.custom(date, date)
+}
+
+/**
+ * Folds daily totals into one strip column per period of [selected]'s mode, from the
+ * period of the first income or expense through [selected]. One fold for weeks, months
+ * and years: the mode decides only how a day is bucketed and how a column steps.
+ *
+ * [days] is one filtered daily totals query over [stripHistory], so the first column is
+ * the first period anything passing the filter happened, and every bar counts the same
+ * rows the header does. Bars share one scale, the largest income or expense figure
+ * across the whole history, as thousandths from `Long` arithmetic; only the drawing
+ * makes geometry of them.
+ *
+ * A quiet period after history began is a real zero and draws as one. With no history
+ * up to [selected] at all, the strip is the selected period alone as an empty slot, so
+ * the period the user is on still has a column to read.
+ *
+ * Transfers and adjustments are already out, as they are from every daily total.
+ */
+fun foldStrip(days: List<DailyTotals>, selected: DateRange): List<StripColumn> {
+    if (!hasStrip(selected.mode)) return emptyList()
+    val first = days.filter { !it.isEmpty && it.date <= selected.endInclusive }.minOfOrNull { it.date }
+        ?: return listOf(emptySlot(selected))
+
+    val byPeriod = HashMap<LocalDate, PeriodTotals>()
+    for (day in days) {
+        val key = periodContaining(day.date, selected.mode).start
+        val sum = byPeriod[key] ?: PeriodTotals.EMPTY
+        byPeriod[key] = PeriodTotals(sum.income + day.income, sum.expense + day.expense)
     }
 
-/**
- * Everything before the window, which is how a month in the window learns whether any
- * history precedes it. One aggregate rather than a "first transaction" lookup, so the
- * strip reads through the same filtered totals path as the period header.
- */
-fun historyBefore(window: List<DateRange>): DateRange =
-    DateRange.custom(HISTORY_START, window.first().start.minus(1, DateTimeUnit.DAY))
-
-/**
- * Folds the window's totals into the strip.
- *
- * Bars share one scale, the largest income or expense figure in the window, as
- * thousandths from `Long` arithmetic; only the drawing makes geometry of them.
- *
- * A month is an empty slot, not a pair of zero bars, while nothing has happened yet:
- * no flow before the window and none in this or any earlier month of it. Under a filter
- * "nothing has happened" means nothing that passes the filter, the same rows the bars
- * count. A quiet month after history began is a real zero and draws as one.
- *
- * [totals] is positional with [window]. Transfers and adjustments are already out, as
- * they are from every [PeriodTotals].
- */
-fun foldStrip(
-    window: List<DateRange>,
-    totals: List<PeriodTotals>,
-    before: PeriodTotals,
-    selected: DateRange,
-): List<StripMonth> {
-    require(window.size == totals.size) { "Strip window and totals differ in length" }
+    val periods = ArrayList<DateRange>()
+    var period = periodContaining(first, selected.mode)
+    while (period.start <= selected.start) {
+        periods += period
+        period = period.next()
+    }
+    val totals = periods.map { byPeriod[it.start] ?: PeriodTotals.EMPTY }
     val max = totals.maxOfOrNull { maxOf(it.income, it.expense) } ?: Money.ZERO
-    var started = !before.isEmpty
 
-    return window.mapIndexed { index, month ->
+    return periods.mapIndexed { index, range ->
         val figures = totals[index]
-        if (!figures.isEmpty) started = true
-        StripMonth(
-            range = month,
+        StripColumn(
+            range = range,
             income = figures.income,
             expense = figures.expense,
             incomePermille = barPermille(figures.income, max),
             expensePermille = barPermille(figures.expense, max),
-            selected = month == selected,
-            empty = !started,
+            selected = range == selected,
+            empty = false,
         )
     }
 }
 
-private val PeriodTotals.isEmpty: Boolean get() = income.isZero && expense.isZero
+private fun emptySlot(selected: DateRange) = StripColumn(
+    range = selected,
+    income = Money.ZERO,
+    expense = Money.ZERO,
+    incomePermille = 0,
+    expensePermille = 0,
+    selected = true,
+    empty = true,
+)

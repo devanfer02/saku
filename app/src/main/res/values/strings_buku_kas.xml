@@ -11,11 +11,14 @@
     <string name="stats_compare_more">%1$d%% more than %2$s</string>
     <string name="stats_compare_same">The same as %1$s</string>
 
-    <!-- Six-month strip, spoken per month -->
+    <!-- Period strip, spoken per column -->
     <string name="stats_strip_month">%1$s. In %2$s, out %3$s, net %4$s</string>
     <string name="stats_strip_month_empty">%1$s. Nothing recorded yet</string>
-    <string name="stats_strip_select">Show this month</string>
-    <string name="stats_strip_title">Six months</string>
+    <string name="stats_strip_select">Show this period</string>
+    <string name="stats_strip_month_side">%1$s. %2$s</string>
+    <string name="stats_strip_title_weeks">Weeks</string>
+    <string name="stats_strip_title_months">Months</string>
+    <string name="stats_strip_title_years">Years</string>
     <string name="stats_strip_collapsed_net">%1$s %2$s</string>
     <string name="stats_strip_expanded">Expanded</string>
     <string name="stats_strip_collapsed">Collapsed</string>

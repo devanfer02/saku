@@ -103,8 +103,12 @@ private const val DECIMAL_COMMA = ','
  * Integer-only: the rupiah are divided into tenths of a juta with the remainder carried
  * by hand. A figure that rounds to nothing reads `0 jt` with no sign, because `+0,0 jt`
  * claims a direction the label cannot show.
+ *
+ * [sign] is [MoneySign.NET] for a net, and [MoneySign.BALANCE] for a one-sided total
+ * such as a category's month (`4,8 jt`), which carries a minus only when negative.
+ * [MoneySign.FLOW] has no type to read here and behaves as [MoneySign.NET].
  */
-fun formatIdrCompact(money: Money): String {
+fun formatIdrCompact(money: Money, sign: MoneySign = MoneySign.NET): String {
     val negative = money.isNegative
     // Long.MIN_VALUE has no positive twin; the clamp costs one rupiah on an amount no
     // ledger will hold.
@@ -114,7 +118,7 @@ fun formatIdrCompact(money: Money): String {
     if (tenths == 0L) return "0$COMPACT_SUFFIX"
 
     return buildString {
-        append(if (negative) MINUS_SIGN else PLUS_SIGN)
+        if (negative) append(MINUS_SIGN) else if (sign != MoneySign.BALANCE) append(PLUS_SIGN)
         appendGrouped((tenths / 10).toString())
         append(DECIMAL_COMMA)
         append(tenths % 10)

@@ -1,6 +1,7 @@
 package com.dvnnfrr.saku.ui.transactions
 
 import com.dvnnfrr.saku.domain.DateRange
+import com.dvnnfrr.saku.domain.PeriodMode
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.Month
@@ -29,6 +30,19 @@ fun LocalDate.dayHeaderLabel(): String =
 
 /** A date standing on its own, where no header supplies the year: `29 Oct 2026`. */
 fun LocalDate.dateLabel(): String = "$dayOfMonth ${month.shortLabel()} $year"
+
+/**
+ * A Stats strip column: a week by its Monday (`26 Oct`), a month by its short name
+ * (`Oct`, or `Jan 26` so a scroll back through history never loses the year), a year by
+ * its number. About 64 dp wide, so never more than six characters.
+ */
+fun DateRange.stripColumnLabel(): String = when (mode) {
+    PeriodMode.WEEKLY -> "${start.dayOfMonth} ${start.month.shortLabel()}"
+    PeriodMode.MONTHLY ->
+        if (start.monthNumber == 1) "${start.month.shortLabel()} ${start.year % 100}" else start.month.shortLabel()
+    PeriodMode.ANNUALLY -> start.year.toString()
+    PeriodMode.CUSTOM -> start.dateLabel()
+}
 
 /**
  * A Monthly row's span: `28.09 ~ 04.10`, the full week even across a month edge, so a
