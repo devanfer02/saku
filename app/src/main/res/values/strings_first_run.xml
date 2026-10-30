@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- First-run setup copy. Kept apart from strings.xml so the feature merges cleanly. -->
+<resources>
+    <string name="first_run_title">Welcome to Saku</string>
+    <string name="first_run_intro">Bring in the history you already have, or start counting from today. Everything here can be changed later.</string>
+    <string name="first_run_from_saku">Import from Saku</string>
+    <string name="first_run_from_saku_subtitle">A backup, a database file or an Excel export from Saku</string>
+    <string name="first_run_manual">Set up manually</string>
+    <string name="first_run_manual_subtitle">Say what is in each account today and pick a few categories</string>
+    <string name="first_run_skip">Skip for now</string>
+    <string name="first_run_skip_hint">Balances can be set later on the Accounts tab.</string>
+
+    <string name="first_run_saku_title">Import from Saku</string>
+
+    <string name="setup_accounts_title">Your accounts</string>
+    <string name="setup_accounts_intro">How much is in each account today? Leave it empty for zero. Balances count from today, %1$s.</string>
+    <string name="setup_field_in_it_today">In it today</string>
+    <string name="setup_field_owed_today">Owed today</string>
+    <string name="setup_add_account">Add account</string>
+    <string name="setup_remove_account">Remove %1$s</string>
+    <string name="setup_remove_unnamed_account">Remove this account</string>
+    <string name="setup_error_name_taken">Another account already has this name</string>
+    <string name="setup_next">Next</string>
+
+    <string name="setup_categories_title">Categories</string>
+    <string name="setup_categories_intro">Tick the ones you will use, or add your own. You can change them any time in More, Categories.</string>
+    <string name="setup_category_new_expense">New expense category</string>
+    <string name="setup_category_new_income">New income category</string>
+    <string name="setup_category_add">Add</string>
+    <string name="setup_category_exists">Already added</string>
+    <string name="setup_saving">Saving…</string>
+    <string name="setup_refused_title">Could not save</string>
+</resources>
