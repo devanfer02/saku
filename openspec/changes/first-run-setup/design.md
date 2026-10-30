@@ -39,10 +39,11 @@ The owner widened the scope on 30 Oct 2026: the first screen is a choice between
 **Reuse the import screens by mounting them, not by linking into More.** `FirstRunRoute.IMPORT_MONEY_MANAGER`, `IMPORT_EXCEL`, `RESTORE` and `IMPORT_DATABASE` mount `ImportScreen`, `RestoreScreen` and `DatabaseImportScreen` with their own ViewModel factories. Labels, subtitles and icons on the chooser come from `MoreEntry`, so More and the chooser cannot drift.
 - Rejected: complete first run, open the shell and navigate to More > Restore. Backing out would leave the user in the app with no way back to the choice, which the owner asked for.
 
-**What finishes a path.**
-- `ImportScreen`'s Done, View transactions and Import history callbacks mean the import committed: first run completes and the shell opens. Import history is not reachable from the first-run graph, so that link opens the shell on Trans.
-- `RestoreScreen` and `DatabaseImportScreen` have only `onBack`. Leaving any import route (back or done) calls `FirstRunGateViewModel.onImportLeft()`, which asks `hasAny()` again: transactions now exist, so first run completes; otherwise the user is back on the welcome screen.
+**What finishes a path: the ledger, checked when an import route is left.** `FirstRunNavHost` watches its back stack; whenever the current route moves from an import route to any other, it calls `FirstRunGateViewModel.onImportLeft()`, which asks `hasAny()` again. Transactions now exist, so first run completes and the shell opens on Trans; otherwise the user is on the welcome screen (or the Saku chooser) again.
+- `ImportScreen`'s Done, View transactions and Import history callbacks pop back to the welcome screen, which counts as leaving. Import history is not in the first-run graph; the shell opens on Trans instead.
+- `RestoreScreen` and `DatabaseImportScreen` have only `onBack`, and system back does not call it. Watching the back stack catches both.
 - Rejected: add an `onRestored` callback to the restore screens. It changes two screens other features own, and "the ledger now has rows" is the fact that matters, whatever screen produced it.
+- Rejected: complete on `ImportScreen`'s Done directly. An import that wrote no rows would then end first run with an empty ledger, unlike every other path.
 - A restore that adds only accounts or categories and no transaction leaves the user on the welcome screen. They can Skip or set up by hand; nothing is lost either way.
 
 **Manual setup is one route with two steps held in the ViewModel.** The step is the user's choice, so it is ViewModel state (`FirstRunSetupViewModel`), not two routes; one ViewModel then holds both steps' drafts without a shared-scope trick. System back on the categories step returns to accounts; on the accounts step it returns to the welcome screen. Nothing is written until Done on the categories step.

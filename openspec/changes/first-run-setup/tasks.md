@@ -16,13 +16,13 @@
 
 ## 4. UI
 
-- [ ] 4.1 Add `strings_first_run.xml`
-- [ ] 4.2 Add `WelcomeScreen`, `SakuImportChooser` and `FirstRunSetupScreen` (accounts step, categories step), each with a stateless overload and `@SakuPreview` previews in light and dark
+- [x] 4.1 Add `strings_first_run.xml`
+- [x] 4.2 Add `WelcomeScreen`, `SakuImportChooser` and `FirstRunSetupScreen` (accounts step, categories step), each with a stateless overload and `@SakuPreview` previews in light and dark
 
 ## 5. Navigation
 
-- [ ] 5.1 Add `FirstRunRoute` and `FirstRunNavHost`, mounting the existing import, restore and database-import screens
-- [ ] 5.2 `SakuApp` shows the first-run flow before the shell while the gate offers it
+- [x] 5.1 Add `FirstRunRoute` and `FirstRunNavHost`, mounting the existing import, restore and database-import screens
+- [x] 5.2 `SakuApp` shows the first-run flow before the shell while the gate offers it
 
 ## 6. Verify
 
