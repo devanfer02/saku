@@ -82,11 +82,11 @@ fun SakuNavHost(
                 onDone = { navController.popToMoreMenu() },
             )
         }
-        composable(MoreRoute.EXPORT_EXCEL.route) { ExportScreen() }
-        composable(MoreRoute.IMPORT_HISTORY.route) { ImportHistoryScreen() }
-        composable(MoreRoute.BACKUP.route) { BackupScreen() }
-        composable(MoreRoute.RESTORE.route) { RestoreScreen() }
-        composable(MoreRoute.IMPORT_DATABASE.route) { DatabaseImportScreen() }
+        composable(MoreRoute.EXPORT_EXCEL.route) { ExportScreen(onBack = back) }
+        composable(MoreRoute.IMPORT_HISTORY.route) { ImportHistoryScreen(onBack = back) }
+        composable(MoreRoute.BACKUP.route) { BackupScreen(onBack = back) }
+        composable(MoreRoute.RESTORE.route) { RestoreScreen(onBack = back) }
+        composable(MoreRoute.IMPORT_DATABASE.route) { DatabaseImportScreen(onBack = back) }
     }
 }
 

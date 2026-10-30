@@ -17,7 +17,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.FileUpload
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -26,7 +25,6 @@ import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -47,6 +45,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.dvnnfrr.saku.R
 import com.dvnnfrr.saku.ui.shared.AccountPicker
 import com.dvnnfrr.saku.ui.shared.EmptyState
+import com.dvnnfrr.saku.ui.shared.ScreenHeader
 import com.dvnnfrr.saku.ui.theme.SakuTheme
 import com.dvnnfrr.saku.ui.theme.formatIdr
 
@@ -112,7 +111,7 @@ fun ImportScreenBody(
     val colors = SakuTheme.colors
 
     Column(modifier = modifier.fillMaxSize().background(colors.background)) {
-        Header(title = stringResource(state.entryPoint.titleRes()), onBack = onBack)
+        ScreenHeader(title = stringResource(state.entryPoint.titleRes()), onBack = onBack, backLabel = stringResource(R.string.screen_back))
         when (state) {
             is ImportUiState.Idle -> IdleBody(state.entryPoint, onPickFile)
 
@@ -310,37 +309,6 @@ private fun LinkButton(text: String, onClick: () -> Unit) {
             text = text,
             color = SakuTheme.colors.accent,
             style = SakuTheme.typography.bodyStrong,
-        )
-    }
-}
-
-/** The title row, so the screen says where it is and has a way out besides system back. */
-@Composable
-private fun Header(title: String, onBack: (() -> Unit)?) {
-    val spacing = SakuTheme.spacing
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = spacing.touchTarget)
-            .padding(horizontal = spacing.sm, vertical = spacing.xs),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (onBack != null) {
-            IconButton(onClick = onBack) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = stringResource(R.string.import_back),
-                    tint = SakuTheme.colors.ink,
-                )
-            }
-        }
-        Text(
-            text = title,
-            style = SakuTheme.typography.title,
-            color = SakuTheme.colors.ink,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(horizontal = spacing.sm),
         )
     }
 }

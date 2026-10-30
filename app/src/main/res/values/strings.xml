@@ -143,7 +143,6 @@
     <string name="categories_show_archived">Show archived (%1$d)</string>
     <string name="categories_hide_archived">Hide archived</string>
     <string name="categories_archived_header">Archived</string>
-    <string name="categories_back">Back</string>
     <plurals name="categories_transaction_count">
         <item quantity="one">%d transaction</item>
         <item quantity="other">%d transactions</item>
@@ -276,7 +275,7 @@
     <string name="import_done_categories">New categories</string>
     <string name="import_done_categories_none">None. Every category was already here.</string>
     <string name="import_done_view_transactions">View transactions</string>
-    <string name="import_back">Back</string>
+    <string name="screen_back">Back</string>
 
     <!-- Import history -->
     <string name="import_history_empty">Nothing imported yet</string>

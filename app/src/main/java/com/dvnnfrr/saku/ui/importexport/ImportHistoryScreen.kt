@@ -1,5 +1,6 @@
 package com.dvnnfrr.saku.ui.importexport
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -25,6 +26,7 @@ import com.dvnnfrr.saku.R
 import com.dvnnfrr.saku.domain.ImportBatch
 import com.dvnnfrr.saku.ui.shared.ConfirmDialog
 import com.dvnnfrr.saku.ui.shared.EmptyState
+import com.dvnnfrr.saku.ui.shared.ScreenHeader
 import com.dvnnfrr.saku.ui.theme.SakuTheme
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -39,6 +41,7 @@ import kotlinx.datetime.toLocalDateTime
 @Composable
 fun ImportHistoryScreen(
     modifier: Modifier = Modifier,
+    onBack: (() -> Unit)? = null,
     zone: TimeZone = TimeZone.currentSystemDefault(),
     viewModel: ImportHistoryViewModel = viewModel(factory = ImportHistoryViewModel.Factory),
 ) {
@@ -48,6 +51,7 @@ fun ImportHistoryScreen(
         state = state,
         zone = zone,
         modifier = modifier,
+        onBack = onBack,
         onReverse = viewModel::askToReverse,
         onConfirm = viewModel::confirmReversal,
         onDismiss = viewModel::dismissConfirmation,
@@ -59,23 +63,28 @@ fun ImportHistoryBody(
     state: ImportHistoryUiState,
     zone: TimeZone,
     modifier: Modifier = Modifier,
+    onBack: (() -> Unit)? = null,
     onReverse: (ImportBatch) -> Unit = {},
     onConfirm: () -> Unit = {},
     onDismiss: () -> Unit = {},
 ) {
-    if (state.batches.isEmpty() && !state.loading) {
-        EmptyState(
-            icon = Icons.AutoMirrored.Outlined.ListAlt,
-            message = stringResource(R.string.import_history_empty),
-            modifier = modifier.fillMaxSize(),
-        )
-        return
-    }
+    val empty = state.batches.isEmpty() && !state.loading
 
-    LazyColumn(modifier = modifier.fillMaxSize()) {
-        items(state.batches, key = { it.id }) { batch ->
-            BatchRow(batch = batch, zone = zone, onReverse = { onReverse(batch) })
-            HorizontalDivider(color = SakuTheme.colors.line)
+    Column(modifier = modifier.fillMaxSize().background(SakuTheme.colors.background)) {
+        ScreenHeader(title = stringResource(R.string.more_import_history), onBack = onBack, backLabel = stringResource(R.string.screen_back))
+        if (empty) {
+            EmptyState(
+                icon = Icons.AutoMirrored.Outlined.ListAlt,
+                message = stringResource(R.string.import_history_empty),
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+            )
+        } else {
+            LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                items(state.batches, key = { it.id }) { batch ->
+                    BatchRow(batch = batch, zone = zone, onReverse = { onReverse(batch) })
+                    HorizontalDivider(color = SakuTheme.colors.line)
+                }
+            }
         }
     }
 
