@@ -54,6 +54,11 @@ fun RankedRow(
     supporting: String? = null,
     supportingColor: Color? = null,
     valueColor: Color? = null,
+    /**
+     * Overrides the slot's colour for the swatch and the bar. Search's month rows draw
+     * in the income or expense colour of the side they total, since a month has no slot.
+     */
+    color: Color? = null,
     trailing: (@Composable RowScope.() -> Unit)? = null,
     onClick: (() -> Unit)? = null,
 ) {
@@ -72,7 +77,7 @@ fun RankedRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(spacing.md),
         ) {
-            ColorSwatch(colorSlot)
+            ColorSwatch(colorSlot, color = color)
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = name,
@@ -112,7 +117,7 @@ fun RankedRow(
         barPermille?.let {
             ShareBar(
                 permille = it,
-                color = colors.forSlotOrNeutral(colorSlot),
+                color = color ?: colors.forSlotOrNeutral(colorSlot),
                 // Under the name, past the swatch, so the bars start on one edge.
                 modifier = Modifier.padding(start = spacing.swatch + spacing.md),
             )
