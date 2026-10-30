@@ -44,7 +44,7 @@ CI: a PR runs unit tests, lint, the debug build and the no-network-permission ga
 export ANDROID_HOME="$HOME/Android/Sdk"   # your Android SDK path
 ./gradlew --no-daemon \
   -Pkotlin.compiler.execution.strategy=in-process -Dorg.gradle.jvmargs=-Xmx1536m \
-  :app:testDebugUnitTest :app:assembleDebug
+  :app:lintDebug :app:testDebugUnitTest :app:assembleDebug
 ```
 
 Both green, even for a change with no test of its own. The flags keep the build inside a 14 GB machine; never run two builds at once, and do not raise the heap whatever a skill suggests. A git worktree has no `local.properties`, so set `ANDROID_HOME` in the environment.
