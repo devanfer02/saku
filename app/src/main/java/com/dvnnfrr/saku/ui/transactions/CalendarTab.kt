@@ -132,5 +132,3 @@ private fun netColor(net: Money) = when {
     else -> SakuTheme.colors.ink2
 }
 
-/** Room for the floating add button, which is 56dp plus its 16dp margin. */
-private val FAB_CLEARANCE = 88.dp

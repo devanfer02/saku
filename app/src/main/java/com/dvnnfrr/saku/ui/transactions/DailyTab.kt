@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
@@ -80,25 +81,33 @@ fun DailyTab(
         // under the button, and tapping it opened a new transaction instead of that one.
         contentPadding = PaddingValues(bottom = FAB_CLEARANCE),
     ) {
-        days.forEach { section ->
-            item(key = "header-${section.date}") { DayHeader(section) }
-            items(
-                count = section.rows.size,
-                key = { i -> section.rows[i].id },
-            ) { i ->
-                val row = section.rows[i]
-                TransactionRow(
-                    amount = row.amount,
-                    type = row.type,
-                    accountName = row.account.name,
-                    categorySlot = row.categorySlot,
-                    category = row.categoryName,
-                    subcategory = row.subcategoryName,
-                    note = row.note,
-                    toAccountName = row.toAccount?.name,
-                    onClick = { onRowClick(row.id) },
-                )
-            }
+        daySectionItems(days, onRowClick)
+    }
+}
+
+/**
+ * Each day as Daily draws it: the date header, then that day's rows. Shared with the
+ * Calendar's range list so the two cannot drift into rendering a day differently.
+ */
+internal fun LazyListScope.daySectionItems(days: List<DaySection>, onRowClick: (Long) -> Unit) {
+    days.forEach { section ->
+        item(key = "header-${section.date}") { DayHeader(section) }
+        items(
+            count = section.rows.size,
+            key = { i -> section.rows[i].id },
+        ) { i ->
+            val row = section.rows[i]
+            TransactionRow(
+                amount = row.amount,
+                type = row.type,
+                accountName = row.account.name,
+                categorySlot = row.categorySlot,
+                category = row.categoryName,
+                subcategory = row.subcategoryName,
+                note = row.note,
+                toAccountName = row.toAccount?.name,
+                onClick = { onRowClick(row.id) },
+            )
         }
     }
 }
@@ -138,4 +147,4 @@ private fun DayHeader(section: DaySection) {
 }
 
 /** Room for the floating add button, which is 56dp plus its 16dp margin. */
-private val FAB_CLEARANCE = 88.dp
+internal val FAB_CLEARANCE = 88.dp

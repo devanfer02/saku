@@ -188,9 +188,6 @@ private fun Figures(totals: PeriodTotals?) {
     }
 }
 
-/** Room for the floating add button, which is 56dp plus its 16dp margin. */
-private val FAB_CLEARANCE = 88.dp
-
 @SakuPreview
 @Composable
 private fun MonthlyTabPreview() {
