@@ -79,6 +79,11 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+        // ML Kit's OCR library is 7 to 12 MB per ABI. Phones are ARM; x86_64 is added
+        // for debug only, so the emulator runs it and the release does not carry it.
+        ndk {
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+        }
     }
 
     /**
@@ -113,6 +118,11 @@ android {
     }
 
     buildTypes {
+        debug {
+            ndk {
+                abiFilters += "x86_64"
+            }
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(
@@ -201,6 +211,7 @@ dependencies {
     implementation(libs.fastexcel.writer)
     implementation(libs.fastexcel.reader)
     implementation(libs.stax.api)
+    implementation(libs.mlkit.text.recognition)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

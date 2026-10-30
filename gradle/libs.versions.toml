@@ -18,6 +18,7 @@ robolectric = "4.14.1"
 androidxTestCore = "1.6.1"
 fastexcel = "0.19.0"
 staxApi = "1.2"
+mlkitTextRecognition = "16.0.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -49,6 +50,8 @@ fastexcel-writer = { group = "org.dhatim", name = "fastexcel", version.ref = "fa
 fastexcel-reader = { group = "org.dhatim", name = "fastexcel-reader", version.ref = "fastexcel" }
 # Android has no javax.xml.stream; fastexcel-reader needs it. See excel/XlsxReader.kt.
 stax-api = { group = "org.apache.geronimo.specs", name = "geronimo-stax-api_1.2_spec", version.ref = "staxApi" }
+# On-device OCR, bundled Latin model. Its logging backend merges INTERNET; AndroidManifest.xml removes it.
+mlkit-text-recognition = { group = "com.google.mlkit", name = "text-recognition", version.ref = "mlkitTextRecognition" }
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "kotlinxCoroutines" }
 
 junit = { group = "junit", name = "junit", version.ref = "junit" }

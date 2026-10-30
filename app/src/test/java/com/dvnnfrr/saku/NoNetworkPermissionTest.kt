@@ -27,15 +27,40 @@ class NoNetworkPermissionTest {
         return file.readText()
     }
 
+    private val usesPermission = Regex("""<uses-permission[^>]*>""")
+    private val permissionName = Regex("""android:name\s*=\s*"([^"]+)"""")
+
+    /** A `tools:node="remove"` entry strips a permission a library merged in; it declares nothing. */
+    private fun String.isRemoval(): Boolean = contains("""tools:node="remove"""")
+
+    private fun permissions(removals: Boolean): Set<String> = usesPermission.findAll(manifest())
+        .map { it.value }
+        .filter { it.isRemoval() == removals }
+        .mapNotNull { permissionName.find(it)?.groupValues?.get(1) }
+        .toSet()
+
     @Test
     fun `manifest declares no network permission`() {
-        val text = manifest()
+        val declared = permissions(removals = false)
         networkPermissions.forEach { permission ->
             assertFalse(
-                "$permission must never be declared — see the ad-free guarantee in design.md",
-                text.contains(permission),
+                "$permission must never be declared, see the ad-free guarantee in design.md",
+                permission in declared,
             )
         }
+    }
+
+    /**
+     * ML Kit text recognition (receipt-scan) merges INTERNET and ACCESS_NETWORK_STATE
+     * through its logging backend. Dropping these removals would put both in the merged
+     * manifest; the merged-manifest check would then fail the build, but this says why.
+     */
+    @Test
+    fun `manifest removes the network permissions ML Kit merges in`() {
+        assertEquals(
+            setOf("android.permission.INTERNET", "android.permission.ACCESS_NETWORK_STATE"),
+            permissions(removals = true),
+        )
     }
 
     /**
@@ -49,10 +74,7 @@ class NoNetworkPermissionTest {
 
     @Test
     fun `manifest declares only the allowlisted permissions`() {
-        val declared = Regex("""<uses-permission[^>]*android:name\s*=\s*"([^"]+)"""")
-            .findAll(manifest())
-            .map { it.groupValues[1] }
-            .toSet()
+        val declared = permissions(removals = false)
         assertEquals(
             "A <uses-permission> outside the allowlist appeared in the manifest; if it is " +
                 "genuinely needed, update this test deliberately rather than deleting it",
