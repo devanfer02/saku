@@ -100,7 +100,7 @@ class PeriodAggregateTest {
         val totals = db.txnDao().observePeriodTotals(
             august.startSecFor(jakarta),
             august.endSecFor(jakarta),
-            true, emptyList(), true, emptyList(), true, emptyList(),
+            true, emptyList(), true, emptyList(), true, emptyList(), true, emptyList(),
         ).first()
 
         assertEquals(0L, totals.income)
@@ -117,7 +117,7 @@ class PeriodAggregateTest {
         val totals = db.txnDao().observePeriodTotals(
             august.startSecFor(jakarta),
             august.endSecFor(jakarta),
-            true, emptyList(), true, emptyList(), true, emptyList(),
+            true, emptyList(), true, emptyList(), true, emptyList(), true, emptyList(),
         ).first()
 
         assertEquals(200_000L, totals.expense)
@@ -133,7 +133,7 @@ class PeriodAggregateTest {
             august.startSecFor(jakarta),
             august.endSecFor(jakarta),
             TxnType.EXPENSE.name,
-            true, emptyList(), true, emptyList(), true, emptyList(),
+            true, emptyList(), true, emptyList(), true, emptyList(), true, emptyList(),
         ).first()
 
         assertEquals(2, rows.size)
@@ -152,7 +152,7 @@ class PeriodAggregateTest {
             august.startSecFor(jakarta),
             august.endSecFor(jakarta),
             TxnType.EXPENSE.name,
-            true, emptyList(), true, emptyList(), true, emptyList(),
+            true, emptyList(), true, emptyList(), true, emptyList(), true, emptyList(),
         ).first()
 
         assertEquals(1, expenses.size)
@@ -170,7 +170,7 @@ class PeriodAggregateTest {
             august.startSecFor(jakarta),
             august.endSecFor(jakarta),
             25_200, // UTC+7
-            true, emptyList(), true, emptyList(), true, emptyList(),
+            true, emptyList(), true, emptyList(), true, emptyList(), true, emptyList(),
         ).first()
 
         assertEquals(1, days.size)

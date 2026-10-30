@@ -1,9 +1,9 @@
 ## 1. Storage
 
-- [ ] 1.1 `TagEntity`, `TxnTagEntity`, `TagDao`; `SakuDatabase.VERSION = 2`; `MIGRATION_1_2` (create-only); export schema `2.json`; update `IDENTITY_HASH` and `SchemaIdentityTest`
+- [x] 1.1 `TagEntity`, `TxnTagEntity`, `TagDao`; `SakuDatabase.VERSION = 2`; `MIGRATION_1_2` (create-only); export schema `2.json`; update `IDENTITY_HASH` and `SchemaIdentityTest`
 - [ ] 1.2 Migration test (androidTest, `MigrationTestHelper`) from a version 1 file with rows; JVM test that the migration SQL is create-only
-- [ ] 1.3 Domain `Tag`, `Transaction.tagIds`; mappers; `TagRepository` (find-or-create by normalized name, rename, archive, counts)
-- [ ] 1.4 `TransactionRepository` save and update write `txn_tag` in the same database transaction; tests
+- [x] 1.3 Domain `Tag`, `Transaction.tagIds`; mappers; `TagRepository` (find-or-create by normalized name, rename, archive, counts)
+- [x] 1.4 `TransactionRepository` save and update write `txn_tag` in the same database transaction; tests
 
 ## 2. Entry sheet and list
 

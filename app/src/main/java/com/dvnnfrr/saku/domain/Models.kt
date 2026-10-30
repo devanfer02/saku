@@ -58,6 +58,8 @@ data class Transaction(
     val note: String? = null,
     val createdAt: Instant,
     val importBatchId: Long? = null,
+    /** The row's tags, none by default. Not part of the dedup hash, so tagging later never duplicates a re-import. */
+    val tagIds: Set<Long> = emptySet(),
 )
 
 /** One category's total for a period, as a ranked row. */
