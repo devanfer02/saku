@@ -9,7 +9,7 @@ import com.dvnnfrr.saku.domain.TxnType
  * The complete colour token set for one theme.
  *
  * Light and dark are written out in full and neither is derived from the other, so a
- * token can never exist in one theme and be missing from the other — the compiler
+ * token can never exist in one theme and be missing from the other: the compiler
  * refuses a [SakuColors] that leaves a field unset.
  *
  * [accent] is blue in both themes and carries brand and interactive state only. Money
@@ -34,7 +34,7 @@ data class SakuColors(
     val transfer: Color,
     /** Exactly [ColorSlot.COUNT] entries; the index is the [ColorSlot.index]. */
     /**
-     * For a segment that owns no slot — the stats screen's aggregated "Other".
+     * For a segment that owns no slot, such as the stats screen's aggregated "Other".
      * Deliberately not `surfaceAlt`: that is a share bar's unfilled track, so a bar
      * painted in it would be invisible.
      */

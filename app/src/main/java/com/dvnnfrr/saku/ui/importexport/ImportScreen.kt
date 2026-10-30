@@ -57,9 +57,9 @@ import kotlinx.datetime.LocalDate
  * The import screen: pick a file, check what it will do, confirm.
  *
  * The preview is the product here, not a courtesy. A year of history arriving
- * in one tap is unreviewable afterwards, so everything that could be wrong — which
+ * in one tap is unreviewable afterwards, so everything that could be wrong (which
  * account a name maps to, where an investment transfer lands, how many rows are already
- * present — is settled before a single row is written.
+ * present) is settled before a single row is written.
  */
 @Composable
 fun ImportScreen(
@@ -722,7 +722,7 @@ private fun Caption(text: String) {
 
 /**
  * For instrumentation, which should not depend on a label that carries a row count.
- * Maestro matches on the visible text instead — Compose test tags are not exposed as
+ * Maestro matches on the visible text instead, because Compose test tags are not exposed as
  * resource ids here, and turning that on is a shell-wide change no track owns.
  */
 const val IMPORT_ACTION_TAG = "import_confirm"

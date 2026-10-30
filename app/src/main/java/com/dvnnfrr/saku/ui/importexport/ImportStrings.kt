@@ -14,7 +14,7 @@ import kotlinx.datetime.LocalDate
 /**
  * Where the import model meets copy.
  *
- * The `excel` package holds no user-facing English at all — it deals in enums and
+ * The `excel` package holds no user-facing English at all; it deals in enums and
  * structured values, which is what lets it be tested against the real export without a
  * resource loader, and what stops a parser change quietly rewriting a sentence. Every
  * mapping lives here and is exhaustive, so adding a case without copy fails to compile.

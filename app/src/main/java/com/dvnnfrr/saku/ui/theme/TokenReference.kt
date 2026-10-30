@@ -26,7 +26,7 @@ import com.dvnnfrr.saku.domain.TxnType
  * Every token in the active theme, on one screen.
  *
  * Previewed in both themes so a colour defined for only one set is visible as a hole
- * rather than discovered on a device. Not a destination — it exists for the preview pane
+ * rather than discovered on a device. Not a destination; it exists for the preview pane
  * and for a future screenshot harness to point at.
  */
 @Composable

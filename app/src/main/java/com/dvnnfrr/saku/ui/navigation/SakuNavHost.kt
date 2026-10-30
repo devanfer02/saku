@@ -101,7 +101,7 @@ fun SakuNavHost(
  * grow, and each destination is restored as the user left it.
  *
  * `saveState`/`restoreState` are what make that true. Without them Compose disposes
- * the outgoing destination and the next visit rebuilds it from scratch — the user
+ * the outgoing destination and the next visit rebuilds it from scratch, and the user
  * loses their scroll position and their selected sub-tab, which the spec forbids.
  */
 fun NavHostController.navigateTo(destination: SakuDestination) {
