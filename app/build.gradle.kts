@@ -79,10 +79,11 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
-        // ML Kit's OCR library is 7 to 12 MB per ABI. Phones are ARM; x86_64 is added
-        // for debug only, so the emulator runs it and the release does not carry it.
+        // ML Kit's OCR library is 11 MB on arm64. Release ships arm64 only (owner's call,
+        // 31 Oct 2026: every Android 15 phone is 64-bit); x86_64 is added for debug only, so
+        // the emulator runs it and the release does not carry it.
         ndk {
-            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+            abiFilters += "arm64-v8a"
         }
     }
 
@@ -153,6 +154,11 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+        // Compressed in the APK and unpacked at install: the OCR library drops from 11.1 MB
+        // to about 4.4 MB of download, for a few MB more on the phone once installed.
+        jniLibs {
+            useLegacyPackaging = true
         }
     }
 }
