@@ -3,10 +3,8 @@
 An offline money tracker for Android, in rupiah. No ads, no account, no network. (Saku is
 Indonesian for pocket.)
 
-I used Money Manager for over a year and kept running into the same problems. Almost every row
-ended up on one account, so balances never matched my bank. Moving money into investments made it
-disappear from net worth. I skipped subcategories every single time. Saku is what I built instead,
-and it imports a Money Manager export so the history comes along.
+Think Money Manager without the ads. If you already use Money Manager, Saku imports its Excel
+export, so your history comes with you.
 
 <p>
   <img src="docs/screenshots/light-trans.png" width="200" alt="Trans tab, light theme">
