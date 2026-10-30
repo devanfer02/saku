@@ -19,9 +19,8 @@ object ReceiptParser {
         val store = pickStore(rows)
         val items = pickItems(rows, total.rowIndex)
 
-        // Item rows stay in unplaced while the entry sheet offers them as lines; task 5.1
-        // removes that sheet action and adds items.rowIndices here.
-        val used = setOfNotNull(total.rowIndex, date?.rowIndex, store?.rowIndex)
+        // Item rows are shown as items, so they are not offered again as unplaced lines.
+        val used = setOfNotNull(total.rowIndex, date?.rowIndex, store?.rowIndex) + items.rowIndices
         val unplaced = rows.withIndex()
             .filterNot { (index, row) -> index in used || isPaymentRow(row.text) }
             .map { it.value.text.trim() }

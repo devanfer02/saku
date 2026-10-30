@@ -30,18 +30,10 @@ class ReceiptParserTest {
     }
 
     @Test
-    fun `item lines are unplaced, in printed order, and used rows are not`() {
-        val unplaced = ReceiptParser.read(indomaret, TODAY).unplaced
-        assertEquals(
-            listOf(
-                "JL. KALIURANG KM 5",
-                "INDOMIE GRG SPCL 2 3.100 6.200",
-                "AQUA 600ML 1 3.500 3.500",
-                "ROTI TAWAR 1 42.600 42.600",
-                "TERIMA KASIH",
-            ),
-            unplaced,
-        )
+    fun `unplaced holds the rows not used as total, date, store or item, in printed order`() {
+        val reading = ReceiptParser.read(indomaret, TODAY)
+        assertEquals(listOf("JL. KALIURANG KM 5", "TERIMA KASIH"), reading.unplaced)
+        assertEquals(listOf("INDOMIE GRG SPCL", "AQUA 600ML", "ROTI TAWAR"), reading.items.map { it.name })
     }
 
     @Test
