@@ -13,6 +13,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -50,6 +51,9 @@ import kotlinx.datetime.Month
 fun TransactionsScreen(
     modifier: Modifier = Modifier,
     onOpenSearch: () -> Unit = {},
+    /** The weekly reminder was tapped: open the sheet on a new transaction, then report it. */
+    openNewEntry: Boolean = false,
+    onNewEntryOpened: () -> Unit = {},
     viewModel: TransactionListViewModel = viewModel(factory = TransactionListViewModel.Factory),
 ) {
     // collectAsState rather than collectAsStateWithLifecycle: the upstream is already
@@ -61,6 +65,13 @@ fun TransactionsScreen(
     // "open on a new transaction", so nullability cannot also encode "closed".
     var editing by rememberSaveable { mutableStateOf(NOT_OPEN) }
     var filtering by rememberSaveable { mutableStateOf(false) }
+
+    LaunchedEffect(openNewEntry) {
+        if (openNewEntry) {
+            editing = NEW
+            onNewEntryOpened()
+        }
+    }
 
     Box(modifier = modifier.fillMaxSize()) {
         TransactionsScreen(

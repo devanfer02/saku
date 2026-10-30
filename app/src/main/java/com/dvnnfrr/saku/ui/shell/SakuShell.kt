@@ -8,6 +8,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -34,10 +35,18 @@ fun SakuShell(
     modifier: Modifier = Modifier,
     appearance: ThemePreference = ThemePreference.FOLLOW_SYSTEM,
     onAppearanceChange: (ThemePreference) -> Unit = {},
+    /** Open Trans with the entry sheet on a new transaction; see [SakuNavHost]. */
+    openEntry: Boolean = false,
+    onEntryOpened: () -> Unit = {},
     navController: NavHostController = rememberNavController(),
 ) {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val current = SakuDestination.owning(backStackEntry?.destination?.route)
+
+    // Switch to Trans first; Trans itself opens the sheet and consumes the request.
+    LaunchedEffect(openEntry) {
+        if (openEntry) navController.navigateTo(SakuDestination.TRANSACTIONS)
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -67,6 +76,8 @@ fun SakuShell(
             navController = navController,
             appearance = appearance,
             onAppearanceChange = onAppearanceChange,
+            openEntry = openEntry,
+            onEntryOpened = onEntryOpened,
             modifier = Modifier.padding(contentPadding),
         )
     }

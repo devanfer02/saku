@@ -29,6 +29,8 @@ fun SakuNavHost(
     appearance: ThemePreference,
     onAppearanceChange: (ThemePreference) -> Unit,
     modifier: Modifier = Modifier,
+    openEntry: Boolean = false,
+    onEntryOpened: () -> Unit = {},
 ) {
     val back: () -> Unit = { navController.popBackStack() }
 
@@ -38,7 +40,11 @@ fun SakuNavHost(
         modifier = modifier,
     ) {
         composable(SakuDestination.TRANSACTIONS.route) {
-            TransactionsScreen(onOpenSearch = { navController.navigate(TransRoute.SEARCH.route) })
+            TransactionsScreen(
+                onOpenSearch = { navController.navigate(TransRoute.SEARCH.route) },
+                openNewEntry = openEntry,
+                onNewEntryOpened = onEntryOpened,
+            )
         }
         composable(TransRoute.SEARCH.route) { SearchScreen(onBack = back) }
         composable(SakuDestination.STATS.route) { StatsScreen() }
