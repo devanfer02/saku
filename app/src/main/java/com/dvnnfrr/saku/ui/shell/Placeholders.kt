@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Label
 import androidx.compose.material.icons.automirrored.filled.ListAlt
 import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.Category
@@ -152,6 +153,7 @@ enum class MoreEntry(
     val group: MoreGroup,
 ) {
     CATEGORIES(R.string.more_categories, R.string.more_categories_subtitle, Icons.Filled.Category, MoreGroup.ORGANISE),
+    TAGS(R.string.more_tags, R.string.more_tags_subtitle, Icons.AutoMirrored.Filled.Label, MoreGroup.ORGANISE),
     BACKUP(R.string.more_backup, R.string.more_backup_subtitle, Icons.Filled.Backup, MoreGroup.YOUR_DATA),
     RESTORE(R.string.more_restore, R.string.more_restore_subtitle, Icons.Filled.Restore, MoreGroup.YOUR_DATA),
     IMPORT_DATABASE(
