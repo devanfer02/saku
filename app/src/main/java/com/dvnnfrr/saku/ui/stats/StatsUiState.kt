@@ -1,5 +1,6 @@
 package com.dvnnfrr.saku.ui.stats
 
+import com.dvnnfrr.saku.domain.ChartStyle
 import com.dvnnfrr.saku.domain.ColorSlot
 import com.dvnnfrr.saku.domain.DateRange
 import com.dvnnfrr.saku.domain.Money
@@ -42,6 +43,8 @@ data class StatsUiState(
     val strip: List<StripColumn> = emptyList(),
     /** Whether the strip shows its bars or only its header line. */
     val stripExpanded: Boolean = true,
+    /** Ranked bars, or a pie above them. Remembered across restarts. */
+    val chartStyle: ChartStyle = ChartStyle.BARS,
     /** Null while the overview is showing; set once the user drills into a slice. */
     val drill: DrillUiState? = null,
     /** The filter the figures were computed under, for the bar and the action. */
@@ -87,6 +90,12 @@ sealed interface DrillUiState {
         override val title: String?,
         val colorSlot: ColorSlot,
         override val total: Money,
+        /** Whole percent of the side total, exactly as the ranked row that opened it. */
+        val percent: Int = 0,
+        val count: Int = 0,
+        val average: Money = Money.ZERO,
+        /** This category's own strip across all history. Empty in Period mode. */
+        val strip: List<StripColumn> = emptyList(),
         val subcategories: List<SubcategorySlice>,
         val rows: List<TransactionRowUi>,
     ) : DrillUiState
@@ -116,6 +125,8 @@ data class RankedCategory(
     val percent: Int,
     /** Bar length in thousandths of the largest row in the same list. */
     val barPermille: Int = 0,
+    /** Pie slice in tenths of a degree, from `pieSweeps` over the same list. */
+    val sweepTenths: Int = 0,
 ) {
     val isOther: Boolean get() = categoryId == null
 }
@@ -154,6 +165,13 @@ data class SubcategorySlice(
     val percent: Int,
     /** Bar length in thousandths of the largest slice. */
     val barPermille: Int = 0,
+    /** Pie slice in tenths of a degree. */
+    val sweepTenths: Int = 0,
+    /**
+     * How strongly the parent's colour is drawn, in percent; null for the unassigned
+     * bucket, which draws in the neutral chart colour. From `subcategoryStrength`.
+     */
+    val strengthPercent: Int? = 100,
 ) {
     val isUnassigned: Boolean get() = subcategoryId == null
 }

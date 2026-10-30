@@ -1,6 +1,20 @@
 package com.dvnnfrr.saku.ui.stats
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.PieChart
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
+import com.dvnnfrr.saku.domain.ChartStyle
+import com.dvnnfrr.saku.ui.theme.forSlotOrNeutral
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -80,6 +94,7 @@ fun StatsScreen(
         onClearFilter = viewModel::clearFilter,
         onSelectPeriod = viewModel::selectPeriod,
         onToggleStrip = viewModel::toggleStrip,
+        onSelectChartStyle = viewModel::selectChartStyle,
         modifier = modifier,
     )
 
@@ -104,6 +119,7 @@ fun StatsScreen(
     onClearFilter: () -> Unit = {},
     onSelectPeriod: (DateRange) -> Unit = {},
     onToggleStrip: () -> Unit = {},
+    onSelectChartStyle: (ChartStyle) -> Unit = {},
 ) {
     var pickingRange by remember { mutableStateOf(false) }
 
@@ -139,6 +155,7 @@ fun StatsScreen(
                 onSelectSide = onSelectSide,
                 onSelectPeriod = onSelectPeriod,
                 onToggleStrip = onToggleStrip,
+                onSelectChartStyle = onSelectChartStyle,
                 onOpenCategory = onOpenCategory,
                 onOpenOther = onOpenOther,
                 onClearFilter = onClearFilter,
@@ -152,6 +169,8 @@ fun StatsScreen(
                 side = state.side,
                 onBack = onCloseDrill,
                 onOpenCategory = onOpenCategory,
+                chartStyle = state.chartStyle,
+                onSelectPeriod = onSelectPeriod,
             )
         }
     }
@@ -193,6 +212,7 @@ private fun Overview(
     onSelectSide: (StatsSide) -> Unit,
     onSelectPeriod: (DateRange) -> Unit,
     onToggleStrip: () -> Unit,
+    onSelectChartStyle: (ChartStyle) -> Unit,
     onOpenCategory: (Long) -> Unit,
     onOpenOther: () -> Unit,
     onClearFilter: () -> Unit,
@@ -220,12 +240,20 @@ private fun Overview(
         }
         item(key = "side") { SideTabs(state.side, onSelectSide) }
         item(key = "headline") {
-            StatsHeadline(
-                side = state.side,
-                range = state.range,
-                total = state.sideTotal,
-                comparison = state.comparisonLine,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                StatsHeadline(
+                    side = state.side,
+                    range = state.range,
+                    total = state.sideTotal,
+                    comparison = state.comparisonLine,
+                    modifier = Modifier.weight(1f),
+                )
+                ChartStyleToggle(
+                    style = state.chartStyle,
+                    onSelect = onSelectChartStyle,
+                    modifier = Modifier.padding(end = SakuTheme.spacing.sm),
+                )
+            }
         }
 
         if (state.composition.isEmpty) {
@@ -233,7 +261,73 @@ private fun Overview(
             return@LazyColumn
         }
 
+        if (state.chartStyle == ChartStyle.PIE) {
+            item(key = "pie") {
+                val colors = SakuTheme.colors
+                StatsPie(
+                    slices = state.composition.rows.map { PieSlice(colors.forSlotOrNeutral(it.colorSlot), it.sweepTenths) },
+                    centerLabel = stringResource(
+                        when (state.side) {
+                            StatsSide.EXPENSES -> R.string.stats_pie_spent
+                            StatsSide.INCOME -> R.string.stats_pie_earned
+                        },
+                    ),
+                    centerValue = formatIdr(state.sideTotal),
+                )
+            }
+        }
+
         categoryRows(state.composition.rows, otherLabel, onOpenCategory, onOpenOther)
+    }
+}
+
+/**
+ * Ranked bars or a pie, as two 48 dp icon buttons beside the headline. A radio pair for
+ * TalkBack: each option speaks its name and whether it is the one showing.
+ */
+@Composable
+private fun ChartStyleToggle(
+    style: ChartStyle,
+    onSelect: (ChartStyle) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(modifier = modifier.selectableGroup()) {
+        ChartStyleOption(
+            icon = Icons.Filled.BarChart,
+            label = stringResource(R.string.stats_chart_bars),
+            selected = style == ChartStyle.BARS,
+            onClick = { onSelect(ChartStyle.BARS) },
+        )
+        ChartStyleOption(
+            icon = Icons.Filled.PieChart,
+            label = stringResource(R.string.stats_chart_pie),
+            selected = style == ChartStyle.PIE,
+            onClick = { onSelect(ChartStyle.PIE) },
+        )
+    }
+}
+
+@Composable
+private fun ChartStyleOption(
+    icon: ImageVector,
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val colors = SakuTheme.colors
+    Box(
+        modifier = Modifier
+            .size(SakuTheme.spacing.touchTarget)
+            .clip(CircleShape)
+            .then(if (selected) Modifier.background(colors.surfaceAlt) else Modifier)
+            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = label,
+            tint = if (selected) colors.accent else colors.ink2,
+        )
     }
 }
 

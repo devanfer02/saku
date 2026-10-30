@@ -8,6 +8,7 @@ import com.dvnnfrr.saku.domain.Money
 import com.dvnnfrr.saku.domain.PeriodMode
 import com.dvnnfrr.saku.domain.Subcategory
 import com.dvnnfrr.saku.domain.Transaction
+import com.dvnnfrr.saku.domain.TransactionFilter
 import com.dvnnfrr.saku.domain.wholePercents
 import com.dvnnfrr.saku.domain.PeriodTotals
 import com.dvnnfrr.saku.domain.barPermille
@@ -92,7 +93,35 @@ fun rankComposition(totals: List<CategoryTotal>, cap: Int = CHART_SLOT_CAP): Ran
  */
 private fun List<RankedCategory>.withBars(): List<RankedCategory> {
     val max = maxOfOrNull { it.total } ?: return this
-    return map { it.copy(barPermille = barPermille(it.total, max)) }
+    val sweeps = pieSweeps(map { it.total })
+    return mapIndexed { index, row ->
+        row.copy(barPermille = barPermille(row.total, max), sweepTenths = sweeps[index])
+    }
+}
+
+/** A full turn in tenths of a degree, the unit a pie slice's sweep is carried in. */
+const val PIE_WHOLE = 3_600
+
+/**
+ * Each value's slice of a full turn, in tenths of a degree, from `Long` arithmetic.
+ *
+ * Each boundary is the running total's exact share of the turn, and a sweep is the gap
+ * between two boundaries, so the sweeps add up to exactly [PIE_WHOLE] whatever the
+ * rounding: the last slice cannot come up short or overlap the first. A value of zero
+ * or below takes no slice; with nothing positive at all every sweep is zero.
+ */
+fun pieSweeps(values: List<Money>): List<Int> {
+    val drawn = values.map { it.rupiah.coerceAtLeast(0L) }
+    val total = drawn.sum()
+    if (total <= 0L) return List(values.size) { 0 }
+
+    var running = 0L
+    var previous = 0
+    return drawn.map { value ->
+        running += value
+        val boundary = ((running * PIE_WHOLE) / total).toInt()
+        (boundary - previous).also { previous = boundary }
+    }
 }
 
 /**
@@ -128,6 +157,7 @@ fun foldSubcategories(
     )
 
     val total = ordered.sumOf { it.value }
+    val sweeps = pieSweeps(ordered.map { Money(it.value) })
     // A category whose rows cancel to zero — possible only through a signed adjustment
     // — would otherwise divide by nothing here.
     val asTotals = ordered.map { (id, amount) ->
@@ -142,6 +172,7 @@ fun foldSubcategories(
     val percents = wholePercents(asTotals)
     val largest = Money(ordered.maxOf { it.value })
 
+    var named = 0
     return ordered.mapIndexed { index, (id, amount) ->
         SubcategorySlice(
             subcategoryId = id,
@@ -149,9 +180,55 @@ fun foldSubcategories(
             total = Money(amount),
             percent = percents[index],
             barPermille = barPermille(Money(amount), largest),
+            sweepTenths = sweeps[index],
+            strengthPercent = if (id == null) null else subcategoryStrength(named++),
         )
     }
 }
+
+/**
+ * How strongly the [rank]th named subcategory draws its parent's colour, in percent.
+ *
+ * Every subcategory shares its parent's slot, because a slot is a category's identity
+ * for life, so the slices of one category tell themselves apart by strength: full for
+ * the largest, a step lighter for each one after, never below a floor that still reads
+ * as the colour. The unassigned bucket takes the neutral chart colour instead (a null
+ * strength), which also marks it as not a subcategory at all.
+ */
+fun subcategoryStrength(rank: Int): Int =
+    (STRENGTH_FULL - rank * STRENGTH_STEP).coerceAtLeast(STRENGTH_FLOOR)
+
+private const val STRENGTH_FULL = 100
+private const val STRENGTH_STEP = 18
+private const val STRENGTH_FLOOR = 28
+
+/**
+ * A category's whole percent of its side, as the ranked list showed it. Taken from the
+ * composition rather than recomputed, so the detail and the row that opened it cannot
+ * disagree by a rounding step. Zero when the category is not in the composition.
+ */
+fun shareOf(composition: RankedComposition, categoryId: Long): Int =
+    (composition.rows + composition.otherMembers).firstOrNull { it.categoryId == categoryId }?.percent ?: 0
+
+/** The average transaction, rounded half up to the rupiah. Zero with no transactions. */
+fun averagePerTransaction(total: Money, count: Int): Money {
+    if (count <= 0) return Money.ZERO
+    val half = count / 2
+    val rupiah = total.rupiah
+    return Money(if (rupiah >= 0) (rupiah + half) / count else -((-rupiah + half) / count))
+}
+
+/**
+ * [filter] narrowed to one category on one side, for that category's strip. The other
+ * side is emptied rather than left at "All", and because a category selection is then
+ * set, transfers and adjustments drop out by the filter's own rule. The account part is
+ * kept, so the strip respects it exactly as the overview does.
+ */
+fun categoryFilter(filter: TransactionFilter, side: StatsSide, categoryId: Long): TransactionFilter =
+    when (side) {
+        StatsSide.EXPENSES -> filter.copy(expenseCategoryIds = setOf(categoryId), incomeCategoryIds = emptySet())
+        StatsSide.INCOME -> filter.copy(incomeCategoryIds = setOf(categoryId), expenseCategoryIds = emptySet())
+    }
 
 /**
  * How much [current] moved against [previous], as a whole percent.

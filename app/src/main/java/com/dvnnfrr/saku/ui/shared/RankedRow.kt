@@ -45,6 +45,11 @@ fun RankedRow(
     value: Money,
     modifier: Modifier = Modifier,
     sharePercent: Int? = null,
+    /**
+     * Overrides the slot's colour for the swatch and the bar. The category detail draws
+     * its subcategories in steps of the parent's colour, matching its pie slice for slice.
+     */
+    color: Color? = null,
     /** Thousandths of the largest row's value, from `barPermille`. Null draws no bar. */
     barPermille: Int? = null,
     /**
@@ -72,7 +77,7 @@ fun RankedRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(spacing.md),
         ) {
-            ColorSwatch(colorSlot)
+            ColorSwatch(colorSlot, color = color)
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = name,
@@ -112,7 +117,7 @@ fun RankedRow(
         barPermille?.let {
             ShareBar(
                 permille = it,
-                slot = colorSlot,
+                color = color ?: colors.forSlotOrNeutral(colorSlot),
                 // Under the name, past the swatch, so the bars start on one edge.
                 modifier = Modifier.padding(start = spacing.swatch + spacing.md),
             )
@@ -121,7 +126,7 @@ fun RankedRow(
 }
 
 @Composable
-private fun ShareBar(permille: Int, slot: ColorSlot?, modifier: Modifier = Modifier) {
+private fun ShareBar(permille: Int, color: Color, modifier: Modifier = Modifier) {
     val shape = RoundedCornerShape(BAR_HEIGHT / 2)
     Box(
         modifier = modifier
@@ -136,7 +141,7 @@ private fun ShareBar(permille: Int, slot: ColorSlot?, modifier: Modifier = Modif
                     .fillMaxHeight()
                     .fillMaxWidth(permille.coerceIn(0, PERMILLE_WHOLE) / PERMILLE_WHOLE.toFloat())
                     .clip(shape)
-                    .background(SakuTheme.colors.forSlotOrNeutral(slot)),
+                    .background(color),
             )
         }
     }

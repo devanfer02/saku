@@ -19,10 +19,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.dvnnfrr.saku.R
+import com.dvnnfrr.saku.domain.ChartStyle
 import com.dvnnfrr.saku.domain.ColorSlot
 import com.dvnnfrr.saku.domain.DateRange
 import com.dvnnfrr.saku.domain.Money
@@ -34,6 +36,8 @@ import com.dvnnfrr.saku.ui.shared.periodLabel
 import com.dvnnfrr.saku.ui.theme.SakuPreview
 import com.dvnnfrr.saku.ui.theme.SakuPreviewSurface
 import com.dvnnfrr.saku.ui.theme.SakuTheme
+import com.dvnnfrr.saku.ui.theme.forSlotOrNeutral
+import com.dvnnfrr.saku.ui.theme.formatIdr
 import com.dvnnfrr.saku.ui.transactions.AccountRef
 import com.dvnnfrr.saku.ui.transactions.TransactionRowUi
 import com.dvnnfrr.saku.domain.TxnType
@@ -54,6 +58,8 @@ fun DrillPane(
     onBack: () -> Unit,
     onOpenCategory: (Long) -> Unit,
     modifier: Modifier = Modifier,
+    chartStyle: ChartStyle = ChartStyle.BARS,
+    onSelectPeriod: (DateRange) -> Unit = {},
 ) {
     val otherLabel = stringResource(R.string.stats_other)
 
@@ -67,7 +73,7 @@ fun DrillPane(
         )
         when (drill) {
             is DrillUiState.Other -> OtherBody(drill, otherLabel, onOpenCategory)
-            is DrillUiState.Category -> CategoryBody(drill, side)
+            is DrillUiState.Category -> CategoryBody(drill, side, chartStyle, onSelectPeriod)
         }
     }
 }
@@ -155,38 +161,73 @@ private fun OtherBody(
 }
 
 /**
- * One category: its subcategory split, then its transactions.
+ * One category, top to bottom: its share, count and average under the total the header
+ * already shows; its own strip across all history; its subcategory split in the chosen
+ * chart style; then its transactions.
  *
- * The split comes first because it is the reason this screen exists. Pemberian is 50%
- * of a year of spending and the export carried no subcategory on any of its
- * rows, so "how much of this is the recurring family obligation" is a question the old
- * app could not answer at all.
+ * The split is the reason this screen exists. Pemberian is 50% of a year of
+ * spending and the export carried no subcategory on any of its rows, so "how much of
+ * this is the recurring family obligation" is a question the old app could not answer.
+ * The strip comes before it because the owner asked to see the trend first: whether a
+ * category is growing is read before what it is made of.
  */
 @Composable
-private fun CategoryBody(drill: DrillUiState.Category, side: StatsSide) {
+private fun CategoryBody(
+    drill: DrillUiState.Category,
+    side: StatsSide,
+    chartStyle: ChartStyle,
+    onSelectPeriod: (DateRange) -> Unit,
+) {
+    val colors = SakuTheme.colors
     val unassigned = stringResource(R.string.stats_no_subcategory)
-
-    if (drill.rows.isEmpty()) {
-        EmptyState(
-            icon = Icons.AutoMirrored.Filled.ReceiptLong,
-            message = stringResource(
-                when (side) {
-                    StatsSide.EXPENSES -> R.string.stats_empty_expenses
-                    StatsSide.INCOME -> R.string.stats_empty_income
-                },
-                drill.title.orEmpty(),
-            ),
-            modifier = Modifier.fillMaxSize(),
-        )
-        return
+    val sliceColors = drill.subcategories.map { slice ->
+        slice.strengthPercent?.let { colors.forSlotOrNeutral(drill.colorSlot).copy(alpha = it / 100f) }
+            ?: colors.forSlotOrNeutral(null)
     }
 
     LazyColumn(modifier = Modifier.fillMaxSize()) {
+        item(key = "summary") { CategorySummary(drill, side) }
+
+        if (drill.strip.isNotEmpty()) {
+            item(key = "strip") {
+                SectionHeader(stringResource(stripTitleRes(drill.strip.first().range.mode)))
+                PeriodStrip(columns = drill.strip, onSelectPeriod = onSelectPeriod, side = side)
+                HorizontalDivider(thickness = 1.dp, color = colors.line)
+            }
+        }
+
+        if (drill.rows.isEmpty()) {
+            item(key = "empty") {
+                EmptyState(
+                    icon = Icons.AutoMirrored.Filled.ReceiptLong,
+                    message = stringResource(
+                        when (side) {
+                            StatsSide.EXPENSES -> R.string.stats_empty_expenses
+                            StatsSide.INCOME -> R.string.stats_empty_income
+                        },
+                        drill.title.orEmpty(),
+                    ),
+                )
+            }
+            return@LazyColumn
+        }
+
         // A single slice is the whole category by definition, so the split says nothing
         // — except when that slice is the unassigned one, which is the finding.
         if (drill.subcategories.size > 1 || drill.subcategories.any { it.isUnassigned }) {
             item(key = "sub-heading") {
                 SectionHeader(stringResource(R.string.stats_subcategory_heading))
+            }
+            if (chartStyle == ChartStyle.PIE) {
+                item(key = "sub-pie") {
+                    StatsPie(
+                        slices = drill.subcategories.mapIndexed { index, slice ->
+                            PieSlice(sliceColors[index], slice.sweepTenths)
+                        },
+                        centerLabel = drill.title.orEmpty(),
+                        centerValue = formatIdr(drill.total),
+                    )
+                }
             }
             items(
                 count = drill.subcategories.size,
@@ -195,6 +236,7 @@ private fun CategoryBody(drill: DrillUiState.Category, side: StatsSide) {
                 val slice = drill.subcategories[index]
                 RankedRow(
                     colorSlot = drill.colorSlot,
+                    color = sliceColors[index],
                     name = slice.name ?: unassigned,
                     value = slice.total,
                     sharePercent = slice.percent,
@@ -202,7 +244,7 @@ private fun CategoryBody(drill: DrillUiState.Category, side: StatsSide) {
                 )
             }
             item(key = "sub-divider") {
-                HorizontalDivider(thickness = 1.dp, color = SakuTheme.colors.line)
+                HorizontalDivider(thickness = 1.dp, color = colors.line)
             }
         }
 
@@ -225,6 +267,35 @@ private fun CategoryBody(drill: DrillUiState.Category, side: StatsSide) {
     }
 }
 
+/** "34% of spending", then "12 transactions · Rp 401.800 on average". */
+@Composable
+private fun CategorySummary(drill: DrillUiState.Category, side: StatsSide) {
+    val colors = SakuTheme.colors
+    val share = stringResource(
+        when (side) {
+            StatsSide.EXPENSES -> R.string.stats_category_share_spending
+            StatsSide.INCOME -> R.string.stats_category_share_income
+        },
+        drill.percent,
+    )
+    val count = pluralStringResource(R.plurals.categories_transaction_count, drill.count, drill.count)
+    val average = stringResource(R.string.stats_category_average, formatIdr(drill.average))
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = SakuTheme.spacing.screen, vertical = SakuTheme.spacing.md),
+        verticalArrangement = Arrangement.spacedBy(SakuTheme.spacing.xs),
+    ) {
+        Text(text = share, style = SakuTheme.typography.bodyStrong, color = colors.ink)
+        Text(
+            text = if (drill.count > 0) "$count · $average" else count,
+            style = SakuTheme.typography.caption,
+            color = colors.ink2,
+        )
+    }
+}
+
 /** No subcategory id can be negative, so this cannot collide with a real key. */
 private const val UNASSIGNED_KEY = -1L
 
@@ -238,9 +309,13 @@ private fun CategoryDrillPreview() {
                 title = "Pemberian",
                 colorSlot = ColorSlot(2),
                 total = Money(1_050_000),
+                percent = 34,
+                count = 2,
+                average = Money(525_000),
+                strip = foldStrip(previewHistory(), DateRange.ofMonth(LocalDate(2026, 8, 1))),
                 subcategories = listOf(
-                    SubcategorySlice(1, "Rutin keluarga", Money(800_000), 76),
-                    SubcategorySlice(null, null, Money(250_000), 24),
+                    SubcategorySlice(1, "Rutin keluarga", Money(800_000), 76, 1_000, 2_743, 100),
+                    SubcategorySlice(null, null, Money(250_000), 24, 313, 857, null),
                 ),
                 rows = listOf(
                     TransactionRowUi(

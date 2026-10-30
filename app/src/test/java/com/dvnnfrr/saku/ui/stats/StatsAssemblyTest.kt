@@ -10,6 +10,7 @@ import com.dvnnfrr.saku.domain.PeriodTotals
 import com.dvnnfrr.saku.ui.theme.formatIdrCompact
 import com.dvnnfrr.saku.domain.Subcategory
 import com.dvnnfrr.saku.domain.Transaction
+import com.dvnnfrr.saku.domain.TransactionFilter
 import com.dvnnfrr.saku.domain.TxnType
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
@@ -582,5 +583,101 @@ class StatsAssemblyTest {
         val custom = DateRange.custom(LocalDate(2026, 10, 3), LocalDate(2026, 10, 20))
         assertTrue(foldStrip(mayToOctober, custom).isEmpty())
         assertTrue(!hasStrip(PeriodMode.CUSTOM))
+    }
+
+    // buku-kas: the pie and the category detail.
+
+    private val octoberExpenses = totals(
+        "Pemberian" to 4_821_600,
+        "Gadget" to 2_805_000,
+        "Gym" to 2_244_000,
+        "Jajan & Hiburan" to 2_244_000,
+        "Makan & Minum" to 1_211_800,
+        "Kebutuhan Kos" to 700_000,
+    )
+
+    @Test
+    fun `pie sweeps add up to exactly one turn`() {
+        val composition = rankComposition(octoberExpenses)
+
+        assertEquals(PIE_WHOLE, composition.rows.sumOf { it.sweepTenths })
+        assertEquals(34, composition.rows.first().percent)
+        // 4.821.600 of 14.026.400 is 123.75 degrees, carried in tenths.
+        assertEquals(1_237, composition.rows.first().sweepTenths)
+    }
+
+    @Test
+    fun `awkward thirds still close the circle`() {
+        val sweeps = pieSweeps(listOf(Money(1), Money(1), Money(1)))
+        assertEquals(listOf(1_200, 1_200, 1_200), sweeps)
+        assertEquals(PIE_WHOLE, pieSweeps(listOf(Money(7), Money(11), Money(13))).sum())
+    }
+
+    @Test
+    fun `nothing positive draws no slices`() {
+        assertEquals(listOf(0, 0), pieSweeps(listOf(Money.ZERO, Money(-5))))
+        assertEquals(listOf(0, PIE_WHOLE), pieSweeps(listOf(Money(-5), Money(10))))
+    }
+
+    @Test
+    fun `the pie keeps the eight-slot cap with Other as one slice`() {
+        val composition = rankComposition(
+            totals("A" to 100, "B" to 90, "C" to 90, "D" to 90, "E" to 90, "F" to 90, "G" to 90, "H" to 90, "I" to 90, "J" to 90),
+        )
+
+        assertEquals(9, composition.rows.size)
+        assertEquals(PIE_WHOLE, composition.rows.sumOf { it.sweepTenths })
+        assertTrue(composition.rows.last().isOther)
+    }
+
+    @Test
+    fun `Pemberian reads 34 percent of October spending, as its ranked row does`() {
+        val composition = rankComposition(octoberExpenses)
+        assertEquals(34, shareOf(composition, composition.rows.first { it.name == "Pemberian" }.categoryId!!))
+        assertEquals(0, shareOf(composition, 999))
+    }
+
+    @Test
+    fun `a member of Other keeps the share it had in the ranked list`() {
+        val composition = rankComposition(
+            totals("A" to 100, "B" to 90, "C" to 90, "D" to 90, "E" to 90, "F" to 90, "G" to 90, "H" to 90, "I" to 90, "J" to 90),
+        )
+        val member = composition.otherMembers.first()
+        assertEquals(member.percent, shareOf(composition, member.categoryId!!))
+    }
+
+    @Test
+    fun `the average rounds half up to the rupiah`() {
+        assertEquals(Money(1_607_200), averagePerTransaction(Money(4_821_600), 3))
+        assertEquals(Money(250_001), averagePerTransaction(Money(500_001), 2))
+        assertEquals(Money(250_000), averagePerTransaction(Money(500_000), 2))
+        assertEquals(Money.ZERO, averagePerTransaction(Money(100), 0))
+    }
+
+    @Test
+    fun `the category filter narrows one side and keeps the accounts`() {
+        val filter = TransactionFilter(accountIds = setOf(3L))
+
+        val expense = categoryFilter(filter, StatsSide.EXPENSES, 7)
+        assertEquals(setOf(7L), expense.expenseCategoryIds)
+        assertEquals(emptySet<Long>(), expense.incomeCategoryIds)
+        assertEquals(setOf(3L), expense.accountIds)
+
+        val income = categoryFilter(TransactionFilter.ALL, StatsSide.INCOME, 2)
+        assertEquals(setOf(2L), income.incomeCategoryIds)
+        assertEquals(emptySet<Long>(), income.expenseCategoryIds)
+    }
+
+    @Test
+    fun `subcategories step down in strength and the unassigned bucket is neutral`() {
+        val slices = foldSubcategories(
+            listOf(txn(1, 3_000_000, 1), txn(2, 1_200_000, 2), txn(3, 621_600, null)),
+            subcategories,
+            ColorSlot(0),
+        )
+
+        assertEquals(listOf(100, 82, null), slices.map { it.strengthPercent })
+        assertEquals(PIE_WHOLE, slices.sumOf { it.sweepTenths })
+        assertEquals(28, subcategoryStrength(20))
     }
 }

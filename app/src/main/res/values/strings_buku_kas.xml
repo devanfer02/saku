@@ -15,6 +15,15 @@
     <string name="stats_row_opens_category">Opens the category</string>
     <string name="stats_row_opens_other">Opens the categories in Other</string>
 
+    <!-- Chart style and the category detail -->
+    <string name="stats_chart_bars">Ranked bars</string>
+    <string name="stats_chart_pie">Pie chart</string>
+    <string name="stats_pie_spent">Spent</string>
+    <string name="stats_pie_earned">Earned</string>
+    <string name="stats_category_share_spending">%1$d%% of spending</string>
+    <string name="stats_category_share_income">%1$d%% of income</string>
+    <string name="stats_category_average">%1$s on average</string>
+
     <!-- Period strip, spoken per column -->
     <string name="stats_strip_month">%1$s. In %2$s, out %3$s, net %4$s</string>
     <string name="stats_strip_month_empty">%1$s. Nothing recorded yet</string>

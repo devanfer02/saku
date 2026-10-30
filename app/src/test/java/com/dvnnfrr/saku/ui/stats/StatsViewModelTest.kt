@@ -2,11 +2,13 @@ package com.dvnnfrr.saku.ui.stats
 
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.dvnnfrr.saku.data.ChartStyleStore
 import com.dvnnfrr.saku.data.local.SakuDatabase
 import com.dvnnfrr.saku.data.repository.RoomAccountRepository
 import com.dvnnfrr.saku.data.repository.RoomCategoryRepository
 import com.dvnnfrr.saku.data.repository.RoomTransactionRepository
 import com.dvnnfrr.saku.domain.AccountType
+import com.dvnnfrr.saku.domain.ChartStyle
 import com.dvnnfrr.saku.domain.CategoryKind
 import com.dvnnfrr.saku.domain.DateRange
 import com.dvnnfrr.saku.domain.Money
@@ -124,6 +126,7 @@ class StatsViewModelTest {
         accountRepository = accounts,
         categoryRepository = categories,
         sharedFilter = shared,
+        chartStyleStore = ChartStyleStore(ApplicationProvider.getApplicationContext()),
         zone = zone,
         clock = clock,
     )
@@ -603,5 +606,63 @@ class StatsViewModelTest {
 
         val state = vm.state.first { it.range == week && it.strip.lastOrNull()?.range == week }
         assertEquals(Money(300_000), state.strip.last().expense)
+    }
+
+    // buku-kas: chart style and the category detail.
+
+    @Test
+    fun `the chart style defaults to bars and survives a new ViewModel`() = runTest(dispatcher) {
+        seed()
+        spend(day = 5, amount = 300_000)
+        val vm = viewModel()
+        assertEquals(ChartStyle.BARS, vm.state.first { !it.loading }.chartStyle)
+
+        vm.selectChartStyle(ChartStyle.PIE)
+        vm.state.first { it.chartStyle == ChartStyle.PIE }
+
+        // A restart is a new ViewModel over the same preferences.
+        assertEquals(ChartStyle.PIE, viewModel().state.first { !it.loading }.chartStyle)
+    }
+
+    @Test
+    fun `the category detail carries share, count, average and its own strip`() = runTest(dispatcher) {
+        seed()
+        record(LocalDateTime(2026, 6, 10, 12, 0), 400_000, categoryId = pemberian)
+        spend(day = 3, amount = 300_000, categoryId = pemberian)
+        spend(day = 9, amount = 200_001, categoryId = pemberian)
+        spend(day = 5, amount = 500_000)
+        record(LocalDateTime(2026, 8, 1, 9, 0), 2_000_000, type = TxnType.INCOME, categoryId = gaji)
+        val vm = viewModel()
+        vm.state.first { !it.loading }
+
+        vm.openCategory(pemberian)
+        val drill = vm.state.first { (it.drill as? DrillUiState.Category)?.strip?.isNotEmpty() == true }
+            .drill as DrillUiState.Category
+
+        assertEquals(Money(500_001), drill.total)
+        assertEquals(50, drill.percent)
+        assertEquals(2, drill.count)
+        assertEquals(Money(250_001), drill.average)
+        // June to August: Pemberian's history, its expenses only, nothing of Makan or Gaji.
+        assertEquals((6..8).map { DateRange.ofMonth(LocalDate(2026, it, 1)) }, drill.strip.map { it.range })
+        assertEquals(listOf(400_000L, 0L, 500_001L), drill.strip.map { it.expense.rupiah })
+        assertTrue(drill.strip.all { it.income.isZero })
+    }
+
+    @Test
+    fun `the category strip respects the account filter`() = runTest(dispatcher) {
+        seed()
+        spend(day = 3, amount = 300_000, categoryId = pemberian)
+        val vm = viewModel()
+        vm.state.first { !it.loading }
+        vm.openCategory(pemberian)
+        vm.state.first { (it.drill as? DrillUiState.Category)?.strip?.isNotEmpty() == true }
+
+        shared.set(TransactionFilter(accountIds = setOf(rdpu)))
+
+        val drill = vm.state.first {
+            it.filter.isActive && (it.drill as? DrillUiState.Category)?.strip?.isNotEmpty() == true
+        }.drill as DrillUiState.Category
+        assertTrue(drill.strip.single().empty)
     }
 }

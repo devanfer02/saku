@@ -2,9 +2,11 @@ package com.dvnnfrr.saku.ui.stats
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.dvnnfrr.saku.data.ChartStyleStore
 import com.dvnnfrr.saku.data.repository.AccountRepository
 import com.dvnnfrr.saku.data.repository.CategoryRepository
 import com.dvnnfrr.saku.data.repository.TransactionRepository
+import com.dvnnfrr.saku.domain.ChartStyle
 import com.dvnnfrr.saku.domain.ColorSlot
 import com.dvnnfrr.saku.domain.DateRange
 import com.dvnnfrr.saku.domain.Money
@@ -45,6 +47,7 @@ class StatsViewModel(
     private val accountRepository: AccountRepository,
     private val categoryRepository: CategoryRepository,
     private val sharedFilter: SharedFilter,
+    private val chartStyleStore: ChartStyleStore,
     private val zone: TimeZone = TimeZone.currentSystemDefault(),
     private val clock: Clock = Clock.System,
 ) : ViewModel() {
@@ -152,12 +155,19 @@ class StatsViewModel(
                 }
             }
 
+    /**
+     * One category: its rows for the period, and its own strip across all history. The
+     * strip is the overview's daily totals query under the filter narrowed to this
+     * category, so it needs no query of its own kind and follows the period mode as the
+     * overview's strip does.
+     */
     private fun categoryDrill(key: PeriodKey, categoryId: Long): Flow<DrillData> = combine(
         transactionRepository.observeForCategory(key.range, zone, categoryId, key.side.txnType, key.filter),
         categoryRepository.observeAllSubcategories(categoryId),
         categoryRepository.observeAll(),
         accountRepository.observeAll(),
-    ) { transactions, subcategories, categories, accounts ->
+        categoryStrip(key, categoryId),
+    ) { transactions, subcategories, categories, accounts, strip ->
         val category = categories.firstOrNull { it.id == categoryId }
         val slot = category?.colorSlot ?: ColorSlot.FIRST
         val index = DisplayIndex(
@@ -165,24 +175,39 @@ class StatsViewModel(
             categories = categories,
             subcategories = subcategories,
         )
+        // Summed from the rows the list is rendering anyway. Bounded to one category in
+        // one period, so this is not the memory fold the screen avoids elsewhere, and it
+        // cannot disagree with the list beneath it.
+        val total = Money(transactions.sumOf { it.amount.rupiah })
         DrillData(
             key = key,
             state = DrillUiState.Category(
                 categoryId = categoryId,
                 title = category?.name,
                 colorSlot = slot,
-                // Summed from the rows the list is rendering anyway. Bounded to one
-                // category in one period, so this is not the memory fold the screen
-                // avoids elsewhere, and it cannot disagree with the list beneath it.
-                total = Money(transactions.sumOf { it.amount.rupiah }),
+                total = total,
+                count = transactions.size,
+                average = averagePerTransaction(total, transactions.size),
+                strip = strip,
                 subcategories = foldSubcategories(transactions, subcategories, slot),
                 rows = transactions.map { it.toRowUi(index) },
             ),
         )
     }
 
+    private fun categoryStrip(key: PeriodKey, categoryId: Long): Flow<List<StripColumn>> {
+        if (!hasStrip(key.range.mode)) return flowOf(emptyList())
+        val filter = categoryFilter(key.filter, key.side, categoryId)
+        return transactionRepository.observeDailyTotals(stripHistory(key.range), zone, filter)
+            .map { days -> foldStrip(days, key.range) }
+    }
+
+    /** The two display choices, kept apart from [selection] so neither re-runs a query. */
+    private val display: Flow<Pair<Boolean, ChartStyle>> =
+        combine(stripExpanded, chartStyleStore.style, ::Pair)
+
     val state: StateFlow<StatsUiState> =
-        combine(selection, periodData, drillData, stripData, stripExpanded) { current, period, drill, strip, expanded ->
+        combine(selection, periodData, drillData, stripData, display) { current, period, drill, strip, (expanded, style) ->
             StatsUiState(
                 // The period the data is for, not the one just selected — otherwise the
                 // header flips before its figures arrive.
@@ -197,6 +222,7 @@ class StatsViewModel(
                 // never shows months under a header that now reads weeks.
                 strip = strip.takeIf { it.firstOrNull()?.range?.mode == period.key.range.mode }.orEmpty(),
                 stripExpanded = expanded,
+                chartStyle = style,
                 filter = period.key.filter,
                 drill = resolveDrill(current.drill, period, drill),
                 loading = false,
@@ -205,7 +231,7 @@ class StatsViewModel(
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(5_000),
-                initialValue = StatsUiState(range = selection.value.range),
+                initialValue = StatsUiState(range = selection.value.range, chartStyle = chartStyleStore.current()),
             )
 
     /**
@@ -225,7 +251,9 @@ class StatsViewModel(
         DrillTarget.Other -> period.composition.other?.let { other ->
             DrillUiState.Other(total = other.total, members = period.composition.otherMembers)
         }
-        is DrillTarget.Category -> drill.state.takeIf { drill.key == period.key }
+        is DrillTarget.Category -> (drill.state as? DrillUiState.Category)
+            ?.takeIf { drill.key == period.key }
+            ?.let { it.copy(percent = shareOf(period.composition, it.categoryId)) }
     }
 
     fun previousPeriod() = selection.update { it.copy(range = it.range.previous()) }
@@ -260,6 +288,9 @@ class StatsViewModel(
 
     fun toggleStrip() = stripExpanded.update { !it }
 
+    /** Written straight to the store, which emits it back; it outlives this screen. */
+    fun selectChartStyle(style: ChartStyle) = chartStyleStore.set(style)
+
     /** Switching side closes the drill: the rows behind it are the other side's. */
     fun selectSide(side: StatsSide) = selection.update {
         if (it.side == side) it else it.copy(side = side, drill = null)
@@ -292,7 +323,7 @@ class StatsViewModel(
 
     companion object {
         val Factory = sakuViewModelFactory {
-            StatsViewModel(transactions, accounts, categories, filter)
+            StatsViewModel(transactions, accounts, categories, filter, chartStyle)
         }
     }
 }
