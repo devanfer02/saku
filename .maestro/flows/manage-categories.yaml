@@ -18,13 +18,13 @@ name: Manage categories
 
 - tapOn: "New category"
 - assertVisible: "New category"
-- inputText: "Pemberian"
+- inputText: "Hadiah"
 - tapOn: "Create"
-- assertVisible: "Pemberian"
+- assertVisible: "Hadiah"
 - assertNotVisible: "No categories on this tab yet"
 
 # Tapping the row opens its actions, and none of them is about subcategories.
-- tapOn: "Pemberian"
+- tapOn: "Hadiah"
 - assertVisible: "Rename"
 - assertNotVisible: "Add subcategory"
 - pressKey: Back

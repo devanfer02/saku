@@ -21,7 +21,7 @@ object Fixture {
             .firstOrNull { it.isFile }
             ?: error(
                 "Could not find data/$NAME by walking up from ${File("").absolutePath}. " +
-                    "The Excel tests read the real export, never a generated stand-in.",
+                    "It is the mock export the Excel tests read.",
             )
     }
 }

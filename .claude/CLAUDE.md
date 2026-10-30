@@ -41,17 +41,18 @@ CI: a PR runs unit tests, lint, the debug build and the no-network-permission ga
 ### Done means
 
 ```bash
-ANDROID_HOME=/home/dvnnfrr/Android/Sdk ./gradlew --no-daemon \
+export ANDROID_HOME="$HOME/Android/Sdk"   # your Android SDK path
+./gradlew --no-daemon \
   -Pkotlin.compiler.execution.strategy=in-process -Dorg.gradle.jvmargs=-Xmx1536m \
   :app:testDebugUnitTest :app:assembleDebug
 ```
 
-Both green, even for a change with no test of its own. The flags keep the build inside a 14 GB machine; never run two builds at once. A worktree has no `local.properties`, hence the inline `ANDROID_HOME`.
+Both green, even for a change with no test of its own. The flags keep the build inside a 14 GB machine; never run two builds at once, and do not raise the heap whatever a skill suggests. A git worktree has no `local.properties`, so set `ANDROID_HOME` in the environment.
 
 A bug-fix test must fail against the old behaviour, or it proves nothing.
 
 ### Local gotchas
 
-- Plain `git` is rewritten by a token-saving hook; use `/usr/bin/git` when exact output matters.
-- Emulator: `Pixel_8_API_35`, started with `-memory 2048`. Stop it with `adb emu kill`; check for it with `ps -C qemu-system-x86_64`, not `pgrep -f`, which matches its own shell.
-- `.claude/.claude/` holds a stray TelNetQuiz `CLAUDE.md` and Android skills; it does not describe this project.
+- If a shell hook rewrites `git` output (a token-saving proxy, for example), call the binary directly, such as `/usr/bin/git`, when exact output matters.
+- Emulator: an API 35 Pixel 8 image (`Pixel_8_API_35`), started with `-memory 2048` on a low-RAM machine. Stop it with `adb emu kill`; check for it with `ps -C qemu-system-x86_64`, not `pgrep -f`, which matches its own shell.
+- Skills live in `.claude/skills/`; the root `CLAUDE.md` says which to load for which request.

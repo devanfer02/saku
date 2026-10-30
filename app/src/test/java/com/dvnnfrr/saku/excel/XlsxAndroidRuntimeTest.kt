@@ -81,7 +81,7 @@ class XlsxAndroidRuntimeTest {
      * fails rather than shipping a build that only crashes once installed.
      */
     @Test
-    fun `with the bundled StAX shim the reader parses all 1200 rows on an Android classpath`() {
+    fun `with the bundled StAX shim the reader parses every row on an Android classpath`() {
         androidLikeLoader(withStaxShim = true).use { loader ->
             val readableWorkbook = loader.loadClass("org.dhatim.fastexcel.reader.ReadableWorkbook")
             val workbook = readableWorkbook
@@ -92,7 +92,7 @@ class XlsxAndroidRuntimeTest {
             val rows = sheet.javaClass.getMethod("read").invoke(sheet) as List<*>
             readableWorkbook.getMethod("close").invoke(workbook)
 
-            assertEquals("1,200 data rows plus the header", 1_201, rows.size)
+            assertEquals("390 data rows plus the header", 391, rows.size)
         }
     }
 

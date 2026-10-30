@@ -1,0 +1,23 @@
+{
+  "skill_name": "android-security-scan",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Run a full security audit on my Android app - I want to know if there are any CVEs in my dependencies and security issues in the code before I submit to the Play Store",
+      "expected_output": "A structured security report with dependency CVE check, manifest audit, network security analysis, data storage review, and prioritized findings table with severity ratings",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Check if my app has any hardcoded API keys or secrets that could be leaked, and also check if my network calls are secure",
+      "expected_output": "Focused findings on API key exposure (BuildConfig vs hardcoded), network security config, HTTPS usage, and certificate pinning status with specific file:line references",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "I'm worried about the WebView in my app loading HTML study materials - is it safe? Also check my data storage for auth tokens",
+      "expected_output": "WebView security analysis (JS enabled, file access, SSL handling) and DataStore/token storage audit with specific recommendations for EncryptedSharedPreferences or Android KeyStore",
+      "files": []
+    }
+  ]
+}

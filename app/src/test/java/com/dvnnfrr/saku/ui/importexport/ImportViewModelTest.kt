@@ -92,10 +92,10 @@ class ImportViewModelTest {
 
         assertEquals(Fixture.NAME, preview.fileName)
         assertEquals(SheetLayout.MONEY_MANAGER, preview.layout)
-        assertEquals(1_200, preview.tally.fileRowCount)
-        assertEquals(1_200, preview.tally.parsedRowCount)
-        assertEquals("2025-07-28", preview.dateSpan!!.first.toString())
-        assertEquals("2026-08-16", preview.dateSpan.last.toString())
+        assertEquals(390, preview.tally.fileRowCount)
+        assertEquals(390, preview.tally.parsedRowCount)
+        assertEquals("2026-07-01", preview.dateSpan!!.first.toString())
+        assertEquals("2026-10-29", preview.dateSpan.last.toString())
     }
 
     /** Scenario: The deleted count is structurally zero. */
@@ -129,20 +129,20 @@ class ImportViewModelTest {
 
     /** Scenario: Mapping the reference export. */
     @Test
-    fun `Card and Cash match the seeded accounts by name, Gopay is left to the user`() = runFlow {
+    fun `Card and Cash match the seeded accounts by name, OVO is left to the user`() = runFlow {
         seedAccounts()
         val preview = loadFixture().preview()
 
         val card = preview.accounts.single { it.sourceName == "Card" }
         assertEquals("Card", card.choice?.displayName)
         assertTrue("Card should read as prefilled", card.prefilled)
-        assertEquals(1_150, card.rowCount)
+        assertEquals(337, card.rowCount)
 
         val cash = preview.accounts.single { it.sourceName == "Cash" }
         assertEquals("Cash", cash.choice?.displayName)
 
-        val gopay = preview.accounts.single { it.sourceName == "Gopay" }
-        assertEquals(null, gopay.choice)
+        val ovo = preview.accounts.single { it.sourceName == "OVO" }
+        assertEquals(null, ovo.choice)
     }
 
     /** No name is guessed onto a different account: Card used to land on BCA. */
@@ -169,7 +169,7 @@ class ImportViewModelTest {
         assertFalse(preview.canImport)
         assertTrue(
             preview.problems.toString(),
-            preview.problems.contains(ImportProblem.UnmappedAccount("Gopay")),
+            preview.problems.contains(ImportProblem.UnmappedAccount("OVO")),
         )
     }
 
@@ -182,12 +182,12 @@ class ImportViewModelTest {
         val preview = loadFixture().preview()
 
         assertEquals(
-            listOf("RDPU SucorInvest", "Saham"),
+            listOf("Emas", "Reksa Dana"),
             preview.transferDestinations.map { it.categoryName },
         )
         assertEquals(6, preview.transferDestinations.sumOf { it.rowCount })
         assertEquals(
-            Money(5_050_800),
+            Money(2_100_000),
             Money(preview.transferDestinations.sumOf { it.total.rupiah }),
         )
     }
@@ -197,14 +197,14 @@ class ImportViewModelTest {
     fun `an unmapped transfer group blocks the import`() = runFlow {
         seedAccounts()
         val model = loadFixture()
-        model.chooseAccount("Gopay", AccountChoice.Create("Gopay", AccountType.CASH))
+        model.chooseAccount("OVO", AccountChoice.Create("OVO", AccountType.CASH))
         advanceUntilIdle()
 
         val preview = model.preview()
         assertFalse(preview.canImport)
         assertTrue(
             preview.problems.toString(),
-            preview.problems.contains(ImportProblem.UnmappedTransferDestination("Saham")),
+            preview.problems.contains(ImportProblem.UnmappedTransferDestination("Emas")),
         )
     }
 
@@ -220,14 +220,14 @@ class ImportViewModelTest {
         assertEquals(6, transfers.size)
         assertTrue("every transfer needs a destination", transfers.all { it.toAccountId != null })
 
-        val investment = accountId("RDPU SucorInvest")
-        val shares = accountId("Saham")
+        val investment = accountId("Reksa Dana")
+        val shares = accountId("Emas")
         assertEquals(
             setOf(investment, shares),
             transfers.mapNotNull { it.toAccountId }.toSet(),
         )
         assertEquals(
-            Money(5_050_800),
+            Money(2_100_000),
             Money(transfers.sumOf { it.amount.rupiah }),
         )
     }
@@ -241,12 +241,12 @@ class ImportViewModelTest {
         FirstRunSeed.applyIfEmpty(db, openingAsOf = SEED_CUTOVER, zone = JAKARTA)
         assertEquals(0, db.categoryDao().all().size)
 
-        assertEquals(1_200, importEverything())
+        assertEquals(390, importEverything())
 
-        assertTrue(db.categoryDao().all().any { it.name == "Makan & Minum" })
+        assertTrue(db.categoryDao().all().any { it.name == "Makanan" })
         val seeded = setOf(accountId("Card"), accountId("Cash"))
         val onSeeded = transactionRepo().all().count { it.accountId in seeded }
-        assertTrue("most rows sit on Card or Cash, got $onSeeded", onSeeded > 1_500)
+        assertTrue("most rows sit on Card or Cash, got $onSeeded", onSeeded > 300)
     }
 
     // -- Deduplication ----------------------------------------------------------
@@ -256,7 +256,7 @@ class ImportViewModelTest {
     fun `importing the same file twice inserts nothing the second time`() = runFlow {
         seedAccounts()
         val first = importEverything()
-        assertEquals(1_200, first)
+        assertEquals(390, first)
         assertEquals(first, transactionCount())
 
         val model = loadFixture()
@@ -264,7 +264,7 @@ class ImportViewModelTest {
         val preview = model.preview()
 
         assertEquals(0, preview.tally.insertable)
-        assertEquals(1_200, preview.tally.alreadyPresent)
+        assertEquals(390, preview.tally.alreadyPresent)
         assertEquals(0, preview.tally.deleted)
         // Nothing left to add, so the action is off rather than being a no-op the user
         // has to tap to discover.
@@ -287,17 +287,17 @@ class ImportViewModelTest {
 
         val summary = (model.state.value as ImportUiState.Imported).summary
         assertEquals(Fixture.NAME, summary.fileName)
-        assertEquals(1_200, summary.added)
+        assertEquals(390, summary.added)
         assertEquals(0, summary.alreadyHere)
-        assertEquals(DateSpan(LocalDate(2025, 7, 28), LocalDate(2026, 8, 16)), summary.span)
+        assertEquals(DateSpan(LocalDate(2026, 7, 1), LocalDate(2026, 10, 29)), summary.span)
         assertEquals(
-            mapOf(TxnType.EXPENSE to 1_160, TxnType.INCOME to 35, TxnType.TRANSFER to 6),
+            mapOf(TxnType.EXPENSE to 368, TxnType.INCOME to 16, TxnType.TRANSFER to 6),
             summary.byType,
         )
-        assertEquals(listOf("Card", "Cash", "Gopay", "RDPU SucorInvest", "Saham"), summary.accounts)
-        // Makan & Minum already existed, so it was matched rather than created.
-        assertFalse("Makan & Minum" in summary.createdCategories)
-        assertTrue("Pemberian" in summary.createdCategories)
+        assertEquals(listOf("Card", "Cash", "Emas", "OVO", "Reksa Dana"), summary.accounts)
+        // Makanan already existed, so it was matched rather than created.
+        assertFalse("Makanan" in summary.createdCategories)
+        assertTrue("Hadiah" in summary.createdCategories)
     }
 
     /** Scenario: Reviewing an import — the tally splits new from already here. */
@@ -336,7 +336,7 @@ class ImportViewModelTest {
             type = TxnType.EXPENSE,
             amount = Money(25_000),
             accountId = accountId("Cash"),
-            categoryId = categoryId("Makan & Minum"),
+            categoryId = categoryId("Makanan"),
             note = "by hand",
         )
 
@@ -345,7 +345,7 @@ class ImportViewModelTest {
 
         val batch = imports().observeBatches().first().single()
         assertEquals(Fixture.NAME, batch.fileName)
-        assertEquals(1_200, batch.rowCount)
+        assertEquals(390, batch.rowCount)
         assertEquals(inserted, batch.insertedCount)
 
         val removed = imports().reverse(batch.id, now)
@@ -411,7 +411,7 @@ class ImportViewModelTest {
         val preview = model.preview()
         assertEquals(SheetLayout.MONEY_MANAGER, preview.layout)
         assertEquals(ImportEntryPoint.EXCEL, preview.entryPoint)
-        assertEquals(1_200, preview.tally.parsedRowCount)
+        assertEquals(390, preview.tally.parsedRowCount)
     }
 
     // -- Refusals ---------------------------------------------------------------
@@ -522,7 +522,7 @@ class ImportViewModelTest {
         ).forEach { (name, type) ->
             accountRepo().create(name, type, Money.ZERO, openingAsOf)
         }
-        categoryRepo().findOrCreate("Makan & Minum", CategoryKind.EXPENSE)
+        categoryRepo().findOrCreate("Makanan", CategoryKind.EXPENSE)
     }
 
     private suspend fun accountId(name: String): Long =
@@ -559,7 +559,7 @@ class ImportViewModelTest {
      */
 
     /**
-     * The real export with the `Amount` cell of one row rewritten so it no longer
+     * The mock export with the `Amount` cell of one row rewritten so it no longer
      * agrees with `IDR`. Every other row and every other column is the file as shipped —
      * the condition has to be manufactured because all 1,200 real rows agree.
      */

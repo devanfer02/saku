@@ -10,7 +10,7 @@ import java.time.LocalDateTime
 /**
  * Spike check 3 — write an `.xlsx`, read it back, assert the values survive.
  *
- * The payload is taken from the real export rather than invented, so the round trip is
+ * The payload is taken from the mock export rather than written inline, so the round trip is
  * exercised against the value shapes the app will actually handle: Indonesian category names
  * with an ampersand, microsecond timestamps, and seven-digit rupiah amounts.
  */
@@ -34,7 +34,7 @@ class XlsxRoundTripTest {
                 SheetRow(
                     number = 1,
                     cells = listOf(
-                        CellValue.Timestamp(LocalDateTime.of(2026, 8, 16, 18, 47, 34)),
+                        CellValue.Timestamp(LocalDateTime.of(2026, 10, 29, 17, 3, 13)),
                         CellValue.Text("BCA"),
                         CellValue.Text("Makan & Minum"),
                         CellValue.Number(BigDecimal("187000")),
@@ -71,11 +71,11 @@ class XlsxRoundTripTest {
     }
 
     /**
-     * The heavier version: take 250 real rows straight off the Money Manager export, write
+     * The heavier version: take 250 rows straight off the mock Money Manager export, write
      * them, read them back and compare. This is the path export-then-reimport will take.
      */
     @Test
-    fun `real export rows survive a write and re-read`() {
+    fun `mock export rows survive a write and re-read`() {
         val source = XlsxReader.read(Fixture.file)
         val sample = SheetTable(
             sheetName = "Saku",

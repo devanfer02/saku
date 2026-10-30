@@ -31,7 +31,7 @@ name: Accounts and the balance donut
 - assertVisible: "New account"
 
 - tapOn: "Name"
-- inputText: "Gopay"
+- inputText: "OVO"
 
 - tapOn: "Opening balance"
 - inputText: "500000"
@@ -39,15 +39,15 @@ name: Accounts and the balance donut
 - tapOn: "Create"
 
 # It joins the list, and with one positive balance the split bar replaces the prompt.
-- assertVisible: "Gopay"
+- assertVisible: "OVO"
 - assertNotVisible: "Add an opening balance to see your total"
 
 # Into the account, and check its balance against to a figure 50.000 lower than the app believes.
-- tapOn: "Gopay"
+- tapOn: "OVO"
 - assertVisible: "Balance not checked yet"
 
 - tapOn: "Check balance"
-- assertVisible: "Check the Gopay balance"
+- assertVisible: "Check the OVO balance"
 - assertVisible: "Balance on record"
 
 - tapOn: "500000"
@@ -69,4 +69,4 @@ name: Accounts and the balance donut
 - tapOn: "Back"
 - tapOn: "Trans."
 - assertVisible: "Adjustment"
-- assertVisible: "Reconciled Gopay"
+- assertVisible: "Reconciled OVO"
