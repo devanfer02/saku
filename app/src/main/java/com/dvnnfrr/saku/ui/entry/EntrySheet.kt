@@ -1,5 +1,6 @@
 package com.dvnnfrr.saku.ui.entry
 
+import android.content.ActivityNotFoundException
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -123,6 +124,11 @@ private fun EntrySheetBody(
     val gallery = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { picked ->
         picked?.let(viewModel::scanReceipt)
     }
+    // Some devices report the photo picker as present yet have nothing to handle it (the
+    // Pixel 8 API 35 emulator image, for one); the document picker is the fallback.
+    val documents = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { picked ->
+        picked?.let(viewModel::scanReceipt)
+    }
 
     val focusManager = LocalFocusManager.current
     val leaveNote = {
@@ -233,10 +239,15 @@ private fun EntrySheetBody(
                 onCamera = {
                     val target = viewModel.cameraUri()
                     cameraTarget = target
-                    camera.launch(target)
+                    // No camera app at all: nothing to open, and nothing on the sheet changes.
+                    try { camera.launch(target) } catch (_: ActivityNotFoundException) { }
                 },
                 onGallery = {
-                    gallery.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    try {
+                        gallery.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    } catch (_: ActivityNotFoundException) {
+                        documents.launch(arrayOf("image/*"))
+                    }
                 },
             )
         }
