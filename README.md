@@ -7,17 +7,31 @@ Think Money Manager without the ads. If you already use Money Manager, Saku impo
 export, so your history comes with you.
 
 <p>
-  <img src="docs/screenshots/light-trans.png" width="200" alt="Trans tab, light theme">
-  <img src="docs/screenshots/light-stats.png" width="200" alt="Stats tab, light theme">
-  <img src="docs/screenshots/dark-accounts.png" width="200" alt="Accounts tab, dark theme">
-  <img src="docs/screenshots/dark-entry-grid.png" width="200" alt="Entry sheet with the category grid, dark theme">
+  <img src="docs/screenshots/light-welcome.png" width="160" alt="First run: import from Saku, import from Money Manager, or set up by hand">
+  <img src="docs/screenshots/light-trans.png" width="160" alt="Trans tab, day by day">
+  <img src="docs/screenshots/light-entry-grid.png" width="160" alt="Entry sheet with the category grid">
+  <img src="docs/screenshots/light-stats.png" width="160" alt="Stats tab with the month strip and ranked categories">
+  <img src="docs/screenshots/light-accounts.png" width="160" alt="Accounts tab with net worth">
 </p>
 
+<details>
+<summary>Dark theme</summary>
+<p>
+  <img src="docs/screenshots/dark-welcome.png" width="160" alt="First run, dark theme">
+  <img src="docs/screenshots/dark-trans.png" width="160" alt="Trans tab, dark theme">
+  <img src="docs/screenshots/dark-entry-grid.png" width="160" alt="Entry sheet, dark theme">
+  <img src="docs/screenshots/dark-stats.png" width="160" alt="Stats tab, dark theme">
+  <img src="docs/screenshots/dark-accounts.png" width="160" alt="Accounts tab, dark theme">
+</p>
+</details>
+
 Every screenshot uses the mock data in `data/mock-money-manager.xlsx`, not anyone's real
-money. More in [`docs/screenshots/`](docs/screenshots/).
+money.
 
 ## What it does
 
+- **First run**: bring in a Saku backup, a database file or a Money Manager export, or type in what is
+  in each account today and pick a few categories. You can also skip it.
 - **Trans**: a day-by-day list, a monthly view and a calendar. On the calendar, tap two dates or drag
   across them and you get the total for that range plus every row, grouped by day.
 - **Search**: type "kopi" and you get the count, the totals, a month-by-month breakdown and the rows
@@ -25,10 +39,9 @@ money. More in [`docs/screenshots/`](docs/screenshots/).
 - **Entry**: amount keypad with `+` and `-` for quick sums, note suggestions from what you typed
   before, and category and account pickers laid out as a grid.
 - **Stats**: the period total over ranked categories, a pie you can switch on and tap, and a strip of
-  past periods with a real Y axis.
+  periods with a real Y axis. Tap the period name to jump to any week, month or year.
 - **Accounts**: Cash, Bank, Investment and Liability, with net worth split into spendable and
   invested. Reconcile writes a visible adjustment instead of quietly changing a balance.
-- **Pay cycle**: months can follow your payday instead of the calendar.
 - **Weekly reminder**: a notification on the day and time you pick if you have not logged anything.
 - **Your data**:
   - import a **Money Manager Excel export**, with a preview, account mapping and duplicate detection
