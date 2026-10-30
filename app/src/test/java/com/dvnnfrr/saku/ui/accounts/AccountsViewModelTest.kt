@@ -214,13 +214,13 @@ class AccountsViewModelTest {
             )
             assertTrue(rows.all { it.openingBalance.isZero })
             assertEquals(2, rows.map { it.colorSlot }.toSet().size)
-            // Nothing to chart while every balance is zero, and no divide by zero either.
-            assertTrue(state.mix.isEmpty())
+            // No bar while every balance is zero, and no divide by zero either.
+            assertTrue(!state.split.hasBar)
             assertEquals(Money.ZERO, state.summary.total)
         }
 
     @Test
-    fun `an added account joins the list, the pickers and the donut`() = runTest(dispatcher) {
+    fun `an added account joins the list, the pickers and the split`() = runTest(dispatcher) {
         seed()
         val vm = viewModel()
         vm.settled()
@@ -239,7 +239,7 @@ class AccountsViewModelTest {
         val state = vm.state.first { it.rows.any { row -> row.name == "Gopay" } }
         val gopay = state.rows.first { it.name == "Gopay" }
         assertEquals(Money(250_000), gopay.balance)
-        assertTrue(state.mix.any { it.accountId == gopay.id })
+        assertTrue(state.groups.any { group -> group.rows.any { it.id == gopay.id } })
         // observeActive is what every picker reads.
         assertTrue(accounts.observeActive().first().any { it.name == "Gopay" })
     }
@@ -323,7 +323,6 @@ class AccountsViewModelTest {
             assertTrue(state.rows.none { it.id == cash })
             assertEquals(listOf("Cash"), state.archived.map { it.name })
             assertEquals(totalBefore - Money(300_000), state.summary.total)
-            assertTrue(state.mix.none { it.accountId == cash })
             // Out of the pickers, but every row it is named on is still there.
             assertTrue(accounts.observeActive().first().none { it.id == cash })
             assertEquals(1, transactions.all().count { it.accountId == cash })
@@ -499,48 +498,6 @@ class AccountsViewModelTest {
             advanceUntilIdle()
             assertNull(vm.state.value.message)
         }
-
-    // Selection, which is what a donut tap does.
-
-    @Test
-    fun `tapping a segment selects its account and tapping it again clears it`() =
-        runTest(dispatcher) {
-            seed()
-            val vm = viewModel()
-            val state = vm.settled()
-            // Largest first: BCA 8.42m, RDPU 5m, Cash 385k.
-            assertEquals(listOf(bca, rdpu, cash), state.mix.map { it.accountId })
-
-            vm.selectSegment(1)
-            advanceUntilIdle()
-            assertEquals(rdpu, vm.state.value.selectedAccountId)
-            assertEquals("RDPU", vm.state.value.selected?.name)
-
-            vm.selectSegment(1)
-            advanceUntilIdle()
-            assertNull(vm.state.value.selectedAccountId)
-
-            // A miss on the ring clears rather than selecting nothing-in-particular.
-            vm.selectSegment(0)
-            advanceUntilIdle()
-            vm.selectSegment(null)
-            advanceUntilIdle()
-            assertNull(vm.state.value.selectedAccountId)
-        }
-
-    @Test
-    fun `a selection dies with the segment it pointed at`() = runTest(dispatcher) {
-        seed()
-        val vm = viewModel()
-        vm.settled()
-        vm.selectSegment(2)
-        advanceUntilIdle()
-        assertEquals(cash, vm.state.value.selectedAccountId)
-
-        vm.setArchived(cash, archived = true)
-
-        assertNull(vm.state.first { it.archived.isNotEmpty() }.selectedAccountId)
-    }
 
     // The detail.
 

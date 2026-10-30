@@ -4,12 +4,12 @@ import com.dvnnfrr.saku.domain.Account
 import com.dvnnfrr.saku.domain.AccountGroup
 import com.dvnnfrr.saku.domain.AccountSummary
 import com.dvnnfrr.saku.domain.AccountType
-import com.dvnnfrr.saku.domain.CategoryTotal
 import com.dvnnfrr.saku.domain.ColorSlot
 import com.dvnnfrr.saku.domain.Money
+import com.dvnnfrr.saku.domain.PERMILLE_WHOLE
 import com.dvnnfrr.saku.domain.Transaction
 import com.dvnnfrr.saku.domain.TxnType
-import com.dvnnfrr.saku.domain.wholePercents
+import com.dvnnfrr.saku.domain.barPermille
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -17,7 +17,7 @@ import kotlinx.datetime.toLocalDateTime
 
 /*
  * Pure assembly for the accounts screen. No Compose, no Android, no coroutines — the
- * balance formula, the Spendable/Invested/Total fold, the donut's shares and the
+ * balance formula, the Spendable/Invested/Total fold, the net worth split and the
  * staleness rule are all decided here and tested on the JVM against plain lists.
  *
  * The balance arithmetic exists twice in this app: once in SQL, in
@@ -142,51 +142,52 @@ fun accountSummary(accounts: List<Account>): AccountSummary {
 private fun List<Account>.sumBalances(): Money =
     fold(Money.ZERO) { total, account -> total + account.balance }
 
-/** One donut segment and its legend row. */
-data class AccountShare(
-    val accountId: Long,
-    val percent: Int,
-)
+/**
+ * Net worth and the one bar that shows what it is made of.
+ *
+ * The bar splits Spendable against Invested, the two kinds of holding; the amount owed
+ * is a third labelled figure beside it rather than a third segment, because a debt is
+ * not a share of what is held. [spendablePermille] and [investedPermille] are thousandths
+ * of the bar and sum to exactly 1000 whenever anything is drawn.
+ *
+ * A group below zero draws no segment. Cash pushed negative by imported history would
+ * otherwise eat the Invested segment, and the warning on its row already says why.
+ */
+data class NetWorthSplit(
+    val total: Money,
+    val spendable: Money,
+    val invested: Money,
+    val owed: Money?,
+    val spendablePermille: Int,
+    val investedPermille: Int,
+) {
+    /** False while neither group holds money, so the screen asks for an opening balance. */
+    val hasBar: Boolean get() = spendablePermille + investedPermille > 0
+}
 
-private const val BASIS_POINTS = 10_000L
+fun netWorthSplit(summary: AccountSummary): NetWorthSplit {
+    val spendable = summary.spendable.takeIf { it.isPositive } ?: Money.ZERO
+    val invested = summary.invested.takeIf { it.isPositive } ?: Money.ZERO
+    val whole = spendable + invested
+    val spendableShare = barPermille(spendable, whole)
+    return NetWorthSplit(
+        total = summary.total,
+        spendable = summary.spendable,
+        invested = summary.invested,
+        owed = summary.owed,
+        spendablePermille = spendableShare,
+        // The remainder rather than a second rounding, so the two always fill the bar.
+        investedPermille = if (whole.isPositive) PERMILLE_WHOLE - spendableShare else 0,
+    )
+}
 
 /**
- * Share of holdings per account, largest first, summing to exactly 100%.
- *
- * Only positive balances are charted. A zero share is not a slice, a negative one would
- * eat its neighbours', and a liability owed money is negative by construction — so a
- * card with 2.000.000 outstanding contributes nothing to the ring rather than a slice
- * the size of the debt. Every account is still listed with its figure; the list is what
- * carries identity, and it is why the chart is allowed to leave accounts out.
- *
- * Percentages come from [wholePercents] rather than from rounding each share on its own,
- * so the legend adds up to 100 instead of to 102.
+ * Below zero is a problem only where it cannot honestly happen. A liability is negative
+ * by construction while money is owed, so a credit card in debt is not flagged; a cash
+ * or bank account below zero almost always means history predates a missing opening
+ * balance.
  */
-fun accountMix(accounts: List<Account>): List<AccountShare> {
-    val drawn = accounts
-        .filterNot { it.archived }
-        .filter { it.balance.isPositive }
-        .sortedWith(compareByDescending<Account> { it.balance }.thenBy { it.sortOrder })
-    val total = drawn.fold(0L) { sum, account -> sum + account.balance.rupiah }
-    if (total <= 0L) return emptyList()
-
-    // CategoryTotal is the shape wholePercents takes. It is the app's "one slice plus its
-    // ranked row" type rather than anything category-specific, and reusing it is what
-    // keeps one largest-remainder implementation in the codebase instead of two.
-    val totals = drawn.map { account ->
-        CategoryTotal(
-            categoryId = account.id,
-            name = account.name,
-            colorSlot = account.colorSlot,
-            total = account.balance,
-            shareBasisPoints = (account.balance.rupiah * BASIS_POINTS / total).toInt(),
-        )
-    }
-    val percents = wholePercents(totals)
-    return totals.mapIndexed { index, slice ->
-        AccountShare(accountId = slice.categoryId, percent = percents[index])
-    }
-}
+fun Account.isBelowZero(): Boolean = balance.isNegative && type != AccountType.LIABILITY
 
 /** How long ago the account was last checked against reality. */
 sealed interface Reconciliation {
@@ -196,7 +197,7 @@ sealed interface Reconciliation {
     /** Past the window. The row names the date so the user can see how far past. */
     data class Stale(val lastReconciled: LocalDate) : Reconciliation
 
-    /** Never checked at all, which is a distinct state and reads in the alert colour. */
+    /** Never checked at all. A distinct state, but neutral: imported accounts all start here. */
     data object Never : Reconciliation
 }
 
@@ -236,8 +237,8 @@ data class AccountRowUi(
     val balance: Money,
     val archived: Boolean,
     val reconciliation: Reconciliation,
-    /** Null when the account holds no positive balance and is therefore off the chart. */
-    val sharePercent: Int?,
+    /** Takes precedence over the check status: the row says why the figure is wrong. */
+    val belowZero: Boolean,
     /*
      * Carried on every row, not fetched when the editor opens. The editor writes all
      * four fields at once, so a form that defaulted these would quietly reset a real
@@ -254,19 +255,17 @@ data class AccountRowUi(
  */
 fun accountGroups(
     accounts: List<Account>,
-    shares: List<AccountShare>,
     now: Instant,
     zone: TimeZone,
 ): List<AccountGroupUi> {
-    val byId = shares.associate { it.accountId to it.percent }
     val grouped = accounts.filterNot { it.archived }.groupBy { it.type }
     return AccountType.entries.mapNotNull { type ->
         val group = grouped[type] ?: return@mapNotNull null
-        AccountGroupUi(type = type, rows = group.map { it.toRowUi(byId[it.id], now, zone) })
+        AccountGroupUi(type = type, rows = group.map { it.toRowUi(now, zone) })
     }
 }
 
-fun Account.toRowUi(sharePercent: Int?, now: Instant, zone: TimeZone): AccountRowUi = AccountRowUi(
+fun Account.toRowUi(now: Instant, zone: TimeZone): AccountRowUi = AccountRowUi(
     id = id,
     name = name,
     type = type,
@@ -274,7 +273,7 @@ fun Account.toRowUi(sharePercent: Int?, now: Instant, zone: TimeZone): AccountRo
     balance = balance,
     archived = archived,
     reconciliation = reconciliationOf(this, now, zone),
-    sharePercent = sharePercent,
+    belowZero = isBelowZero(),
     openingBalance = openingBalance,
     openingAsOf = openingAsOf.toLocalDateTime(zone).date,
 )

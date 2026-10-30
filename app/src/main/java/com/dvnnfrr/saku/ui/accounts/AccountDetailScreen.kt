@@ -30,6 +30,7 @@ import com.dvnnfrr.saku.domain.TxnType
 import com.dvnnfrr.saku.ui.shared.ColorSwatch
 import com.dvnnfrr.saku.ui.shared.EmptyState
 import com.dvnnfrr.saku.ui.shared.MoneyText
+import com.dvnnfrr.saku.ui.theme.MoneySign
 import com.dvnnfrr.saku.ui.theme.SakuPreview
 import com.dvnnfrr.saku.ui.theme.SakuPreviewSurface
 import com.dvnnfrr.saku.ui.theme.SakuTheme
@@ -50,7 +51,7 @@ fun AccountDetailScreen(
     state: AccountDetailUiState,
     onBack: () -> Unit,
     onEdit: () -> Unit,
-    onReconcile: () -> Unit,
+    onCheckBalance: () -> Unit,
     onArchive: () -> Unit,
     onRestore: () -> Unit,
     modifier: Modifier = Modifier,
@@ -77,6 +78,7 @@ fun AccountDetailScreen(
                 money = account.balance,
                 type = null,
                 style = SakuTheme.typography.display,
+                color = SakuTheme.colors.warning.takeIf { account.belowZero },
                 contentDescription = formatIdr(account.balance),
             )
             Text(
@@ -89,15 +91,11 @@ fun AccountDetailScreen(
                 color = SakuTheme.colors.ink2,
             )
             Text(
-                text = account.reconciliation.supportingLabel(),
+                text = account.statusText(),
                 style = SakuTheme.typography.caption,
-                color = when (account.reconciliation) {
-                    is Reconciliation.Never -> SakuTheme.colors.expense
-                    is Reconciliation.Stale -> SakuTheme.colors.warning
-                    is Reconciliation.Current -> SakuTheme.colors.ink3
-                },
+                color = account.statusColor(),
             )
-            TextButton(onClick = onReconcile, modifier = Modifier.padding(top = spacing.xs)) {
+            TextButton(onClick = onCheckBalance, modifier = Modifier.padding(top = spacing.xs)) {
                 Text(
                     text = stringResource(R.string.accounts_reconcile),
                     color = SakuTheme.colors.accent,
@@ -207,7 +205,7 @@ private fun LedgerRow(entry: LedgerEntryUi, modifier: Modifier = Modifier) {
             Text(
                 text = entry.note ?: entry.date.label(),
                 style = SakuTheme.typography.caption,
-                color = colors.ink3,
+                color = colors.ink2,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -215,19 +213,19 @@ private fun LedgerRow(entry: LedgerEntryUi, modifier: Modifier = Modifier) {
         Column(horizontalAlignment = Alignment.End) {
             // Signed, because the point of this column is the direction of the effect
             // on THIS account: the same transfer row is negative on one side of it and
-            // positive on the other.
+            // positive on the other. An expense reads in ink, as it does in Trans.
             MoneyText(
                 money = entry.effect,
                 type = entry.type,
-                signed = true,
+                sign = MoneySign.NET,
+                color = if (entry.type == TxnType.EXPENSE) colors.ink else null,
                 style = SakuTheme.typography.amountMedium,
             )
             MoneyText(
                 money = entry.runningBalance,
                 type = null,
                 style = SakuTheme.typography.caption,
-                withPrefix = false,
-                color = colors.ink3,
+                color = colors.ink2,
                 contentDescription = stringResource(
                     R.string.accounts_detail_running,
                     formatIdr(entry.runningBalance),
@@ -237,21 +235,13 @@ private fun LedgerRow(entry: LedgerEntryUi, modifier: Modifier = Modifier) {
     }
 }
 
-@Composable
-private fun Reconciliation.supportingLabel(): String = when (this) {
-    is Reconciliation.Never -> stringResource(R.string.accounts_never_reconciled)
-    is Reconciliation.Stale -> stringResource(R.string.accounts_stale, lastReconciled.label())
-    is Reconciliation.Current ->
-        stringResource(R.string.accounts_reconciled_on, lastReconciled.label())
-}
-
 /** A ledger row with no category still needs a name; its type is the honest one. */
 @Composable
 private fun TxnType.fallbackLabel(): String = when (this) {
     TxnType.EXPENSE -> stringResource(R.string.entry_type_expense)
     TxnType.INCOME -> stringResource(R.string.entry_type_income)
     TxnType.TRANSFER -> stringResource(R.string.entry_type_transfer)
-    TxnType.ADJUSTMENT -> stringResource(R.string.accounts_reconcile)
+    TxnType.ADJUSTMENT -> stringResource(R.string.accounts_adjustment_label)
 }
 
 @SakuPreview
@@ -266,7 +256,7 @@ private fun AccountDetailPreview() {
                         transactionId = 3,
                         date = LocalDate(2026, 8, 17),
                         label = null,
-                        note = "Reconciled BCA",
+                        note = "Balance checked",
                         type = TxnType.ADJUSTMENT,
                         effect = Money(-53_500),
                         runningBalance = Money(8_420_000),
@@ -293,7 +283,7 @@ private fun AccountDetailPreview() {
             ),
             onBack = {},
             onEdit = {},
-            onReconcile = {},
+            onCheckBalance = {},
             onArchive = {},
             onRestore = {},
         )

@@ -12,15 +12,8 @@ data class AccountsUiState(
     val loading: Boolean = true,
     val summary: AccountSummary = AccountSummary(Money.ZERO, Money.ZERO, owed = null),
     val groups: List<AccountGroupUi> = emptyList(),
-    /** Donut segments, largest first. Only accounts holding a positive balance. */
-    val mix: List<AccountShare> = emptyList(),
     /** Listed apart, so an archived account can be brought back. */
     val archived: List<AccountRowUi> = emptyList(),
-    /**
-     * The account a donut tap has picked out, if any. Selection only changes what the
-     * centre reads and which row is emphasised; it moves no money and survives nothing.
-     */
-    val selectedAccountId: Long? = null,
     val detail: AccountDetailUiState? = null,
     val message: AccountsMessage? = null,
 ) {
@@ -28,11 +21,8 @@ data class AccountsUiState(
 
     val isEmpty: Boolean get() = groups.isEmpty() && archived.isEmpty()
 
-    val selected: AccountRowUi?
-        get() = selectedAccountId?.let { id -> rows.firstOrNull { it.id == id } }
-
-    /** The mix as segment indices, so a donut tap can be mapped back to an account. */
-    fun accountIdForSegment(index: Int): Long? = mix.getOrNull(index)?.accountId
+    /** Folded from [summary], so the header and the figures beside it cannot disagree. */
+    val split: NetWorthSplit get() = netWorthSplit(summary)
 }
 
 /** The account detail: what it holds, and every row that got it there. */

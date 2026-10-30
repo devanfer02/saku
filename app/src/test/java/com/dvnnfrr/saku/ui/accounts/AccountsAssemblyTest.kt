@@ -1,6 +1,7 @@
 package com.dvnnfrr.saku.ui.accounts
 
 import com.dvnnfrr.saku.domain.Account
+import com.dvnnfrr.saku.domain.AccountSummary
 import com.dvnnfrr.saku.domain.AccountType
 import com.dvnnfrr.saku.domain.ColorSlot
 import com.dvnnfrr.saku.domain.Money
@@ -22,7 +23,7 @@ import kotlin.time.Duration.Companion.hours
  *
  * Covers every scenario in specs/account-management/spec.md that is a question about
  * numbers: the balance formula and its date clause, the Spendable/Invested/Total fold
- * and its liability sign, the donut's shares, and the staleness rule. The scenarios
+ * and its liability sign, the net worth split, and the staleness rule. The scenarios
  * about persistence — first run, archiving, reconciling — are in AccountsViewModelTest,
  * against a real database.
  */
@@ -237,75 +238,73 @@ class AccountsAssemblyTest {
         assertEquals(Money(1_000_000), summary.total)
     }
 
-    // Requirement: chart balances by account.
+    // buku-kas: net worth and the Spendable / Invested split bar.
 
     @Test
-    fun `four positive balances make four segments summing to one hundred percent`() {
-        val mix = accountMix(
-            listOf(
-                account("BCA", balance = 8_420_000),
-                account("Jago", balance = 2_150_000),
-                account("Cash", AccountType.CASH, balance = 385_000),
-                account("RDPU", AccountType.INVESTMENT, balance = 5_000_000),
-            ),
-        )
+    fun `October balances split about 17 percent Spendable and 83 Invested`() {
+        val split = netWorthSplit(AccountSummary(Money(3_006_815), Money(14_550_800), owed = null))
 
-        assertEquals(4, mix.size)
-        assertEquals(100, mix.sumOf { it.percent })
-        // Largest first, so the ring reads from twelve o'clock down.
-        assertEquals(listOf(1L, 4L, 2L, 3L), mix.map { it.accountId })
+        assertEquals(Money(17_557_615), split.total)
+        assertEquals(171, split.spendablePermille)
+        assertEquals(829, split.investedPermille)
+        assertTrue(split.hasBar)
+        assertNull(split.owed)
     }
 
     @Test
-    fun `six equal balances still sum to one hundred rather than to one hundred and two`() {
-        val equal = (1..6).map { account("Account $it", balance = 1_000_000) }
-
-        val mix = accountMix(equal)
-
-        assertEquals(100, mix.sumOf { it.percent })
+    fun `the two segments always fill the bar exactly`() {
+        val split = netWorthSplit(AccountSummary(Money(1), Money(2), owed = null))
+        assertEquals(1_000, split.spendablePermille + split.investedPermille)
     }
 
     @Test
-    fun `a zero or negative balance is left off the chart`() {
+    fun `liabilities are a figure beside the bar, not a segment of it`() {
+        val split = netWorthSplit(AccountSummary(Money(1_000_000), Money(1_000_000), owed = Money(500_000)))
+
+        assertEquals(Money(500_000), split.owed)
+        assertEquals(Money(1_500_000), split.total)
+        assertEquals(500, split.spendablePermille)
+        assertEquals(500, split.investedPermille)
+    }
+
+    @Test
+    fun `a group below zero draws no segment`() {
+        val split = netWorthSplit(AccountSummary(Money(-1_038_500), Money(14_550_800), owed = null))
+
+        assertEquals(0, split.spendablePermille)
+        assertEquals(1_000, split.investedPermille)
+        // The figure itself still reads the true, negative amount.
+        assertEquals(Money(-1_038_500), split.spendable)
+    }
+
+    @Test
+    fun `nothing held draws no bar`() {
+        assertTrue(!netWorthSplit(AccountSummary(Money.ZERO, Money.ZERO, owed = null)).hasBar)
+    }
+
+    // buku-kas: balance status wording.
+
+    @Test
+    fun `freshly imported accounts are not checked, and only a negative one warns`() {
         val accounts = listOf(
-            account("BCA", balance = 1_000_000),
-            account("Empty", AccountType.CASH, balance = 0),
-            account("Kartu", AccountType.LIABILITY, balance = -2_000_000),
+            account("BCA", balance = 2_745_315),
+            account("Jago", balance = 1_300_000),
+            account("Cash", AccountType.CASH, balance = -1_038_500),
+            account("RDPU", AccountType.INVESTMENT, balance = 14_550_800),
+            account("Bibit", AccountType.INVESTMENT, balance = 0),
+            account("Gopay", balance = 261_500),
         )
 
-        val mix = accountMix(accounts)
+        val rows = accountGroups(accounts, now, zone).flatMap { it.rows }
 
-        // A donut cannot represent a negative share, and a debt's magnitude would
-        // otherwise draw the largest slice on the chart.
-        assertEquals(listOf(1L), mix.map { it.accountId })
-        assertEquals(100, mix.single().percent)
-
-        // Still listed, all three of them, with their own figures.
-        val groups = accountGroups(accounts, mix, now, zone)
-        assertEquals(3, groups.sumOf { it.rows.size })
-        assertEquals(
-            listOf(Money(1_000_000), Money.ZERO, Money(-2_000_000)),
-            groups.flatMap { it.rows }.sortedBy { it.id }.map { it.balance },
-        )
-        assertNull(groups.flatMap { it.rows }.first { it.name == "Kartu" }.sharePercent)
+        assertTrue(rows.all { it.reconciliation == Reconciliation.Never })
+        assertEquals(listOf("Cash"), rows.filter { it.belowZero }.map { it.name })
     }
 
     @Test
-    fun `an archived account is off the chart even while it holds money`() {
-        val mix = accountMix(
-            listOf(
-                account("BCA", balance = 1_000_000),
-                account("Gopay", balance = 500_000, archived = true),
-            ),
-        )
-
-        assertEquals(listOf(1L), mix.map { it.accountId })
-    }
-
-    @Test
-    fun `nothing to chart yields no segments rather than a divide by zero`() {
-        assertTrue(accountMix(emptyList()).isEmpty())
-        assertTrue(accountMix(listOf(account("Empty", balance = 0))).isEmpty())
+    fun `a liability in debt is negative by construction and is not flagged`() {
+        val card = account("Kartu", AccountType.LIABILITY, balance = -2_000_000)
+        assertTrue(!card.isBelowZero())
     }
 
     // Requirement: flag accounts that have drifted out of check.
@@ -355,7 +354,7 @@ class AccountsAssemblyTest {
             account("Jago", AccountType.BANK, balance = 200_000),
         )
 
-        val groups = accountGroups(accounts, accountMix(accounts), now, zone)
+        val groups = accountGroups(accounts, now, zone)
 
         assertEquals(listOf(AccountType.CASH, AccountType.BANK), groups.map { it.type })
         assertEquals(listOf("BCA", "Jago"), groups[1].rows.map { it.name })
@@ -368,7 +367,7 @@ class AccountsAssemblyTest {
             account("Gopay", balance = 0, archived = true),
         )
 
-        val groups = accountGroups(accounts, accountMix(accounts), now, zone)
+        val groups = accountGroups(accounts, now, zone)
 
         assertEquals(listOf("BCA"), groups.flatMap { it.rows }.map { it.name })
     }
@@ -377,7 +376,7 @@ class AccountsAssemblyTest {
     fun `a row carries the opening figures the editor writes back`() {
         val accounts = listOf(account("BCA", opening = 8_420_000, balance = 8_000_000))
 
-        val row = accountGroups(accounts, emptyList(), now, zone).single().rows.single()
+        val row = accountGroups(accounts, now, zone).single().rows.single()
 
         // Read off the row rather than defaulted when the editor opens: a form that
         // defaulted these would reset a real opening balance to zero on a rename.

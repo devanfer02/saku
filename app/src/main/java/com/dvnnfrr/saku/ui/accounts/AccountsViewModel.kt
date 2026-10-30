@@ -39,9 +39,8 @@ import kotlinx.datetime.toLocalDateTime
  * the account and the transaction tables — so recording a transaction, reconciling or
  * editing an opening balance all repaint the balances without anything asking again.
  *
- * The ViewModel holds only what the user has chosen: which segment is selected and
- * which account is open. Everything else comes out of [AccountsAssembly], which is
- * pure.
+ * The ViewModel holds only what the user has chosen: which account is open. Everything
+ * else comes out of [AccountsAssembly], which is pure.
  */
 class AccountsViewModel(
     private val accounts: AccountRepository,
@@ -52,7 +51,6 @@ class AccountsViewModel(
 ) : ViewModel() {
 
     private data class Selection(
-        val selectedAccountId: Long? = null,
         val detailId: Long? = null,
     )
 
@@ -69,24 +67,13 @@ class AccountsViewModel(
             .flatMapLatest { id -> if (id == null) flowOf(null) else detailFor(id) }
 
     val state: StateFlow<AccountsUiState> =
-        combine(live, detail, selection, message) { all, openDetail, current, note ->
+        combine(live, detail, message) { all, openDetail, note ->
             val now = clock.now()
-            val shares = accountMix(all)
-            val groups = accountGroups(all, shares, now, zone)
-            val sharesById = shares.associate { it.accountId to it.percent }
             AccountsUiState(
                 loading = false,
                 summary = accountSummary(all),
-                groups = groups,
-                mix = shares,
-                archived = all.filter { it.archived }
-                    .map { it.toRowUi(sharesById[it.id], now, zone) },
-                // Dropped the moment its account stops being chartable: archiving or
-                // spending the balance to zero takes the segment away, and a selection
-                // pointing at a segment nobody can see leaves the centre reading a
-                // figure with no slice under it.
-                selectedAccountId = current.selectedAccountId
-                    ?.takeIf { id -> shares.any { it.accountId == id } },
+                groups = accountGroups(all, now, zone),
+                archived = all.filter { it.archived }.map { it.toRowUi(now, zone) },
                 detail = openDetail,
                 message = note,
             )
@@ -118,7 +105,7 @@ class AccountsViewModel(
             if (current == null) return@combine null
             val names = cats.associate { it.id to it.name }
             AccountDetailUiState(
-                account = current.toRowUi(sharePercent = null, now = clock.now(), zone = zone),
+                account = current.toRowUi(now = clock.now(), zone = zone),
                 entries = accountLedger(current, transactions).map { it.toUi(names) },
             )
         }
@@ -146,17 +133,6 @@ class AccountsViewModel(
         effect = effect,
         runningBalance = runningBalance,
     )
-
-    /**
-     * A donut tap. [index] is an index into [AccountsUiState.mix]; null is a tap that
-     * hit no segment, and tapping the selected one again lets go of it.
-     */
-    fun selectSegment(index: Int?) {
-        val id = index?.let { state.value.accountIdForSegment(it) }
-        selection.update {
-            it.copy(selectedAccountId = if (it.selectedAccountId == id) null else id)
-        }
-    }
 
     fun openDetail(id: Long) = selection.update { it.copy(detailId = id) }
 
