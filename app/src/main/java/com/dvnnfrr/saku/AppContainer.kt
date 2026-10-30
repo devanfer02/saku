@@ -104,12 +104,12 @@ class RoomAppContainer(context: Context) : AppContainer {
  * The as-of date the seeded accounts open on.
  *
  * Deliberately far back, not the moment of install. A seeded account opens holding
- * nothing, and nothing is the same claim on any date — so the date is free, and the
+ * nothing, and nothing is the same claim on any date, so the date is free, and the
  * earliest one is the only one that does not silently discard history.
  *
  * Opening at install time broke the app's whole purpose. Balances count transactions
- * on or after the as-of date, so every one of the 1,200 imported rows — all of them
- * older than the install — would have counted toward no balance. Worse, a transfer
+ * on or after the as-of date, so every one of the 1,200 imported rows (all of them
+ * older than the install) would have counted toward no balance. Worse, a transfer
  * dated before its account's as-of date is refused outright, and one refusal aborts
  * the batch: importing the reference export would have failed on all of it.
  *

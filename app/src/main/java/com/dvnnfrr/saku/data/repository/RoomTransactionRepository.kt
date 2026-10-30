@@ -224,7 +224,7 @@ class RoomTransactionRepository(
      * `update` previously enforced none of this, so an edit could write states an entry
      * could not: a zero amount, a self-transfer, or an expense with no category. The
      * last one is visibly wrong on screen, because `observeCategoryTotals` inner-joins
-     * `category` while `observePeriodTotals` does not — the donut stopped summing to
+     * `category` while `observePeriodTotals` does not, so the donut stopped summing to
      * the header above it.
      */
     internal suspend fun validate(
@@ -236,7 +236,7 @@ class RoomTransactionRepository(
         categoryId: Long?,
         subcategoryId: Long?,
     ) {
-        // Only an ADJUSTMENT may be signed — reconcile writes a downward correction as
+        // Only an ADJUSTMENT may be signed: reconcile writes a downward correction as
         // a negative addend. For the other three, `amountIdr` is a magnitude the
         // balance query negates by type, so a negative expense ADDS to the balance:
         // spending would raise it, and its category's share would go negative and push
