@@ -9,6 +9,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.dvnnfrr.saku.data.AppearanceStore
 import com.dvnnfrr.saku.data.ChartStyleStore
 import com.dvnnfrr.saku.data.FirstRunSeed
+import com.dvnnfrr.saku.data.FirstRunStore
 import com.dvnnfrr.saku.data.ReminderStore
 import com.dvnnfrr.saku.data.SharedPreferencesAppearanceStore
 import com.dvnnfrr.saku.data.local.SakuDatabase
@@ -63,6 +64,9 @@ interface AppContainer {
 
     /** Where a picked file is copied to be read once, as the database import does. */
     val cacheDir: File
+
+    /** Whether first-run setup was completed or skipped. */
+    val firstRun: FirstRunStore
 }
 
 class RoomAppContainer(context: Context) : AppContainer {
@@ -92,6 +96,8 @@ class RoomAppContainer(context: Context) : AppContainer {
     override val reminderScheduler: ReminderScheduler by lazy { ReminderScheduler(context) }
 
     override val cacheDir: File = context.cacheDir
+
+    override val firstRun: FirstRunStore by lazy { FirstRunStore(context) }
 }
 
 /**
@@ -107,8 +113,8 @@ class RoomAppContainer(context: Context) : AppContainer {
  * dated before its account's as-of date is refused outright, and one refusal aborts
  * the batch: importing the reference export would have failed on all of it.
  *
- * The user states a real opening balance, with a real date, on the accounts screen.
- * That is the point at which an as-of date means something.
+ * The user states a real opening balance, with a real date, in first-run setup or on
+ * the accounts screen. That is the point at which an as-of date means something.
  */
 internal val SEED_CUTOVER = Instant.fromEpochSeconds(0)
 
