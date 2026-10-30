@@ -123,7 +123,7 @@ internal fun rangePickerHeadline(start: LocalDate?, end: LocalDate?): String? {
     return explicitRangeLabel(DateRange.custom(start, last))
 }
 
-private fun LocalDate.toUtcMillis(): Long = atStartOfDayIn(TimeZone.UTC).toEpochMilliseconds()
+internal fun LocalDate.toUtcMillis(): Long = atStartOfDayIn(TimeZone.UTC).toEpochMilliseconds()
 
-private fun Long.toUtcDate(): LocalDate =
+internal fun Long.toUtcDate(): LocalDate =
     Instant.fromEpochMilliseconds(this).toLocalDateTime(TimeZone.UTC).date

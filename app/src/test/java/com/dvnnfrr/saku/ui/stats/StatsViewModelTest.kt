@@ -148,6 +148,15 @@ class StatsViewModelTest {
     }
 
     @Test
+    fun `the state carries today from the clock for the period picker`() = runTest(dispatcher) {
+        seed()
+
+        val state = viewModel().state.first { !it.loading }
+
+        assertEquals(LocalDate(2026, 8, 17), state.today)
+    }
+
+    @Test
     fun `a custom period recomputes every figure for that range`() = runTest(dispatcher) {
         seed()
         record(LocalDateTime(2026, 1, 20, 12, 0), 111_000)
@@ -340,7 +349,7 @@ class StatsViewModelTest {
     fun `the drill excludes a transfer tagged with the same category`() = runTest(dispatcher) {
         seed()
         spend(day = 3, amount = 170_000, categoryId = makan)
-        // observeCategoryTotals filters by type, so the drill must too — otherwise the
+        // observeCategoryTotals filters by type, so the drill must too; otherwise the
         // list opens with a total that does not match the row that opened it.
         record(
             at = LocalDateTime(2026, 8, 4, 12, 0),
@@ -426,7 +435,7 @@ class StatsViewModelTest {
             seed()
             // 31 Aug 23:59:59 Jakarta. Included.
             record(LocalDateTime(2026, 8, 31, 23, 59, 59), 100_000)
-            // 31 Jul 23:59:59 Jakarta. Excluded — one second before the month opens.
+            // 31 Jul 23:59:59 Jakarta. Excluded: one second before the month opens.
             record(LocalDateTime(2026, 7, 31, 23, 59, 59), 200_000)
             // 1 Sep 00:00:00 Jakarta is 31 Aug 17:00 UTC. Excluded, and the row that
             // proves the bounds are the device's rather than UTC's: a UTC-bounded query
@@ -518,7 +527,7 @@ class StatsViewModelTest {
     // buku-kas: the strip over all history.
 
     @Test
-    fun `the strip ends on the selected month and agrees with the header`() = runTest(dispatcher) {
+    fun `the strip runs three months past the selected month and agrees with the header`() = runTest(dispatcher) {
         seed()
         spend(day = 5, amount = 300_000)
         record(LocalDateTime(2026, 6, 10, 12, 0), 500_000)
@@ -526,10 +535,11 @@ class StatsViewModelTest {
 
         val state = viewModel().state.first { !it.loading && it.strip.isNotEmpty() }
 
-        // June holds the first transaction, so the strip starts there.
-        assertEquals((6..8).map { DateRange.ofMonth(LocalDate(2026, it, 1)) }, state.strip.map { it.range })
-        val august = state.strip.last()
-        assertTrue(august.selected)
+        // June holds the first transaction, so the strip starts there; August is both
+        // today's month and the selected one, so it runs on to November.
+        assertEquals((6..11).map { DateRange.ofMonth(LocalDate(2026, it, 1)) }, state.strip.map { it.range })
+        val august = state.strip.single { it.selected }
+        assertEquals(DateRange.ofMonth(LocalDate(2026, 8, 1)), august.range)
         assertEquals(state.totals.expense, august.expense)
         assertEquals(state.totals.income, august.income)
         // July is a quiet month after history began: a zero, not an empty slot.
@@ -547,8 +557,25 @@ class StatsViewModelTest {
         shared.set(TransactionFilter(expenseCategoryIds = setOf(makan)))
         val state = viewModel().state.first { it.filter.isActive && it.strip.isNotEmpty() }
 
-        assertEquals(Money(300_000), state.strip.last().expense)
-        assertEquals(Money.ZERO, state.strip.last().income)
+        val august = state.strip.single { it.selected }
+        assertEquals(Money(300_000), august.expense)
+        assertEquals(Money.ZERO, august.income)
+    }
+
+    @Test
+    fun `a future-dated transaction appears in its own strip column`() = runTest(dispatcher) {
+        seed()
+        spend(day = 5, amount = 300_000)
+        record(LocalDateTime(2026, 10, 5, 12, 0), 700_000)
+
+        val state = viewModel().state.first { !it.loading && it.strip.isNotEmpty() }
+
+        // October is after today and the selection, and is still queried and folded.
+        val october = state.strip.single { it.range == DateRange.ofMonth(LocalDate(2026, 10, 1)) }
+        assertEquals(Money(700_000), october.expense)
+        assertEquals(DateRange.ofMonth(LocalDate(2027, 1, 1)), state.strip.last().range)
+        // The header still reports August alone.
+        assertEquals(Money(300_000), state.totals.expense)
     }
 
     @Test
@@ -561,8 +588,10 @@ class StatsViewModelTest {
 
         vm.selectPeriod(DateRange.ofMonth(LocalDate(2026, 6, 1)))
 
-        val state = vm.state.first { it.range.start == LocalDate(2026, 6, 1) && it.strip.lastOrNull()?.range == it.range }
-        assertTrue(state.strip.last().selected)
+        val state = vm.state.first { it.range.start == LocalDate(2026, 6, 1) && it.strip.selectedRange() == it.range }
+        assertEquals(state.range, state.strip.single { it.selected }.range)
+        // The months after June stay in the strip.
+        assertEquals(DateRange.ofMonth(LocalDate(2026, 11, 1)), state.strip.last().range)
         assertEquals(PeriodMode.MONTHLY, state.range.mode)
     }
 
@@ -578,11 +607,12 @@ class StatsViewModelTest {
         val weekly = vm.state.first { it.range.mode == PeriodMode.WEEKLY && it.strip.isNotEmpty() }
         assertTrue(weekly.strip.all { it.range.mode == PeriodMode.WEEKLY })
         assertEquals(DateRange.ofWeek(LocalDate(2025, 7, 20)), weekly.strip.first().range)
-        assertEquals(weekly.range, weekly.strip.last().range)
+        assertEquals(weekly.range, weekly.strip.selectedRange())
+        assertEquals(DateRange.ofWeek(LocalDate(2026, 9, 7)), weekly.strip.last().range)
 
         vm.selectMode(PeriodMode.ANNUALLY)
         val annual = vm.state.first { it.range.mode == PeriodMode.ANNUALLY && it.strip.isNotEmpty() }
-        assertEquals(listOf(DateRange.ofYear(2025), DateRange.ofYear(2026)), annual.strip.map { it.range })
+        assertEquals((2025..2029).map { DateRange.ofYear(it) }, annual.strip.map { it.range })
 
         vm.selectRange(LocalDate(2026, 8, 1), LocalDate(2026, 8, 10))
         val custom = vm.state.first { it.range.mode == PeriodMode.CUSTOM }
@@ -600,8 +630,8 @@ class StatsViewModelTest {
         val week = DateRange.ofWeek(LocalDate(2026, 8, 3))
         vm.selectPeriod(week)
 
-        val state = vm.state.first { it.range == week && it.strip.lastOrNull()?.range == week }
-        assertEquals(Money(300_000), state.strip.last().expense)
+        val state = vm.state.first { it.range == week && it.strip.selectedRange() == week }
+        assertEquals(Money(300_000), state.strip.single { it.selected }.expense)
     }
 
     // buku-kas: chart style and the category detail.
@@ -639,9 +669,10 @@ class StatsViewModelTest {
         assertEquals(50, drill.percent)
         assertEquals(2, drill.count)
         assertEquals(Money(250_001), drill.average)
-        // June to August: Pemberian's history, its expenses only, nothing of Makan or Gaji.
-        assertEquals((6..8).map { DateRange.ofMonth(LocalDate(2026, it, 1)) }, drill.strip.map { it.range })
-        assertEquals(listOf(400_000L, 0L, 500_001L), drill.strip.map { it.expense.rupiah })
+        // June to August is Pemberian's history, its expenses only, nothing of Makan or
+        // Gaji; September to November are the three months past it.
+        assertEquals((6..11).map { DateRange.ofMonth(LocalDate(2026, it, 1)) }, drill.strip.map { it.range })
+        assertEquals(listOf(400_000L, 0L, 500_001L, 0L, 0L, 0L), drill.strip.map { it.expense.rupiah })
         assertTrue(drill.strip.all { it.income.isZero })
     }
 
@@ -661,4 +692,6 @@ class StatsViewModelTest {
         }.drill as DrillUiState.Category
         assertTrue(drill.strip.single().empty)
     }
+
+    private fun List<StripColumn>.selectedRange(): DateRange? = firstOrNull { it.selected }?.range
 }

@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,15 +59,16 @@ import com.dvnnfrr.saku.ui.transactions.stripColumnLabel
 import kotlinx.datetime.LocalDate
 
 /**
- * Every week, month or year from the first income or expense through the selected one,
- * as paired income and expense bars on one scale, each column's label and compact net
- * beneath.
+ * Every week, month or year from the first income or expense to three past the latest of
+ * the last one, today's and the selected one ([foldStrip]), as paired income and expense
+ * bars on one scale, each column's label and compact net beneath.
  *
- * Columns keep one width, so six fit a 412 dp phone, and the row opens scrolled to its
- * end: the selected period is the rightmost column and earlier ones are a scroll to the
- * left. The row is laid out in reverse, newest first, so "scrolled to the end" is the
- * list's natural first position rather than a scroll that has to land after layout. A
- * new selection starts a new scroll state, so tapping January leaves January rightmost.
+ * Columns keep one width, so six fit a 412 dp phone. The row is laid out in reverse,
+ * newest first, and opens with the selected column second from the right edge, so the
+ * period on screen is in view with one later column beside it saying there is more to
+ * the right. When the selection changes to a column that is not fully in view, the row
+ * scrolls it back to that place; a tap on a column already in view leaves the row still.
+ * A mode switch starts a new scroll state, since the columns are a different unit.
  *
  * The selected column is drawn at full strength and the others muted, so the eye lands
  * on the period the figures below describe and reads the rest as context.
@@ -89,8 +91,16 @@ fun PeriodStrip(
     side: StatsSide? = null,
 ) {
     val selected = columns.firstOrNull { it.selected }?.range
-    val listState = remember(selected) { LazyListState() }
     val newestFirst = columns.asReversed()
+    val selectedIndex = newestFirst.indexOfFirst { it.selected }
+    // One later column stays in view to the right of the selected one, when there is one.
+    val anchorIndex = (selectedIndex - 1).coerceAtLeast(0)
+    val mode = columns.firstOrNull()?.range?.mode
+    val listState = remember(mode) { LazyListState(firstVisibleItemIndex = anchorIndex) }
+    LaunchedEffect(selected, selectedIndex) {
+        val selectedKey = selected?.start?.toEpochDays() ?: return@LaunchedEffect
+        if (!listState.showsFully(selectedKey)) listState.scrollToItem(anchorIndex)
+    }
     val axis = remember(columns) { stripAxis(columns) }
     val spacing = SakuTheme.spacing
 
@@ -116,6 +126,13 @@ fun PeriodStrip(
             }
         }
     }
+}
+
+/** Whether the item keyed [key] is laid out wholly inside the viewport. */
+private fun LazyListState.showsFully(key: Any): Boolean {
+    val info = layoutInfo
+    val item = info.visibleItemsInfo.firstOrNull { it.key == key } ?: return false
+    return item.offset >= info.viewportStartOffset && item.offset + item.size <= info.viewportEndOffset
 }
 
 /**
@@ -350,14 +367,17 @@ private fun PeriodStripPreview() {
     val days = previewHistory()
     SakuPreviewSurface(padded = false) {
         Column {
-            PeriodStrip(foldStrip(days, october), onSelectPeriod = {})
-            PeriodStrip(foldStrip(days, october), onSelectPeriod = {}, side = StatsSide.EXPENSES)
-            PeriodStrip(foldStrip(days, DateRange.ofWeek(LocalDate(2026, 10, 26))), onSelectPeriod = {})
-            PeriodStrip(foldStrip(days, DateRange.ofYear(2026)), onSelectPeriod = {})
-            PeriodStrip(foldStrip(emptyList(), october), onSelectPeriod = {})
+            PeriodStrip(foldStrip(days, october, PREVIEW_TODAY), onSelectPeriod = {})
+            PeriodStrip(foldStrip(days, october, PREVIEW_TODAY), onSelectPeriod = {}, side = StatsSide.EXPENSES)
+            PeriodStrip(foldStrip(days, DateRange.ofWeek(LocalDate(2026, 10, 26)), PREVIEW_TODAY), onSelectPeriod = {})
+            PeriodStrip(foldStrip(days, DateRange.ofYear(2026), PREVIEW_TODAY), onSelectPeriod = {})
+            PeriodStrip(foldStrip(emptyList(), october, PREVIEW_TODAY), onSelectPeriod = {})
         }
     }
 }
+
+/** The day the previews stand on, inside the last month of [previewHistory]. */
+internal val PREVIEW_TODAY = LocalDate(2026, 10, 30)
 
 /** May to October 2026, one day a month carrying the month's totals. */
 internal fun previewHistory(): List<DailyTotals> = listOf(

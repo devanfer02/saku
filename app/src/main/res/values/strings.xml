@@ -31,6 +31,15 @@
     <string name="stats_next_period">Next period</string>
     <string name="stats_pick_range">Choose the start and end dates</string>
     <string name="stats_pick_range_none">No dates chosen</string>
+    <string name="stats_pick_week">Choose a week</string>
+    <string name="stats_pick_month">Choose a month</string>
+    <string name="stats_pick_year">Choose a year</string>
+    <string name="stats_this_week">This week</string>
+    <string name="stats_this_month">This month</string>
+    <string name="stats_this_year">This year</string>
+    <string name="stats_previous_year">Previous year</string>
+    <string name="stats_next_year">Next year</string>
+    <string name="stats_picker_current">Current</string>
     <string name="stats_other">Other</string>
     <string name="stats_other_heading">Combined into Other</string>
     <string name="stats_transactions_heading">Transactions</string>

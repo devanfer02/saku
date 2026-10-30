@@ -14,7 +14,7 @@ import com.dvnnfrr.saku.domain.barPermille
 import kotlinx.datetime.LocalDate
 
 /*
- * Pure assembly for the stats screen. No Compose, no Android, no coroutines — the cap,
+ * Pure assembly for the stats screen. No Compose, no Android, no coroutines. The cap,
  * the ranking, the shares and the period arithmetic are all decided here and tested on
  * the JVM against plain lists.
  *
@@ -178,7 +178,7 @@ fun percentChange(current: Money, previous: Money): Int? {
  * should land on the current week; doing it while looking at March 2024 should land in
  * March 2024, not jump the user back to now.
  *
- * [PeriodMode.CUSTOM] keeps the dates it was given — there is no canonical custom range
+ * [PeriodMode.CUSTOM] keeps the dates it was given; there is no canonical custom range
  * to derive, so the screen opens its date picker instead.
  */
 fun rangeForMode(current: DateRange, mode: PeriodMode, today: LocalDate): DateRange {
@@ -224,11 +224,22 @@ private val HISTORY_START = LocalDate(1970, 1, 1)
 fun hasStrip(mode: PeriodMode): Boolean = mode != PeriodMode.CUSTOM
 
 /**
- * Everything up to the end of [selected], which is what the strip reads. The strip ends
- * on the selected period, so nothing after it is queried.
+ * Far enough forward that no future-dated row is missed. The strip runs three periods
+ * past the last one with data, so the query cannot stop at the selected period or at
+ * today: it has to reach a row before knowing where that row is. The daily totals query
+ * returns only days that hold rows, so an empty future costs nothing.
+ */
+private val HISTORY_END = LocalDate(2199, 12, 31)
+
+/** How many empty periods the strip shows after the latest of data, today and the selection. */
+const val STRIP_FUTURE_PERIODS = 3
+
+/**
+ * Everything the strip reads: all of history and every future-dated row, and the
+ * selected period too should it lie past [HISTORY_END].
  */
 fun stripHistory(selected: DateRange): DateRange =
-    DateRange.custom(HISTORY_START, selected.endInclusive)
+    DateRange.custom(HISTORY_START, maxOf(HISTORY_END, selected.endInclusive))
 
 /** The week, month or year holding [date], the same ranges the period arrows step. */
 fun periodContaining(date: LocalDate, mode: PeriodMode): DateRange = when (mode) {
@@ -239,38 +250,48 @@ fun periodContaining(date: LocalDate, mode: PeriodMode): DateRange = when (mode)
 }
 
 /**
- * Folds daily totals into one strip column per period of [selected]'s mode, from the
- * period of the first income or expense through [selected]. One fold for weeks, months
- * and years: the mode decides only how a day is bucketed and how a column steps.
+ * Folds daily totals into one strip column per period of [selected]'s mode. One fold for
+ * weeks, months and years: the mode decides only how a day is bucketed and how a column
+ * steps.
  *
- * [days] is one filtered daily totals query over [stripHistory], so the first column is
- * the first period anything passing the filter happened, and every bar counts the same
- * rows the header does. Bars share one scale, the top of the [stripAxis] for the largest
- * income or expense figure across the whole history, as thousandths from `Long`
+ * The strip starts at the earlier of the first period with an income or expense and
+ * [selected], and ends [STRIP_FUTURE_PERIODS] periods past the latest of the last period
+ * with data, the period holding [today], and [selected]. So a past selection still shows
+ * everything after it, a future-dated row shows in its own column, and there is always a
+ * little future to scroll to.
+ *
+ * [days] is one filtered daily totals query over [stripHistory], so every bar counts the
+ * same rows the header does. Bars share one scale, the top of the [stripAxis] for the
+ * largest income or expense figure across every column, as thousandths from `Long`
  * arithmetic; only the drawing makes geometry of them. Scaling to the axis top rather
  * than to the largest figure is what makes the axis labels true.
  *
- * A quiet period after history began is a real zero and draws as one. With no history
- * up to [selected] at all, the strip is the selected period alone as an empty slot, so
+ * A quiet period inside the strip, future ones included, is a real zero and draws as one.
+ * With no history at all, the strip is the selected period alone as an empty slot, so
  * the period the user is on still has a column to read.
  *
  * Transfers and adjustments are already out, as they are from every daily total.
  */
-fun foldStrip(days: List<DailyTotals>, selected: DateRange): List<StripColumn> {
+fun foldStrip(days: List<DailyTotals>, selected: DateRange, today: LocalDate): List<StripColumn> {
     if (!hasStrip(selected.mode)) return emptyList()
-    val first = days.filter { !it.isEmpty && it.date <= selected.endInclusive }.minOfOrNull { it.date }
-        ?: return listOf(emptySlot(selected))
+    val withData = days.filter { !it.isEmpty }
+    val first = withData.minOfOrNull { it.date } ?: return listOf(emptySlot(selected))
+    val last = withData.maxOf { it.date }
+    val mode = selected.mode
 
     val byPeriod = HashMap<LocalDate, PeriodTotals>()
     for (day in days) {
-        val key = periodContaining(day.date, selected.mode).start
+        val key = periodContaining(day.date, mode).start
         val sum = byPeriod[key] ?: PeriodTotals.EMPTY
         byPeriod[key] = PeriodTotals(sum.income + day.income, sum.expense + day.expense)
     }
 
+    var end = periodContaining(maxOf(last, today, selected.start), mode)
+    repeat(STRIP_FUTURE_PERIODS) { end = end.next() }
+
     val periods = ArrayList<DateRange>()
-    var period = periodContaining(first, selected.mode)
-    while (period.start <= selected.start) {
+    var period = periodContaining(minOf(first, selected.start), mode)
+    while (period.start <= end.start) {
         periods += period
         period = period.next()
     }

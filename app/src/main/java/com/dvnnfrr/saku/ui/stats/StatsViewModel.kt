@@ -38,7 +38,7 @@ import kotlinx.datetime.toLocalDateTime
 /**
  * State for the stats screen.
  *
- * Holds only what the user has chosen — the period, the side, what they drilled into.
+ * Holds only what the user has chosen: the period, the side, what they drilled into.
  * Every figure is a SQL aggregate and every fold is in [StatsAssembly], which is pure,
  * so the cap, the ranking and the shares are tested without a ViewModel or a database.
  */
@@ -91,7 +91,7 @@ class StatsViewModel(
 
     /**
      * Drilling in or out must not re-run the period queries, so the drill is keyed
-     * separately — the same reason the transaction list keys its month data on the month
+     * separately, for the same reason the transaction list keys its month data on the month
      * alone. It carries its own [key] so the final combine can tell whether the drill it
      * is holding belongs to the period currently on screen; the two streams settle
      * independently and would otherwise cross for one frame after an arrow tap.
@@ -122,8 +122,8 @@ class StatsViewModel(
 
     /**
      * The strip, keyed on the period and the filter and queried in every mode but
-     * Period. One filtered daily totals query from the start of history to the end of
-     * the selected period, folded into weeks, months or years in [foldStrip]: one
+     * Period. One filtered daily totals query over all history, future-dated rows
+     * included, folded into weeks, months or years in [foldStrip]: one
      * aggregate instead of one per column, which over sixteen months of history would be
      * seventeen live queries (seventy weeks' worth in Weekly) all re-running on every
      * write. Switching side does not touch it: the strip shows both.
@@ -138,7 +138,7 @@ class StatsViewModel(
                 if (key == null) return@flatMapLatest flowOf(emptyList())
                 val (range, filter) = key
                 transactionRepository.observeDailyTotals(stripHistory(range), zone, filter)
-                    .map { days -> foldStrip(days, range) }
+                    .map { days -> foldStrip(days, range, today()) }
             }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -193,7 +193,7 @@ class StatsViewModel(
         if (!hasStrip(key.range.mode)) return flowOf(emptyList())
         val filter = categoryFilter(key.filter, key.side, categoryId)
         return transactionRepository.observeDailyTotals(stripHistory(key.range), zone, filter)
-            .map { days -> foldStrip(days, key.range) }
+            .map { days -> foldStrip(days, key.range, today()) }
     }
 
     /** The two display choices, kept apart from [selection] so neither re-runs a query. */
@@ -203,7 +203,7 @@ class StatsViewModel(
     val state: StateFlow<StatsUiState> =
         combine(selection, periodData, drillData, stripData, display) { current, period, drill, strip, (expanded, style) ->
             StatsUiState(
-                // The period the data is for, not the one just selected — otherwise the
+                // The period the data is for, not the one just selected; otherwise the
                 // header flips before its figures arrive.
                 range = period.key.range,
                 side = period.key.side,
@@ -220,19 +220,24 @@ class StatsViewModel(
                 filter = period.key.filter,
                 drill = resolveDrill(current.drill, period, drill),
                 loading = false,
+                today = today(),
             )
         }
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(5_000),
-                initialValue = StatsUiState(range = selection.value.range, chartStyle = chartStyleStore.current()),
+                initialValue = StatsUiState(
+                    range = selection.value.range,
+                    chartStyle = chartStyleStore.current(),
+                    today = today(),
+                ),
             )
 
     /**
      * Shows a drill only once its data is for the period on screen.
      *
-     * Stepping the period with a category open is a legitimate thing to do — it is how
-     * you compare one category across months — so the drill survives the step rather
+     * Stepping the period with a category open is a legitimate thing to do, since it is how
+     * you compare one category across months, so the drill survives the step rather
      * than closing. It just renders nothing until its own query catches up, which is
      * better than briefly attributing last month's rows to this month's header.
      */
@@ -263,7 +268,7 @@ class StatsViewModel(
 
     /**
      * Switching mode closes an open drill. The category is still there, but the figure
-     * behind it is not — a Pemberian total for August means nothing under a header that
+     * behind it is not: a Pemberian total for August means nothing under a header that
      * now reads 2026.
      */
     fun selectMode(mode: PeriodMode) = selection.update {

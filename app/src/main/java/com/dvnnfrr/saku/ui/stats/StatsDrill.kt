@@ -259,7 +259,7 @@ private fun CategoryDrillPreview() {
                 percent = 34,
                 count = 2,
                 average = Money(525_000),
-                strip = foldStrip(previewHistory(), DateRange.ofMonth(LocalDate(2026, 8, 1))),
+                strip = foldStrip(previewHistory(), DateRange.ofMonth(LocalDate(2026, 8, 1)), PREVIEW_TODAY),
                 rows = listOf(
                     TransactionRowUi(
                         id = 1,

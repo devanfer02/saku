@@ -1,22 +1,28 @@
 package com.dvnnfrr.saku.ui.shared
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.dvnnfrr.saku.domain.DateRange
@@ -74,8 +80,12 @@ private fun spanLabel(start: LocalDate, end: LocalDate): String = when {
 
 /**
  * The period header: step back, the range in words, step forward, and an optional
- * trailing slot for whatever the host screen wants beside it — a mode selector on stats,
+ * trailing slot for whatever the host screen wants beside it: a mode selector on stats,
  * nothing on the transaction list.
+ *
+ * With [onLabelClick] set, the label is a button that opens the host's period picker: it
+ * gains a drop-down arrow, and [labelClickDescription] names the action for TalkBack,
+ * which still reads the period itself first. Null keeps the label plain text.
  */
 @Composable
 fun PeriodBar(
@@ -87,6 +97,8 @@ fun PeriodBar(
     previousDescription: String = "Previous period",
     nextDescription: String = "Next period",
     trailing: (@Composable () -> Unit)? = null,
+    onLabelClick: (() -> Unit)? = null,
+    labelClickDescription: String? = null,
 ) {
     val colors = SakuTheme.colors
     val spacing = SakuTheme.spacing
@@ -105,14 +117,44 @@ fun PeriodBar(
                 tint = colors.ink2,
             )
         }
-        Text(
-            text = label,
-            style = SakuTheme.typography.heading,
-            color = colors.ink,
-            textAlign = TextAlign.Center,
-            maxLines = 1,
-            modifier = Modifier.weight(1f),
-        )
+        if (onLabelClick == null) {
+            Text(
+                text = label,
+                style = SakuTheme.typography.heading,
+                color = colors.ink,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                modifier = Modifier.weight(1f),
+            )
+        } else {
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .heightIn(min = spacing.touchTarget)
+                    .clip(RoundedCornerShape(spacing.corner))
+                    .clickable(
+                        onClickLabel = labelClickDescription,
+                        role = Role.Button,
+                        onClick = onLabelClick,
+                    ),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+            ) {
+                Text(
+                    text = label,
+                    style = SakuTheme.typography.heading,
+                    color = colors.ink,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                Icon(
+                    imageVector = Icons.Filled.ArrowDropDown,
+                    contentDescription = null,
+                    tint = colors.ink2,
+                )
+            }
+        }
         IconButton(onClick = onNext) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
@@ -146,6 +188,8 @@ private fun PeriodBarPreview() {
                 range = DateRange.ofWeek(LocalDate(2026, 8, 17)),
                 onPrevious = {},
                 onNext = {},
+                onLabelClick = {},
+                labelClickDescription = "Choose a week",
             )
             PeriodBar(
                 range = DateRange.ofYear(2026),
