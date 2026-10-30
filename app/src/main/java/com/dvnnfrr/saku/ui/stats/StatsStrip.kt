@@ -117,7 +117,7 @@ fun StripHeader(
             Text(
                 text = stringResource(
                     R.string.stats_strip_collapsed_net,
-                    selected.range.start.month.shortLabel(),
+                    selected.range.majorityMonth().month.shortLabel(),
                     formatIdrCompact(selected.net),
                 ),
                 style = SakuTheme.typography.caption,
@@ -166,7 +166,7 @@ private fun MonthColumn(month: StripMonth, onClick: () -> Unit, modifier: Modifi
     ) {
         Bars(month)
         Text(
-            text = month.range.start.month.shortLabel(),
+            text = month.range.majorityMonth().month.shortLabel(),
             style = SakuTheme.typography.caption,
             color = textColor,
             maxLines = 1,
