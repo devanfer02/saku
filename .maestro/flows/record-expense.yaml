@@ -1,8 +1,9 @@
 appId: com.dvnnfrr.saku
 name: Record an expense
 ---
-# Task 8.10. An expense end to end, including creating a category and a subcategory
-# inline, and then finding it in the Daily list.
+# Task 8.10. An expense end to end, including creating a category inline, and then
+# finding it in the Daily list. There is no subcategory field: subcategories were
+# dropped in favour of search on 30 Oct 2026.
 #
 # Runs against the first-run seed, which is Cash and Card and no categories: the sheet
 # opens on Cash, and the category is made from the picker. If the seed ever stops
@@ -23,25 +24,21 @@ name: Record an expense
 - tapOn: "000"
 - assertVisible: "Rp 187.000"
 
-# Category and subcategory, both created without leaving the sheet. With no categories
-# the picker holds only its "New category" row.
+# The category, created without leaving the sheet. With no categories the picker holds
+# only its "New category" row.
 - tapOn: "Category"
 - tapOn: "New category"
 - inputText: "Makan & Minum"
 - tapOn: "Create"
 - assertVisible: "Makan & Minum"
-
-- tapOn: "Subcategory"
-- tapOn: "New subcategory"
-- inputText: "Warung Padang"
-- tapOn: "Create"
-- assertVisible: "Warung Padang"
+- assertNotVisible: "Subcategory"
 
 - tapOn: "Save"
 
-# Back on the list, with the row and the month header both updated.
+# Back on the list, with the row and the month header both updated. The row's second
+# line is the account alone, since no note was typed.
 - assertVisible: "Makan & Minum"
-- assertVisible: "Warung Padang"
+- assertVisible: "Cash"
 - assertNotVisible: "No transactions in .*\\. Tap \\+ to add one\\."
 
 # Reopening it must show what was saved, not an empty sheet.
