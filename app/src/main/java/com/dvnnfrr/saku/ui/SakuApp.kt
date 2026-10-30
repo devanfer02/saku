@@ -20,12 +20,18 @@ import com.dvnnfrr.saku.ui.theme.SakuTheme
  * flash on a dark-mode device, which is exactly the moment it is most visible.
  */
 @Composable
-fun SakuApp(store: AppearanceStore) {
+fun SakuApp(
+    store: AppearanceStore,
+    openEntry: Boolean = false,
+    onEntryOpened: () -> Unit = {},
+) {
     val preference by store.preference.collectAsState(initial = store.current())
 
     SakuApp(
         preference = preference,
         onAppearanceChange = store::set,
+        openEntry = openEntry,
+        onEntryOpened = onEntryOpened,
     )
 }
 
@@ -33,6 +39,9 @@ fun SakuApp(store: AppearanceStore) {
 fun SakuApp(
     preference: ThemePreference = ThemePreference.FOLLOW_SYSTEM,
     onAppearanceChange: (ThemePreference) -> Unit = {},
+    /** The weekly reminder was tapped: open Trans with the entry sheet on a new transaction. */
+    openEntry: Boolean = false,
+    onEntryOpened: () -> Unit = {},
 ) {
     SakuTheme(preference) {
         SakuShell(
@@ -41,6 +50,8 @@ fun SakuApp(
                 .background(SakuTheme.colors.background),
             appearance = preference,
             onAppearanceChange = onAppearanceChange,
+            openEntry = openEntry,
+            onEntryOpened = onEntryOpened,
         )
     }
 }

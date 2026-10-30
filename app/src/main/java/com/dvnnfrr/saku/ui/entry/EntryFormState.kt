@@ -42,7 +42,6 @@ data class EntryFormState(
     val accountId: Long? = null,
     val toAccountId: Long? = null,
     val categoryId: Long? = null,
-    val subcategoryId: Long? = null,
     val note: String = "",
 ) {
     val isEditing: Boolean get() = id != null
@@ -68,7 +67,6 @@ data class EntryFormState(
             // A transfer has no category, and an income category is not an expense
             // category, so the selection cannot survive either move.
             categoryId = if (enteringTransfer || categoryKindChanges(next)) null else categoryId,
-            subcategoryId = if (enteringTransfer || categoryKindChanges(next)) null else subcategoryId,
             toAccountId = if (leavingTransfer) null else toAccountId,
         )
     }
@@ -81,22 +79,6 @@ data class EntryFormState(
         }
         return nextKind != categoryKind
     }
-
-    /**
-     * A subcategory belongs to exactly one category, so changing the category drops
-     * it. [recalled] is the last subcategory used with the new category, which the
-     * caller looks up; passing null simply leaves the field empty.
-     */
-    fun withCategory(next: Long?, recalled: Long? = null): EntryFormState {
-        if (next == categoryId) return this
-        return copy(categoryId = next, subcategoryId = if (next == null) null else recalled)
-    }
-
-    /** Inline creation selects what it just made without disturbing anything else. */
-    fun withCreatedCategory(id: Long): EntryFormState =
-        copy(categoryId = id, subcategoryId = null)
-
-    fun withCreatedSubcategory(id: Long): EntryFormState = copy(subcategoryId = id)
 
     /**
      * Every reason this cannot be saved, in field order, so the sheet can mark each
@@ -131,7 +113,6 @@ data class EntryFormState(
             accountId = transaction.accountId,
             toAccountId = transaction.toAccountId,
             categoryId = transaction.categoryId,
-            subcategoryId = transaction.subcategoryId,
             note = transaction.note.orEmpty(),
         )
     }

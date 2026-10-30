@@ -2,6 +2,8 @@ package com.dvnnfrr.saku.ui.importexport
 
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.dvnnfrr.saku.SEED_CUTOVER
+import com.dvnnfrr.saku.data.FirstRunSeed
 import com.dvnnfrr.saku.data.local.SakuDatabase
 import com.dvnnfrr.saku.data.repository.RoomAccountRepository
 import com.dvnnfrr.saku.data.repository.RoomCategoryRepository
@@ -26,6 +28,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDate
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -126,13 +129,13 @@ class ImportViewModelTest {
 
     /** Scenario: Mapping the reference export. */
     @Test
-    fun `Card is prefilled to BCA, Cash matches by name, Gopay is left to the user`() = runFlow {
+    fun `Card and Cash match the seeded accounts by name, Gopay is left to the user`() = runFlow {
         seedAccounts()
         val preview = loadFixture().preview()
 
         val card = preview.accounts.single { it.sourceName == "Card" }
-        assertEquals("BCA", card.choice?.displayName)
-        assertTrue("Card should read as a guess", card.prefilled)
+        assertEquals("Card", card.choice?.displayName)
+        assertTrue("Card should read as prefilled", card.prefilled)
         assertEquals(1_150, card.rowCount)
 
         val cash = preview.accounts.single { it.sourceName == "Cash" }
@@ -140,6 +143,21 @@ class ImportViewModelTest {
 
         val gopay = preview.accounts.single { it.sourceName == "Gopay" }
         assertEquals(null, gopay.choice)
+    }
+
+    /** No name is guessed onto a different account: Card used to land on BCA. */
+    @Test
+    fun `Card is not mapped onto an account with another name`() = runFlow {
+        accountRepo().create("BCA", AccountType.BANK, Money.ZERO, opening)
+        val preview = loadFixture().preview()
+
+        val card = preview.accounts.single { it.sourceName == "Card" }
+        assertEquals(null, card.choice)
+        assertFalse(card.prefilled)
+        assertTrue(
+            preview.problems.toString(),
+            preview.problems.contains(ImportProblem.UnmappedAccount("Card")),
+        )
     }
 
     /** Scenario: Import blocked on an unmapped account. */
@@ -214,6 +232,23 @@ class ImportViewModelTest {
         )
     }
 
+    /**
+     * A brand-new install: the real first-run seed, no categories at all. The import
+     * creates every category the file uses and lands Card and Cash on the seeded ones.
+     */
+    @Test
+    fun `a fresh install with only the seed imports the whole export`() = runFlow {
+        FirstRunSeed.applyIfEmpty(db, openingAsOf = SEED_CUTOVER, zone = JAKARTA)
+        assertEquals(0, db.categoryDao().all().size)
+
+        assertEquals(1_200, importEverything())
+
+        assertTrue(db.categoryDao().all().any { it.name == "Makan & Minum" })
+        val seeded = setOf(accountId("Card"), accountId("Cash"))
+        val onSeeded = transactionRepo().all().count { it.accountId in seeded }
+        assertTrue("most rows sit on Card or Cash, got $onSeeded", onSeeded > 1_500)
+    }
+
     // -- Deduplication ----------------------------------------------------------
 
     /** Task 12.11 and the "Re-importing an overlapping export" scenario. */
@@ -240,6 +275,29 @@ class ImportViewModelTest {
         advanceUntilIdle()
         assertEquals(first, transactionCount())
         assertEquals(1, imports().observeBatches().first().size)
+    }
+
+    @Test
+    fun `the finished screen summarises what the import added`() = runFlow {
+        seedAccounts()
+        val model = loadFixture()
+        mapEverything(model)
+        model.confirm()
+        advanceUntilIdle()
+
+        val summary = (model.state.value as ImportUiState.Imported).summary
+        assertEquals(Fixture.NAME, summary.fileName)
+        assertEquals(1_200, summary.added)
+        assertEquals(0, summary.alreadyHere)
+        assertEquals(DateSpan(LocalDate(2025, 7, 28), LocalDate(2026, 8, 16)), summary.span)
+        assertEquals(
+            mapOf(TxnType.EXPENSE to 1_160, TxnType.INCOME to 35, TxnType.TRANSFER to 6),
+            summary.byType,
+        )
+        assertEquals(listOf("Card", "Cash", "Gopay", "RDPU SucorInvest", "Saham"), summary.accounts)
+        // Makan & Minum already existed, so it was matched rather than created.
+        assertFalse("Makan & Minum" in summary.createdCategories)
+        assertTrue("Pemberian" in summary.createdCategories)
     }
 
     /** Scenario: Reviewing an import — the tally splits new from already here. */
@@ -447,7 +505,7 @@ class ImportViewModelTest {
         advanceUntilIdle()
 
         return when (val state = model.state.value) {
-            is ImportUiState.Imported -> state.inserted
+            is ImportUiState.Imported -> state.summary.added
             is ImportUiState.Ready -> error(
                 "import did not run: ${state.preview.problems} ${state.preview.failure}",
             )
@@ -457,9 +515,10 @@ class ImportViewModelTest {
     }
 
     private suspend fun seedAccounts(openingAsOf: Instant = opening) {
+        // The two accounts a first run seeds.
         listOf(
-            "BCA" to AccountType.BANK,
             "Cash" to AccountType.CASH,
+            "Card" to AccountType.BANK,
         ).forEach { (name, type) ->
             accountRepo().create(name, type, Money.ZERO, openingAsOf)
         }

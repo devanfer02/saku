@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
@@ -21,13 +22,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.dvnnfrr.saku.R
-import com.dvnnfrr.saku.domain.Money
-import com.dvnnfrr.saku.domain.TxnType
+import com.dvnnfrr.saku.ui.filter.FilteredEmptyState
 import com.dvnnfrr.saku.ui.shared.EmptyState
+import com.dvnnfrr.saku.ui.shared.MoneyText
 import com.dvnnfrr.saku.ui.shared.TransactionRow
 import com.dvnnfrr.saku.ui.theme.SakuTheme
-import com.dvnnfrr.saku.ui.theme.forDirection
-import com.dvnnfrr.saku.ui.theme.formatIdr
+import com.dvnnfrr.saku.ui.theme.MoneySign
 import kotlinx.datetime.LocalDate
 
 /**
@@ -45,26 +45,30 @@ fun DailyTab(
     onScrollHandled: () -> Unit = {},
     onRowClick: (Long) -> Unit = {},
     listState: LazyListState = rememberLazyListState(),
+    /** Set while a filter is active, so an empty month says the filter is why. */
+    onClearFilter: (() -> Unit)? = null,
+    /** What an empty, unfiltered month says. It names the month, so the caller supplies it. */
+    emptyMessage: String = "",
 ) {
-    // Each section contributes one header plus its rows, so a date's index has to be
-    // counted rather than looked up.
     LaunchedEffect(scrollTo, days) {
         val target = scrollTo ?: return@LaunchedEffect
-        var index = 0
-        for (section in days) {
-            if (section.date == target) {
-                listState.animateScrollToItem(index)
-                break
-            }
-            index += 1 + section.rows.size
-        }
+        scrollIndexFor(days, target)?.let { listState.animateScrollToItem(it) }
         onScrollHandled()
+    }
+
+    if (days.isEmpty() && onClearFilter != null) {
+        FilteredEmptyState(
+            message = stringResource(R.string.filter_empty_month),
+            onClear = onClearFilter,
+            modifier = modifier.fillMaxSize(),
+        )
+        return
     }
 
     if (days.isEmpty()) {
         EmptyState(
             icon = Icons.AutoMirrored.Filled.ReceiptLong,
-            message = stringResource(R.string.transactions_empty),
+            message = emptyMessage,
             modifier = modifier.fillMaxSize(),
         )
         return
@@ -77,26 +81,32 @@ fun DailyTab(
         // under the button, and tapping it opened a new transaction instead of that one.
         contentPadding = PaddingValues(bottom = FAB_CLEARANCE),
     ) {
-        days.forEach { section ->
-            item(key = "header-${section.date}") { DayHeader(section) }
-            items(
-                count = section.rows.size,
-                key = { i -> section.rows[i].id },
-            ) { i ->
-                val row = section.rows[i]
-                TransactionRow(
-                    amount = row.amount,
-                    type = row.type,
-                    accountName = row.account.name,
-                    accountSlot = row.account.colorSlot,
-                    category = row.categoryName,
-                    subcategory = row.subcategoryName,
-                    note = row.note,
-                    toAccountName = row.toAccount?.name,
-                    toAccountSlot = row.toAccount?.colorSlot,
-                    onClick = { onRowClick(row.id) },
-                )
-            }
+        daySectionItems(days, onRowClick)
+    }
+}
+
+/**
+ * Each day as Daily draws it: the date header, then that day's rows. Shared with the
+ * Calendar's range list so the two cannot drift into rendering a day differently.
+ */
+internal fun LazyListScope.daySectionItems(days: List<DaySection>, onRowClick: (Long) -> Unit) {
+    days.forEach { section ->
+        item(key = "header-${section.date}") { DayHeader(section) }
+        items(
+            count = section.rows.size,
+            key = { i -> section.rows[i].id },
+        ) { i ->
+            val row = section.rows[i]
+            TransactionRow(
+                amount = row.amount,
+                type = row.type,
+                accountName = row.account.name,
+                categorySlot = row.categorySlot,
+                category = row.categoryName,
+                note = row.note,
+                toAccountName = row.toAccount?.name,
+                onClick = { onRowClick(row.id) },
+            )
         }
     }
 }
@@ -120,27 +130,20 @@ private fun DayHeader(section: DaySection) {
             color = colors.ink2,
             modifier = Modifier.weight(1f),
         )
-        // Zero subtotals are omitted rather than shown as 0, so a day of pure
-        // spending does not carry a meaningless "0" income figure beside it.
-        if (!section.income.isZero) {
-            Subtotal(section.income, TxnType.INCOME)
-        }
-        if (!section.expense.isZero) {
-            Subtotal(section.expense, TxnType.EXPENSE)
+        // The day's net, signed. A day of nothing but transfers has no flow to net, and
+        // a "Rp 0" beside it would read as a day that cancelled out.
+        val hasFlow = !section.income.isZero || !section.expense.isZero
+        if (hasFlow) {
+            MoneyText(
+                money = section.net,
+                sign = MoneySign.NET,
+                style = SakuTheme.typography.amountSmall,
+                color = colors.ink2,
+            )
         }
     }
     HorizontalDivider(thickness = 1.dp, color = colors.line)
 }
 
-@Composable
-private fun Subtotal(amount: Money, type: TxnType) {
-    Text(
-        text = formatIdr(amount, withPrefix = false),
-        style = SakuTheme.typography.amountSmall,
-        color = SakuTheme.colors.forDirection(type),
-        maxLines = 1,
-    )
-}
-
 /** Room for the floating add button, which is 56dp plus its 16dp margin. */
-private val FAB_CLEARANCE = 88.dp
+internal val FAB_CLEARANCE = 88.dp

@@ -97,9 +97,11 @@ class PeriodAggregateTest {
         txn(TxnType.TRANSFER, 500_000, "2026-08-14T10:00:00Z", toAccountId = rdpu)
         txn(TxnType.ADJUSTMENT, -53_500, "2026-08-15T10:00:00Z")
 
-        val totals = db.txnDao()
-            .observePeriodTotals(august.startSecFor(jakarta), august.endSecFor(jakarta))
-            .first()
+        val totals = db.txnDao().observePeriodTotals(
+            august.startSecFor(jakarta),
+            august.endSecFor(jakarta),
+            true, emptyList(), true, emptyList(), true, emptyList(),
+        ).first()
 
         assertEquals(0L, totals.income)
         assertEquals(5_061_400L, totals.expense)
@@ -112,9 +114,11 @@ class PeriodAggregateTest {
         txn(TxnType.EXPENSE, 200_000, "2026-08-05T10:00:00Z", categoryId = food, hash = "aug")
         txn(TxnType.EXPENSE, 300_000, "2026-09-01T10:00:00Z", categoryId = food, hash = "sept")
 
-        val totals = db.txnDao()
-            .observePeriodTotals(august.startSecFor(jakarta), august.endSecFor(jakarta))
-            .first()
+        val totals = db.txnDao().observePeriodTotals(
+            august.startSecFor(jakarta),
+            august.endSecFor(jakarta),
+            true, emptyList(), true, emptyList(), true, emptyList(),
+        ).first()
 
         assertEquals(200_000L, totals.expense)
     }
@@ -129,6 +133,7 @@ class PeriodAggregateTest {
             august.startSecFor(jakarta),
             august.endSecFor(jakarta),
             TxnType.EXPENSE.name,
+            true, emptyList(), true, emptyList(), true, emptyList(),
         ).first()
 
         assertEquals(2, rows.size)
@@ -147,6 +152,7 @@ class PeriodAggregateTest {
             august.startSecFor(jakarta),
             august.endSecFor(jakarta),
             TxnType.EXPENSE.name,
+            true, emptyList(), true, emptyList(), true, emptyList(),
         ).first()
 
         assertEquals(1, expenses.size)
@@ -164,6 +170,7 @@ class PeriodAggregateTest {
             august.startSecFor(jakarta),
             august.endSecFor(jakarta),
             25_200, // UTC+7
+            true, emptyList(), true, emptyList(), true, emptyList(),
         ).first()
 
         assertEquals(1, days.size)

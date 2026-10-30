@@ -1,6 +1,7 @@
 package com.dvnnfrr.saku.domain
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
@@ -64,5 +65,29 @@ class WholePercentsTest {
     @Test
     fun `a single slice takes the whole hundred`() {
         assertEquals(listOf(100), wholePercents(totals(10_000)))
+    }
+
+    // sharePercent: one figure on its own, beside the list rule above.
+
+    @Test
+    fun `a share rounds half up`() {
+        assertEquals(80, sharePercent(Money(8_000_000), Money(10_000_000)))
+        assertEquals(25, sharePercent(Money(1_500_000), Money(6_000_000)))
+        assertEquals(1, sharePercent(Money(5), Money(1_000)))
+        assertEquals(0, sharePercent(Money(4), Money(1_000)))
+    }
+
+    @Test
+    fun `a share of nothing is no percentage at all`() {
+        assertNull(sharePercent(Money.ZERO, Money.ZERO))
+        assertNull(sharePercent(Money(500), Money.ZERO))
+    }
+
+    @Test
+    fun `the single-row percentage routes through sharePercent`() {
+        // 0.5% reads as 1%, as it did before the rule moved.
+        assertEquals(1, totals(50).single().wholePercent)
+        assertEquals(0, totals(49).single().wholePercent)
+        assertEquals(17, totals(1667).single().wholePercent)
     }
 }

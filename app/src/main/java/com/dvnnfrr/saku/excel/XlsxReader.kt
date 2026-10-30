@@ -7,6 +7,7 @@ import org.dhatim.fastexcel.reader.ReadingOptions
 import org.dhatim.fastexcel.reader.Row
 import java.io.File
 import java.io.InputStream
+import kotlin.streams.toList
 
 /**
  * Reads an `.xlsx` into a [SheetTable] using `fastexcel-reader`.
@@ -47,17 +48,34 @@ object XlsxReader {
 
     fun read(input: InputStream): SheetTable = ReadableWorkbook(input, OPTIONS).use { toTable(it) }
 
+    /**
+     * Every sheet, in workbook order, each carrying its own name. A backup is found by its
+     * sheet names; [read] stays first-sheet-only because that is what makes a backup open
+     * through the plain importer exactly like an export.
+     *
+     * A sheet with no rows at all comes back with no headers rather than failing the whole
+     * workbook: whoever asked for it by name decides whether that is an error.
+     */
+    fun readAll(input: InputStream): List<SheetTable> = ReadableWorkbook(input, OPTIONS).use { workbook ->
+        workbook.sheets.toList().map { sheet ->
+            val rows = sheet.read()
+            if (rows.isEmpty()) SheetTable(sheet.name, emptyList(), emptyList()) else toTable(sheet.name, rows)
+        }
+    }
+
     private fun toTable(workbook: ReadableWorkbook): SheetTable {
         val sheet = workbook.firstSheet
         val rows = sheet.read()
         require(rows.isNotEmpty()) { "Sheet '${sheet.name}' has no rows, so it has no header." }
+        return toTable(sheet.name, rows)
+    }
 
-        return SheetTable(
-            sheetName = sheet.name,
+    private fun toTable(name: String, rows: List<Row>): SheetTable =
+        SheetTable(
+            sheetName = name,
             headers = rows.first().map { cell -> cell?.asString().orEmpty() },
             rows = rows.drop(1).map { it.toSheetRow() },
         )
-    }
 
     private fun Row.toSheetRow(): SheetRow =
         SheetRow(

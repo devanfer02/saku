@@ -103,21 +103,34 @@ Settled — reopen only with a reason, not by drift:
 - **Local-only.** No sync, no account, no network, no ads. The build enforces the last three.
 - **IDR only.** `Money` is a `Long` of rupiah; there is no currency field to add later cheaply.
 - **Import from Money Manager exports**, merging into existing months rather than replacing them.
+- **Generic first run** (30 Oct 2026). First run seeds two accounts, `Cash` and `Card`, and no
+  categories or subcategories, so the app is not tailored to its first owner. Categories come from
+  the entry sheet's "New category" or from an import; the owner's own data arrives by import.
 - Seeded accounts open at the epoch, because every row worth importing predates any install.
+- **No subcategories in the product** (30 Oct 2026). The owner found tagging them a chore and
+  answers "how much went to Arisan" with search, which shows a count, totals and day-grouped rows.
+  The UI neither shows nor asks for them. The `subcategory` table, `TxnEntity.subcategoryId` and
+  every stored row stay, and import, export, backup and restore still carry them, so old backups
+  restore unchanged. See `openspec/changes/hide-subcategories/design.md`.
 
 ## Still open
 
 - First-run setup (group 13): real opening balances are set by hand on the accounts screen today.
 - Budget caps — gap 5 in the analysis below, and the one gap nothing yet addresses.
-- Reassigning a subcategory to a different parent: `SubcategoryDao.moveToCategory` exists but no
-  repository method reaches it.
+- The owner's own data import (decided 30 Oct 2026, features first): a prepared database built from
+  the Money Manager export. It no longer infers subcategories from notes: the owner decided on
+  30 Oct 2026 to drop subcategories in favour of search. Pemberian is split into categories
+  instead (see Domain notes).
 
 ## Domain notes
 
-Categories in the existing data are Indonesian and worth keeping as defaults:
+Categories in the existing data are Indonesian. They are not seeded (since 30 Oct 2026 first run
+seeds only Cash and Card, so other users get no owner-specific setup); an import of the owner's
+export recreates them:
 Pemberian (giving/family support), Makan & Minum, Kebutuhan Kos (boarding-house costs), Kuliah,
 Perawatan Diri, Jajan & Hiburan, Baju dan Aksesoris, Kendaraan Pribadi, Kerjaan, Transportasi Umum,
 Gym, Internet, Servis, Obat, Paket, Parkir.
 
-Pemberian is the largest category by far (the largest share of spend) and needs subcategory support to be useful —
-splitting recurring family obligation from one-off discretionary giving.
+Pemberian is the largest category by far (the largest share of spend). The owner will split it into three
+categories, Keluarga, Gereja and Teman, in the data import, which separates recurring family
+obligation from other giving without subcategories.

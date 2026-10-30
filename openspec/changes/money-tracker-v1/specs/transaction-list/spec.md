@@ -56,9 +56,14 @@ apparent at a glance.
 - **WHEN** a month has no transactions between the 1st and the 20th
 - **THEN** those twenty cells render empty, forming a visible block
 
-#### Scenario: Opening a day from the calendar
-- **WHEN** the user taps a day cell that has transactions
-- **THEN** the Daily tab opens scrolled to that day
+#### Scenario: Picking dates on the calendar
+- **WHEN** the user taps one day cell, or taps a second one, or long-presses and drags across cells
+- **THEN** that day or the range between them is highlighted, and beneath the grid the range shows its Left over, In
+  and Out, then its transactions grouped by day exactly as the Daily tab renders them, under the active filter
+
+#### Scenario: Ending a calendar selection
+- **WHEN** the user taps the only picked day again, taps Clear, or changes month
+- **THEN** the selection is dropped and only the grid and a short hint remain
 
 ### Requirement: Edit or delete from the list
 The user SHALL be able to reach edit and delete for any transaction directly from its row.

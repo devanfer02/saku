@@ -40,10 +40,10 @@ sealed interface AccountChoice {
 /**
  * One distinct account name in the file.
  *
- * [prefilled] separates a mapping the app guessed from one the user made. `Card` covers
- * 1,150 of the 1,200 reference rows, so it arrives pointing at BCA — but the row still
- * shows as a guess, because attributing a year of history to one bank account
- * is partly fiction and the user should see the guess rather than discover it later.
+ * [prefilled] separates a mapping the app made by name from one the user made. `Card`
+ * covers 1,150 of the 1,200 reference rows and arrives on the account named `Card`, but
+ * the row still shows as prefilled, because that one label holds every card, transfer
+ * and e-wallet payment, and the user should see the mapping rather than discover it later.
  */
 data class AccountMapping(
     val sourceName: String,
@@ -172,9 +172,7 @@ sealed interface ImportUiState {
 
     data class Imported(
         override val entryPoint: ImportEntryPoint,
-        val fileName: String,
-        val inserted: Int,
-        val skipped: Int,
+        val summary: ImportSummary,
     ) : ImportUiState
 }
 

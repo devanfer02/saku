@@ -10,7 +10,12 @@
     <!-- Transactions -->
     <string name="transactions_tab_daily">Daily</string>
     <string name="transactions_tab_calendar">Calendar</string>
-    <string name="transactions_empty">Nothing recorded this month</string>
+    <string name="transactions_empty">No transactions in %1$s. Tap + to add one.</string>
+    <string name="calendar_hint">Tap a date, or two to see a range. Long-press and drag to sweep across days.</string>
+    <string name="calendar_select_date">select</string>
+    <string name="calendar_clear">Clear</string>
+    <string name="calendar_clear_description">Clear selected dates</string>
+    <string name="calendar_range_empty">Nothing recorded on these dates.</string>
 
     <!-- Period figures -->
     <string name="label_income">Income</string>
@@ -25,15 +30,13 @@
     <string name="stats_previous_period">Previous period</string>
     <string name="stats_next_period">Next period</string>
     <string name="stats_pick_range">Choose the start and end dates</string>
+    <string name="stats_pick_range_none">No dates chosen</string>
     <string name="stats_other">Other</string>
     <string name="stats_other_heading">Combined into Other</string>
-    <string name="stats_no_subcategory">No subcategory</string>
-    <string name="stats_subcategory_heading">By subcategory</string>
     <string name="stats_transactions_heading">Transactions</string>
     <string name="stats_empty_expenses">Nothing spent in %1$s</string>
     <string name="stats_empty_income">Nothing earned in %1$s</string>
-    <string name="stats_compare_none">Nothing recorded in %1$s to compare against</string>
-    <string name="stats_compare_change">%1$s vs %2$s</string>
+    <string name="stats_compare_none">Nothing in %1$s to compare with</string>
     <string name="stats_back">Back to the period</string>
     <!-- Spoken instead of the colour alone: "Pemberian, 53 percent, Rp 1.050.000" -->
     <string name="stats_row_description">%1$s, %2$d percent, %3$s</string>
@@ -64,18 +67,18 @@
     <string name="entry_field_account">Account</string>
     <string name="entry_field_destination">To account</string>
     <string name="entry_field_category">Category</string>
-    <string name="entry_field_subcategory">Subcategory</string>
     <string name="entry_field_note">Note</string>
     <string name="entry_field_unset">Choose</string>
-    <string name="entry_field_none">None</string>
     <string name="entry_title_new">New transaction</string>
     <string name="entry_title_edit">Edit transaction</string>
     <string name="entry_new_category">New category</string>
-    <string name="entry_new_subcategory">New subcategory</string>
     <string name="entry_name_hint">Name</string>
     <string name="entry_duplicate_notice">"%1$s" already exists, so it was selected instead</string>
     <string name="entry_delete_title">Delete this transaction?</string>
     <string name="entry_delete_body">It is removed from the list and the account balance recalculates. Nothing else changes.</string>
+    <!-- Note autocomplete. One spoken string per suggestion: note, category, last amount. -->
+    <string name="entry_suggestion_spoken">%1$s, %2$s, %3$s</string>
+    <string name="entry_suggestion_spoken_no_category">%1$s, %2$s</string>
 
     <!-- Entry validation -->
     <string name="entry_error_amount_missing">Enter an amount</string>
@@ -96,11 +99,7 @@
     <string name="accounts_archived">Archived</string>
     <string name="accounts_add">Add account</string>
     <string name="accounts_empty">No accounts yet</string>
-    <string name="accounts_donut_empty">Nothing to chart yet</string>
     <string name="accounts_back">Back</string>
-    <string name="accounts_never_reconciled">Never reconciled</string>
-    <string name="accounts_stale">Last reconciled %1$s</string>
-    <string name="accounts_reconciled_on">Reconciled %1$s</string>
 
     <!-- Account editor -->
     <string name="accounts_new_title">New account</string>
@@ -115,15 +114,15 @@
     <string name="accounts_error_name_missing">Give the account a name</string>
     <string name="accounts_refused_title">That change was not saved</string>
 
-    <!-- Reconcile -->
-    <string name="accounts_reconcile">Reconcile</string>
-    <string name="accounts_reconcile_title">Reconcile %1$s</string>
+    <!-- Check balance (reconcile) -->
+    <string name="accounts_reconcile">Check balance</string>
+    <string name="accounts_reconcile_title">Check the %1$s balance</string>
     <string name="accounts_reconcile_derived">Balance on record</string>
     <string name="accounts_reconcile_true">True balance</string>
     <string name="accounts_reconcile_adjustment">Adjustment to record</string>
     <string name="accounts_reconcile_matched">No difference. The date is recorded and nothing else changes.</string>
     <string name="accounts_reconciled_message">%1$s: adjustment of %2$s recorded</string>
-    <string name="accounts_reconciled_matched_message">%1$s already matched. Reconciliation date updated.</string>
+    <string name="accounts_reconciled_matched_message">%1$s already matched. The check date is updated.</string>
 
     <!-- Archive -->
     <string name="accounts_archive">Archive</string>
@@ -141,21 +140,14 @@
     <string name="categories_tab_income">Income</string>
     <string name="categories_empty">No categories on this tab yet</string>
     <string name="categories_new_category">New category</string>
-    <string name="categories_new_subcategory">New subcategory</string>
-    <string name="categories_add_subcategory">Add subcategory</string>
     <string name="categories_show_archived">Show archived (%1$d)</string>
     <string name="categories_hide_archived">Hide archived</string>
     <string name="categories_archived_header">Archived</string>
     <string name="categories_back">Back</string>
-    <plurals name="categories_subcategory_count">
-        <item quantity="one">%d subcategory</item>
-        <item quantity="other">%d subcategories</item>
-    </plurals>
     <plurals name="categories_transaction_count">
         <item quantity="one">%d transaction</item>
         <item quantity="other">%d transactions</item>
     </plurals>
-    <string name="categories_no_subcategories">No subcategories</string>
 
     <!-- Category actions -->
     <string name="categories_action_rename">Rename</string>
@@ -167,23 +159,19 @@
     <string name="categories_action_move_down">Move down</string>
     <string name="categories_action_merge_label">Merge</string>
     <string name="categories_action_archive_label">Archive</string>
-    <string name="categories_expand">Show subcategories of %1$s</string>
-    <string name="categories_collapse">Hide subcategories of %1$s</string>
     <string name="categories_actions_for">Actions for %1$s</string>
     <string name="categories_reorder">Reorder %1$s</string>
 
     <!-- Category dialogs -->
     <string name="categories_rename_title">Rename %1$s</string>
-    <string name="categories_subcategory_of">Subcategory of %1$s</string>
     <string name="categories_recolour_title">Colour for %1$s</string>
     <string name="categories_colour_slot">Colour %1$d</string>
     <string name="categories_delete_title">Delete %1$s?</string>
-    <string name="categories_delete_body">Nothing refers to it, so it can go. Its subcategories go with it.</string>
-    <string name="categories_delete_subcategory_body">Nothing refers to it, so it can go.</string>
+    <string name="categories_delete_body">Nothing refers to it, so it can go.</string>
     <string name="categories_archive_title">Archive %1$s?</string>
     <string name="categories_merge_choose_title">Merge %1$s into…</string>
     <string name="categories_merge_title">Merge %1$s into %2$s?</string>
-    <string name="categories_merge_body">Every transaction moves to %1$s and the subcategories are carried across. %2$s is archived, not deleted.</string>
+    <string name="categories_merge_body">Every transaction moves to %1$s. %2$s is archived, not deleted.</string>
     <string name="categories_error_blank">Enter a name</string>
     <string name="categories_error_duplicate">"%1$s" is already here. Pick another name.</string>
 
@@ -226,7 +214,7 @@
     <string name="import_accounts_explainer">Every name in the file has to point at an account before anything is written.</string>
     <string name="import_account_rows">%1$d rows</string>
     <string name="import_account_unmapped">Choose an account</string>
-    <string name="import_account_prefilled">Prefilled — check this</string>
+    <string name="import_account_prefilled">Prefilled, please check</string>
     <string name="import_account_create">Create \"%1$s\"</string>
 
     <!-- Import preview: investment destinations -->
@@ -248,7 +236,7 @@
     <string name="import_discrepancy_row">Row %1$d · IDR %2$s · Amount %3$s</string>
     <string name="import_discrepancy_include">Include</string>
     <string name="import_section_held_back">Held back</string>
-    <string name="import_held_back_row">Row %1$d — %2$s</string>
+    <string name="import_held_back_row">Row %1$d: %2$s</string>
 
     <!-- Import: why a row was held back -->
     <string name="import_reason_non_idr">the currency is %1$s, not IDR</string>
@@ -279,6 +267,16 @@
     <string name="import_failed_title">Nothing was imported</string>
     <string name="import_done_title">Import finished</string>
     <string name="import_done_body">%1$d added from %2$s. %3$d were already here.</string>
+    <string name="import_done_added_title">What was added</string>
+    <string name="import_done_expenses">Expenses</string>
+    <string name="import_done_income">Income</string>
+    <string name="import_done_transfers">Transfers</string>
+    <string name="import_done_adjustments">Adjustments</string>
+    <string name="import_done_accounts">Accounts</string>
+    <string name="import_done_categories">New categories</string>
+    <string name="import_done_categories_none">None. Every category was already here.</string>
+    <string name="import_done_view_transactions">View transactions</string>
+    <string name="import_back">Back</string>
 
     <!-- Import history -->
     <string name="import_history_empty">Nothing imported yet</string>
@@ -289,7 +287,7 @@
     <string name="import_history_reverse_body">Only the transactions this import added are removed. Anything entered by hand, or added by another import, is left alone.</string>
 
     <!-- Export -->
-    <string name="export_intro">Writes every transaction to an .xlsx file you choose: date, type, amount, both accounts on a transfer, category, subcategory and note. Importing that file into an empty Saku rebuilds what you have now.</string>
+    <string name="export_intro">Writes every transaction to an .xlsx file you choose: date, type, amount, both accounts on a transfer, category and note. Importing that file into an empty Saku rebuilds what you have now.</string>
     <string name="export_action">Choose where to save</string>
     <string name="export_empty">There is nothing to export yet</string>
     <string name="export_writing">Writing %1$s…</string>

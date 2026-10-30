@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Backup and restore copy. Kept apart from strings.xml so the two features merge cleanly. -->
+<resources>
+    <string name="more_backup">Back up everything</string>
+    <string name="more_restore">Restore from backup</string>
+
+    <string name="backup_intro">Writes one .xlsx file holding every account, category and transaction, archived ones included, with opening balances, colours and reconcile dates. Restoring it on a new phone rebuilds Saku as it is now.</string>
+    <string name="backup_action">Choose where to save</string>
+    <string name="backup_writing">Writing %1$s…</string>
+    <string name="backup_done">Saved to %1$s</string>
+    <string name="backup_failed">%1$s could not be written</string>
+    <string name="backup_not_encrypted">The file is not encrypted. Anyone who can open it can read your whole history, so keep it somewhere private.</string>
+    <string name="backup_count_accounts">Accounts</string>
+    <string name="backup_count_categories">Categories</string>
+    <string name="backup_count_transactions">Transactions</string>
+
+    <string name="restore_intro">Reads a Saku backup and adds what this phone does not have yet. Nothing here is deleted or changed, and the transactions arrive as one entry in Import history, so they can be reversed.</string>
+    <string name="restore_choose_file">Choose a backup</string>
+    <string name="restore_choose_another">Choose another file</string>
+    <string name="restore_reading">Reading %1$s…</string>
+    <string name="restore_preview_file">File</string>
+    <string name="restore_preview_written">Backed up on</string>
+    <string name="restore_preview_format">Format</string>
+    <string name="restore_preview_format_value">Version %1$d, Saku %2$s</string>
+    <string name="restore_new_accounts">New accounts</string>
+    <string name="restore_new_categories">New categories</string>
+    <string name="restore_new_transactions">New transactions</string>
+    <string name="restore_already_present">Transactions already here</string>
+    <string name="restore_held_back">Rows held back</string>
+    <string name="restore_conflicts_title">Accounts that differ</string>
+    <string name="restore_conflicts_note">These accounts already exist here with different settings. Restore keeps the settings on this phone; edit the account afterwards to change them.</string>
+    <string name="restore_conflict_line">%1$s: %2$s</string>
+    <string name="restore_setting_type">type</string>
+    <string name="restore_setting_opening_balance">opening balance</string>
+    <string name="restore_setting_opening_date">opening date</string>
+    <string name="restore_setting_colour">colour</string>
+    <string name="restore_setting_archived">archived</string>
+    <string name="restore_setting_last_reconciled">last reconciled</string>
+    <string name="restore_nothing_new">Everything in this backup is already here.</string>
+    <string name="restore_action">Restore</string>
+    <string name="restore_discard">Cancel</string>
+    <string name="restore_failed">Nothing was restored: %1$s</string>
+    <string name="restore_done">Restored from %1$s</string>
+    <string name="restore_done_note">To undo the transactions, reverse this restore in Import history. Accounts and categories it created stay and can be archived.</string>
+
+    <string name="restore_refused_unreadable">%1$s could not be read as a spreadsheet.</string>
+    <string name="restore_refused_missing_sheet">%1$s is not a Saku backup: it has no %2$s sheet.</string>
+    <string name="restore_refused_newer">%1$s was made by a newer Saku (%2$s, backup format %3$d). Update Saku to that version or later to restore it.</string>
+    <string name="restore_refused_newer_unknown">%1$s was made by a newer Saku (backup format %2$d). Update Saku to restore it.</string>
+    <string name="restore_refused_missing_column">%1$s has no %3$s column on its %2$s sheet.</string>
+    <string name="restore_refused_invalid_cell">%1$s has an unreadable %3$s on row %4$d of its %2$s sheet.</string>
+    <string name="restore_refused_duplicate">%1$s lists \"%3$s\" twice on its %2$s sheet, so Saku cannot tell which one the transactions mean.</string>
+    <string name="restore_refused_unknown_name">%1$s uses \"%3$s\" on its %2$s sheet, but no record by that name is in the backup.</string>
+    <string name="restore_refused_transactions">%1$s does not start with a Saku transaction sheet.</string>
+</resources>

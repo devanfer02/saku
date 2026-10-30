@@ -1,7 +1,8 @@
 package com.dvnnfrr.saku.ui.transactions
 
-import com.dvnnfrr.saku.domain.Money
+import com.dvnnfrr.saku.domain.DateRange
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalTime
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.util.Locale
@@ -9,9 +10,31 @@ import java.util.Locale
 class DateLabelsTest {
 
     @Test
-    fun `a day header reads day, weekday, month and year`() {
-        assertEquals("14 Fri Aug 2026", LocalDate(2026, 8, 14).dayHeaderLabel())
-        assertEquals("1 Thu Jan 2026", LocalDate(2026, 1, 1).dayHeaderLabel())
+    fun `a day header reads weekday, day and short month`() {
+        assertEquals("Thu 29 Oct", LocalDate(2026, 10, 29).dayHeaderLabel())
+        assertEquals("Thu 1 Jan", LocalDate(2026, 1, 1).dayHeaderLabel())
+    }
+
+    @Test
+    fun `a calendar selection names one day, or both ends of a range`() {
+        val day = LocalDate(2026, 8, 12)
+        val end = LocalDate(2026, 8, 18)
+
+        assertEquals("Wed 12 Aug", DateRange.custom(day, day).selectionLabel())
+        assertEquals("Wed 12 Aug ~ Tue 18 Aug", DateRange.custom(day, end).selectionLabel())
+        assertEquals("Wed 12 Aug to Tue 18 Aug", DateRange.custom(day, end).spokenSelectionLabel())
+    }
+
+    @Test
+    fun `a time of day is zero-padded on the 24-hour clock`() {
+        assertEquals("07:30", LocalTime(7, 30).clockLabel())
+        assertEquals("20:00", LocalTime(20, 0).clockLabel())
+        assertEquals("00:05", LocalTime(0, 5).clockLabel())
+    }
+
+    @Test
+    fun `a date on its own carries its year`() {
+        assertEquals("29 Oct 2026", LocalDate(2026, 10, 29).dateLabel())
     }
 
     @Test
@@ -21,7 +44,7 @@ class DateLabelsTest {
             // Turkish is the classic trap: its lowercase of "I" is a dotless i, so a
             // locale-sensitive title-case would render "FRI" as "Frı".
             Locale.setDefault(Locale.forLanguageTag("tr"))
-            assertEquals("14 Fri Aug 2026", LocalDate(2026, 8, 14).dayHeaderLabel())
+            assertEquals("Fri 14 Aug", LocalDate(2026, 8, 14).dayHeaderLabel())
         } finally {
             Locale.setDefault(original)
         }
@@ -36,27 +59,10 @@ class DateLabelsTest {
     }
 
     @Test
-    fun `a compact net fits a calendar cell`() {
-        assertEquals("0", compactNet(Money.ZERO))
-        assertEquals("45k", compactNet(Money(45_000)))
-        assertEquals("-170k", compactNet(Money(-170_000)))
-        assertEquals("5m", compactNet(Money(5_061_400)))
-        assertEquals("-5m", compactNet(Money(-5_061_400)))
-    }
-
-    @Test
-    fun `an amount under a thousand does not round away to zero`() {
-        // Truncating 500 to "0" would read as a day with no net rather than a small one.
-        assertEquals("<1k", compactNet(Money(400)))
-        assertEquals("-<1k", compactNet(Money(-400)))
-    }
-
-    @Test
-    fun `a compact net rounds rather than truncating`() {
-        // 1.999.000 truncated to "1m" reads as half the value on a cell whose whole
-        // job is a glance.
-        assertEquals("2m", compactNet(Money(1_999_000)))
-        assertEquals("-2m", compactNet(Money(-1_980_000)))
-        assertEquals("1k", compactNet(Money(500)))
+    fun `strip columns name a week by its Monday, a month by its short name, a year by its number`() {
+        assertEquals("26 Oct", DateRange.ofWeek(LocalDate(2026, 10, 29)).stripColumnLabel())
+        assertEquals("Oct", DateRange.ofMonth(LocalDate(2026, 10, 1)).stripColumnLabel())
+        assertEquals("Jan 26", DateRange.ofMonth(LocalDate(2026, 1, 1)).stripColumnLabel())
+        assertEquals("2026", DateRange.ofYear(2026).stripColumnLabel())
     }
 }

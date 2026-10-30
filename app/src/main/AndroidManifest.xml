@@ -3,10 +3,15 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <!--
-      No permissions are declared, and INTERNET in particular must never be added.
-      Ad-free and offline are enforced by the platform rather than by convention;
-      NoNetworkPermissionTest fails the build if this changes.
+      INTERNET in particular must never be added. Ad-free and offline are enforced by
+      the platform rather than by convention; NoNetworkPermissionTest and the
+      merged-manifest check fail the build if any permission beyond these two appears.
+
+      Both serve the weekly logging reminder: one shows it, one re-arms it after a
+      restart. Neither reaches the network.
     -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:name=".SakuApplication"
@@ -30,6 +35,27 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- The weekly alarm. Not exported: no other app can make Saku post it. -->
+        <receiver
+            android:name=".reminder.ReminderReceiver"
+            android:exported="false" />
+
+        <!--
+          Re-arms the alarm after a restart, a clock or zone change, or an update. These
+          are system broadcasts, so it is exported; all it does is schedule the stored
+          reminder again, so a forged intent can do nothing more.
+        -->
+        <receiver
+            android:name=".reminder.ReminderRescheduleReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

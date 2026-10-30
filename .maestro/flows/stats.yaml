@@ -2,7 +2,8 @@ appId: com.dvnnfrr.saku
 name: Stats period switching and drill-down
 ---
 # Task 11.9. Switch period mode, step back a month, and drill a category row through
-# to its subcategory split and its transactions.
+# to its summary and its transactions. The detail has no subcategory split since
+# subcategories were dropped in favour of search on 30 Oct 2026.
 #
 # Records its own expense first, because a freshly seeded install has an empty month
 # and there is nothing to drill into. The empty state is asserted before that, since a
@@ -46,8 +47,7 @@ name: Stats period switching and drill-down
     text: "Monthly"
     selected: true
 
-# Give the month something to chart: an expense with a subcategory, so the drill has
-# a split to show rather than one undifferentiated row.
+# Give the month something to chart.
 - tapOn: "Trans."
 - tapOn: "Add transaction"
 - tapOn: "1"
@@ -55,10 +55,8 @@ name: Stats period switching and drill-down
 - tapOn: "7"
 - tapOn: "000"
 - tapOn: "Category"
-- tapOn: "Makan & Minum"
-- tapOn: "Subcategory"
-- tapOn: "New subcategory"
-- inputText: "Warung Padang"
+- tapOn: "New category"
+- inputText: "Makan & Minum"
 - tapOn: "Create"
 - tapOn: "Save"
 
@@ -70,15 +68,15 @@ name: Stats period switching and drill-down
 - assertVisible: "Makan & Minum"
 - assertVisible: "100%"
 
-# The drill: category row through to its subcategory split and its transactions.
+# The drill: category row through to its summary and its transactions.
 - tapOn: "Makan & Minum"
-- assertVisible: "By subcategory"
-- assertVisible: "Warung Padang"
 - assertVisible: "Transactions"
+- assertVisible: "Rp 187.000"
+- assertNotVisible: "By subcategory"
 
 # And back out to the period, which is still the one the drill was opened from.
 - tapOn: "Back to the period"
-- assertNotVisible: "By subcategory"
+- assertNotVisible: "Back to the period"
 - assertVisible:
     text: "Expenses"
     selected: true

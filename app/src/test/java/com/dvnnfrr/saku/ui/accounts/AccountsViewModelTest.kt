@@ -13,6 +13,7 @@ import com.dvnnfrr.saku.domain.ColorSlot
 import com.dvnnfrr.saku.domain.DateRange
 import com.dvnnfrr.saku.domain.Money
 import com.dvnnfrr.saku.domain.TxnType
+import com.dvnnfrr.saku.domain.TransactionFilter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -199,35 +200,27 @@ class AccountsViewModelTest {
     // Requirement: accounts are typed and user-managed.
 
     @Test
-    fun `first run leaves four typed accounts, each with a slot and no opening balance`() =
+    fun `first run leaves Cash and Card, each with a slot and no opening balance`() =
         runTest(dispatcher) {
             FirstRunSeed.applyIfEmpty(db, openingAsOf = today, zone = zone)
 
             val state = viewModel().settled()
             val rows = state.rows
 
+            assertEquals(listOf("Cash", "Card"), rows.sortedBy { it.id }.map { it.name })
             assertEquals(
-                listOf("BCA", "Jago", "Cash", "RDPU SucorInvest"),
-                rows.sortedBy { it.id }.map { it.name },
-            )
-            assertEquals(
-                listOf(
-                    AccountType.BANK,
-                    AccountType.BANK,
-                    AccountType.CASH,
-                    AccountType.INVESTMENT,
-                ),
+                listOf(AccountType.CASH, AccountType.BANK),
                 rows.sortedBy { it.id }.map { it.type },
             )
             assertTrue(rows.all { it.openingBalance.isZero })
-            assertEquals(4, rows.map { it.colorSlot }.toSet().size)
-            // Nothing to chart while every balance is zero, and no divide by zero either.
-            assertTrue(state.mix.isEmpty())
+            assertEquals(2, rows.map { it.colorSlot }.toSet().size)
+            // No bar while every balance is zero, and no divide by zero either.
+            assertTrue(!state.split.hasBar)
             assertEquals(Money.ZERO, state.summary.total)
         }
 
     @Test
-    fun `an added account joins the list, the pickers and the donut`() = runTest(dispatcher) {
+    fun `an added account joins the list, the pickers and the split`() = runTest(dispatcher) {
         seed()
         val vm = viewModel()
         vm.settled()
@@ -246,7 +239,7 @@ class AccountsViewModelTest {
         val state = vm.state.first { it.rows.any { row -> row.name == "Gopay" } }
         val gopay = state.rows.first { it.name == "Gopay" }
         assertEquals(Money(250_000), gopay.balance)
-        assertTrue(state.mix.any { it.accountId == gopay.id })
+        assertTrue(state.groups.any { group -> group.rows.any { it.id == gopay.id } })
         // observeActive is what every picker reads.
         assertTrue(accounts.observeActive().first().any { it.name == "Gopay" })
     }
@@ -330,7 +323,6 @@ class AccountsViewModelTest {
             assertTrue(state.rows.none { it.id == cash })
             assertEquals(listOf("Cash"), state.archived.map { it.name })
             assertEquals(totalBefore - Money(300_000), state.summary.total)
-            assertTrue(state.mix.none { it.accountId == cash })
             // Out of the pickers, but every row it is named on is still there.
             assertTrue(accounts.observeActive().first().none { it.id == cash })
             assertEquals(1, transactions.all().count { it.accountId == cash })
@@ -417,7 +409,7 @@ class AccountsViewModelTest {
             // It is in the transaction list like anything else, and it can be removed.
             val august = DateRange.ofMonth(LocalDate(2026, 8, 1))
             assertTrue(
-                transactions.observeInRange(august, zone).first()
+                transactions.observeInRange(august, zone, TransactionFilter.ALL).first()
                     .any { it.id == entry.transactionId },
             )
             transactions.delete(entry.transactionId)
@@ -437,7 +429,7 @@ class AccountsViewModelTest {
             advanceUntilIdle()
 
             val august = DateRange.ofMonth(LocalDate(2026, 8, 1))
-            val totals = transactions.observePeriodTotals(august, zone).first()
+            val totals = transactions.observePeriodTotals(august, zone, TransactionFilter.ALL).first()
             // The 715.000 correction is neither income nor spending; it corrects a
             // balance rather than recording a flow.
             assertEquals(Money(100_000), totals.expense)
@@ -451,7 +443,7 @@ class AccountsViewModelTest {
         runTest(dispatcher) {
             FirstRunSeed.applyIfEmpty(db, openingAsOf = today, zone = zone)
             val vm = viewModel()
-            val seeded = vm.settled().rows.first { it.name == "BCA" }
+            val seeded = vm.settled().rows.first { it.name == "Card" }
             assertTrue(seeded.balance.isZero)
 
             vm.save(
@@ -467,7 +459,7 @@ class AccountsViewModelTest {
             advanceUntilIdle()
 
             val updated = vm.state.first { s -> s.rows.any { !it.balance.isZero } }
-                .rows.first { it.name == "BCA" }
+                .rows.first { it.name == "Card" }
             assertEquals(Money(8_420_000), updated.balance)
             assertEquals(LocalDate(2026, 8, 17), updated.openingAsOf)
         }
@@ -506,48 +498,6 @@ class AccountsViewModelTest {
             advanceUntilIdle()
             assertNull(vm.state.value.message)
         }
-
-    // Selection, which is what a donut tap does.
-
-    @Test
-    fun `tapping a segment selects its account and tapping it again clears it`() =
-        runTest(dispatcher) {
-            seed()
-            val vm = viewModel()
-            val state = vm.settled()
-            // Largest first: BCA 8.42m, RDPU 5m, Cash 385k.
-            assertEquals(listOf(bca, rdpu, cash), state.mix.map { it.accountId })
-
-            vm.selectSegment(1)
-            advanceUntilIdle()
-            assertEquals(rdpu, vm.state.value.selectedAccountId)
-            assertEquals("RDPU", vm.state.value.selected?.name)
-
-            vm.selectSegment(1)
-            advanceUntilIdle()
-            assertNull(vm.state.value.selectedAccountId)
-
-            // A miss on the ring clears rather than selecting nothing-in-particular.
-            vm.selectSegment(0)
-            advanceUntilIdle()
-            vm.selectSegment(null)
-            advanceUntilIdle()
-            assertNull(vm.state.value.selectedAccountId)
-        }
-
-    @Test
-    fun `a selection dies with the segment it pointed at`() = runTest(dispatcher) {
-        seed()
-        val vm = viewModel()
-        vm.settled()
-        vm.selectSegment(2)
-        advanceUntilIdle()
-        assertEquals(cash, vm.state.value.selectedAccountId)
-
-        vm.setArchived(cash, archived = true)
-
-        assertNull(vm.state.first { it.archived.isNotEmpty() }.selectedAccountId)
-    }
 
     // The detail.
 

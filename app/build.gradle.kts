@@ -20,6 +20,10 @@ abstract class CheckNoNetworkPermission : DefaultTask() {
     @get:Input
     abstract val appNamespace: Property<String>
 
+    /** The only permissions outside the app's namespace allowed in the merged manifest. */
+    @get:Input
+    abstract val allowed: SetProperty<String>
+
     @get:OutputFile
     abstract val receipt: RegularFileProperty
 
@@ -31,24 +35,32 @@ abstract class CheckNoNetworkPermission : DefaultTask() {
         //
         // AndroidX adds <appId>.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION, a signature
         // permission namespaced to this app and granted to nobody else. Anything under
-        // our own namespace is allowed; anything else — every android.permission.* in
-        // particular — is not.
+        // our own namespace is allowed. Anything else, every android.permission.* in
+        // particular, is not, apart from the named allowlist.
+        //
+        // The allowlist holds the two the weekly reminder needs (logging-reminder):
+        // POST_NOTIFICATIONS to show it and RECEIVE_BOOT_COMPLETED to re-arm it after a
+        // restart. Neither reaches the network, and each is named one by one, so a
+        // network permission from any dependency still fails here.
         val own = appNamespace.get()
+        val permitted = allowed.get()
         val foreign = Regex("""<uses-permission[^>]*android:name\s*=\s*"([^"]+)"""")
             .findAll(mergedManifest.get().asFile.readText())
             .map { it.groupValues[1] }
             .filterNot { it.startsWith("$own.") }
+            .filterNot { it in permitted }
             .toList()
 
         if (foreign.isNotEmpty()) {
             throw GradleException(
                 "Merged manifest declares ${foreign.joinToString()}. Saku ships with no " +
-                    "permissions outside its own namespace — find the dependency that " +
+                    "permissions outside its own namespace beyond ${permitted.joinToString()}. " +
+                    "Find the dependency that " +
                     "added it and drop it. If one is genuinely needed, change this task " +
                     "deliberately rather than deleting it.",
             )
         }
-        receipt.get().asFile.writeText("no foreign permission in merged manifest\n")
+        receipt.get().asFile.writeText("no permission outside the allowlist in merged manifest\n")
     }
 }
 
@@ -148,6 +160,12 @@ androidComponents {
             description = "Fails if the merged $name manifest declares a network permission."
             mergedManifest.set(variant.artifacts.get(SingleArtifact.MERGED_MANIFEST))
             appNamespace.set(android.namespace)
+            allowed.set(
+                setOf(
+                    "android.permission.POST_NOTIFICATIONS",
+                    "android.permission.RECEIVE_BOOT_COMPLETED",
+                ),
+            )
             receipt.set(layout.buildDirectory.file("reports/no-network-permission/$name.txt"))
         }
         // Bind to assemble so a release build cannot ship network access unnoticed.
@@ -163,6 +181,7 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.activity.compose)
 
     implementation(platform(libs.androidx.compose.bom))

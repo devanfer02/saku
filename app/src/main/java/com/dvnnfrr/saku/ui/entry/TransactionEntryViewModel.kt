@@ -9,11 +9,20 @@ import com.dvnnfrr.saku.data.repository.TransactionRepository
 import com.dvnnfrr.saku.domain.Account
 import com.dvnnfrr.saku.domain.Category
 import com.dvnnfrr.saku.domain.CategoryKind
-import com.dvnnfrr.saku.domain.Subcategory
 import com.dvnnfrr.saku.domain.Transaction
 import com.dvnnfrr.saku.domain.TxnType
 import com.dvnnfrr.saku.sakuViewModelFactory
+import com.dvnnfrr.saku.domain.NoteUsage
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
@@ -28,7 +37,6 @@ import kotlinx.datetime.toLocalDateTime
 data class EntryUiState(
     val form: EntryFormState,
     val categories: List<Category> = emptyList(),
-    val subcategories: List<Subcategory> = emptyList(),
     val accounts: List<Account> = emptyList(),
     /**
      * Problems stay hidden until the first save attempt. Marking every empty field
@@ -38,6 +46,12 @@ data class EntryUiState(
     val showProblems: Boolean = false,
     val duplicateName: String? = null,
     val saved: Boolean = false,
+    /**
+     * Whether the note's suggestion list may show. Typing opens it; a pick, Done, an
+     * outside tap, a type change and opening the sheet close it. Opening must close it,
+     * or editing a transaction with a note would pop suggestions nobody asked for.
+     */
+    val noteSuggestionsOpen: Boolean = false,
 ) {
     val problems: List<EntryProblem> get() = if (showProblems) form.problems() else emptyList()
 
@@ -56,6 +70,41 @@ class TransactionEntryViewModel(
         EntryUiState(form = EntryFormState.recording(now())),
     )
     val state: StateFlow<EntryUiState> = _state.asStateFlow()
+
+    /*
+     * One cached list per type. `distinctUntilChanged` on the type keeps the Room Flow
+     * subscribed across keystrokes, so typing filters in memory and never re-queries.
+     * Transfers carry no category and get no suggestions.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val noteUsage: Flow<List<NoteUsage>> = _state
+        .map { it.form.type }
+        .distinctUntilChanged()
+        .flatMapLatest { type ->
+            when (type) {
+                TxnType.EXPENSE, TxnType.INCOME -> transactions.observeNoteUsage(type)
+                TxnType.TRANSFER, TxnType.ADJUSTMENT -> flowOf(emptyList())
+            }
+        }
+
+    /**
+     * Past notes matching what is typed. A separate flow rather than a field of [state],
+     * so `state.value` stays synchronous for the key handlers.
+     */
+    val suggestions: StateFlow<List<NoteSuggestion>> = combine(
+        _state
+            .map { SuggestionInput(it.noteSuggestionsOpen, it.form.note, it.categories) }
+            .distinctUntilChanged(),
+        noteUsage,
+    ) { input, usages ->
+        if (input.open) suggestNotes(usages, input.note, input.categories) else emptyList()
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    private data class SuggestionInput(
+        val open: Boolean,
+        val note: String,
+        val categories: List<Category>,
+    )
 
     private fun now(): LocalDateTime = clock.now().toLocalDateTime(zone)
 
@@ -96,7 +145,6 @@ class TransactionEntryViewModel(
             }
             _state.value = EntryUiState(form = form, accounts = accounts)
             refreshCategories(form.categoryKind)
-            refreshSubcategories(form.categoryId)
         }
     }
 
@@ -105,17 +153,10 @@ class TransactionEntryViewModel(
         _state.update { it.copy(categories = list) }
     }
 
-    private suspend fun refreshSubcategories(categoryId: Long?) {
-        val list = categoryId?.let { categoryRepository.observeSubcategories(it).first() }.orEmpty()
-        _state.update { it.copy(subcategories = list) }
-    }
-
     fun setType(type: TxnType) {
+        _state.update { it.copy(noteSuggestionsOpen = false) }
         val next = _state.updateAndGetForm { it.withType(type) }
-        viewModelScope.launch {
-            refreshCategories(next.categoryKind)
-            refreshSubcategories(next.categoryId)
-        }
+        viewModelScope.launch { refreshCategories(next.categoryKind) }
     }
 
     fun setAmount(amount: AmountInput) = updateForm { it.copy(amount = amount) }
@@ -137,57 +178,37 @@ class TransactionEntryViewModel(
 
     fun setOccurredAt(at: LocalDateTime) = updateForm { it.copy(occurredAt = at) }
 
-    fun setNote(note: String) = updateForm { it.copy(note = note) }
+    fun setNote(note: String) = _state.update {
+        it.copy(form = it.form.copy(note = note), noteSuggestionsOpen = true)
+    }
+
+    /** Fills the form from [suggestion] by the rules in [applySuggestion], then closes the list. */
+    fun pickSuggestion(suggestion: NoteSuggestion) = _state.update {
+        it.copy(form = applySuggestion(it.form, suggestion), noteSuggestionsOpen = false)
+    }
+
+    fun dismissSuggestions() = _state.update { it.copy(noteSuggestionsOpen = false) }
 
     fun setAccount(id: Long) = updateForm { it.copy(accountId = id) }
 
     fun setDestination(id: Long) = updateForm { it.copy(toAccountId = id) }
 
-    /**
-     * Selecting a category recalls the subcategory last used with it. The lookup is a
-     * suspend call, so the category lands immediately and the recall follows — the
-     * picker never appears to hang on a database read.
-     */
-    fun selectCategory(id: Long?) {
-        viewModelScope.launch {
-            val recalled = id?.let { transactions.lastSubcategoryFor(it) }
-            updateForm { it.withCategory(next = id, recalled = recalled) }
-            refreshSubcategories(id)
-        }
-    }
-
-    fun selectSubcategory(id: Long?) = updateForm { it.copy(subcategoryId = id) }
+    fun selectCategory(id: Long?) = updateForm { it.copy(categoryId = id) }
 
     fun createCategory(name: String) {
         val kind = _state.value.form.categoryKind ?: return
         viewModelScope.launch {
             try {
                 val id = categoryRepository.createCategory(name, kind)
-                updateForm { it.withCreatedCategory(id) }
+                updateForm { it.copy(categoryId = id) }
                 refreshCategories(kind)
-                refreshSubcategories(id)
             } catch (clash: DuplicateNameException) {
                 // Offer the existing one rather than refusing outright: the user's
                 // intent was to file under that name, and it already exists.
-                updateForm { it.withCreatedCategory(clash.existingId) }
+                updateForm { it.copy(categoryId = clash.existingId) }
                 refreshCategories(kind)
-                refreshSubcategories(clash.existingId)
                 _state.update { it.copy(duplicateName = clash.name) }
             }
-        }
-    }
-
-    fun createSubcategory(name: String) {
-        val categoryId = _state.value.form.categoryId ?: return
-        viewModelScope.launch {
-            try {
-                val id = categoryRepository.createSubcategory(categoryId, name)
-                updateForm { it.withCreatedSubcategory(id) }
-            } catch (clash: DuplicateNameException) {
-                updateForm { it.withCreatedSubcategory(clash.existingId) }
-                _state.update { it.copy(duplicateName = clash.name) }
-            }
-            refreshSubcategories(categoryId)
         }
     }
 
@@ -209,7 +230,6 @@ class TransactionEntryViewModel(
                     accountId = requireNotNull(form.accountId),
                     toAccountId = form.toAccountId,
                     categoryId = form.categoryId,
-                    subcategoryId = form.subcategoryId,
                     note = form.note.takeIf { it.isNotBlank() },
                 )
             } else {
@@ -253,6 +273,11 @@ class TransactionEntryViewModel(
  * Carries [Transaction.createdAt] and [Transaction.importBatchId] across an edit.
  * Rebuilding the row from the form alone would silently detach an imported
  * transaction from its batch, and reversing that batch would then leave it behind.
+ *
+ * The sheet no longer shows subcategories (dropped for search, 30 Oct 2026), but older
+ * rows may still carry one. It is kept while the category is unchanged, so fixing a
+ * note does not wipe a value the user cannot see, and cleared when the category
+ * changes, because a subcategory belongs to exactly one category.
  */
 internal fun EntryFormState.toTransaction(
     original: Transaction,
@@ -264,6 +289,6 @@ internal fun EntryFormState.toTransaction(
     accountId = requireNotNull(accountId),
     toAccountId = toAccountId,
     categoryId = categoryId,
-    subcategoryId = subcategoryId,
+    subcategoryId = original.subcategoryId.takeIf { categoryId == original.categoryId },
     note = note.takeIf { it.isNotBlank() },
 )

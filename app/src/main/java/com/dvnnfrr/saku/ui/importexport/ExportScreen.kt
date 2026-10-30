@@ -126,7 +126,7 @@ fun ExportScreenBody(
                     color = colors.expense,
                 )
                 state.detail?.let {
-                    Text(text = it, style = SakuTheme.typography.caption, color = colors.ink3)
+                    Text(text = it, style = SakuTheme.typography.caption, color = colors.ink2)
                 }
             }
         }
@@ -134,7 +134,7 @@ fun ExportScreenBody(
         Text(
             text = stringResource(R.string.export_local_only),
             style = SakuTheme.typography.caption,
-            color = colors.ink3,
+            color = colors.ink2,
         )
     }
 }

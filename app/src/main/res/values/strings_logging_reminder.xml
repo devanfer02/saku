@@ -1,0 +1,28 @@
+<resources>
+    <!--
+        Copy for the logging-reminder change: the notification and its setting in More.
+        Kept out of strings.xml so concurrent changes do not collide.
+    -->
+
+    <!-- Notification -->
+    <string name="reminder_channel">Weekly reminder</string>
+    <string name="reminder_channel_description">A weekly nudge to log what you spent</string>
+    <string name="reminder_notification_title">Time to log your spending</string>
+    <string name="reminder_nothing_yet">Nothing logged yet. Add what you spent this week.</string>
+    <string name="reminder_logged_today">You logged today. Anything else from this week to add?</string>
+    <plurals name="reminder_days_since">
+        <item quantity="one">Nothing logged since yesterday. Add what you spent this week.</item>
+        <item quantity="other">Nothing logged for %d days. Add what you spent this week.</item>
+    </plurals>
+
+    <!-- More entry and dialog -->
+    <string name="more_reminder">Reminder</string>
+    <string name="more_reminder_subtitle">A weekly nudge to log what you spent</string>
+    <string name="reminder_switch">Remind me every week</string>
+    <string name="reminder_day">Day</string>
+    <string name="reminder_time">Time</string>
+    <!-- %1$s is a short day name, %2$s a date such as 8 Nov 2026, %3$s a time such as 20:00. -->
+    <string name="reminder_next">Next reminder: %1$s %2$s at %3$s</string>
+    <string name="reminder_blocked">Notifications are blocked for Saku, so the reminder cannot show.</string>
+    <string name="reminder_open_settings">Open notification settings</string>
+</resources>

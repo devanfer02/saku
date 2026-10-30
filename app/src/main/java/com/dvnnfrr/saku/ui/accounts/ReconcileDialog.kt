@@ -26,6 +26,7 @@ import androidx.compose.ui.text.style.TextAlign
 import com.dvnnfrr.saku.R
 import com.dvnnfrr.saku.domain.Money
 import com.dvnnfrr.saku.ui.shared.MoneyText
+import com.dvnnfrr.saku.ui.theme.MoneySign
 import com.dvnnfrr.saku.ui.theme.SakuPreview
 import com.dvnnfrr.saku.ui.theme.SakuPreviewSurface
 import com.dvnnfrr.saku.ui.theme.SakuTheme
@@ -92,7 +93,7 @@ fun ReconcileDialog(
             }
         },
         confirmButton = {
-            // Deliberately not "Reconcile": that is the button that opened this dialog
+            // Deliberately not "Check balance": that is the button that opened this dialog
             // and it is still on the screen behind it, which leaves two identical
             // targets — one of them a no-op — for anyone driving by label.
             TextButton(onClick = { onConfirm(trueBalance) }) {
@@ -127,7 +128,7 @@ private fun LabelledFigure(label: String, value: Money, signed: Boolean = false)
         MoneyText(
             money = value,
             type = null,
-            signed = signed,
+            sign = if (signed) MoneySign.NET else MoneySign.BALANCE,
             style = SakuTheme.typography.amountMedium,
             contentDescription = "$label ${formatIdr(value)}",
         )

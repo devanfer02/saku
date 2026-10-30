@@ -1,0 +1,16 @@
+<resources>
+    <!--
+        Copy for the search-by-month change: the per-month breakdown under the search
+        summary. Kept out of strings.xml so concurrent changes do not collide.
+    -->
+    <string name="search_by_month">By month</string>
+    <plurals name="search_month_count">
+        <item quantity="one">%d transaction</item>
+        <item quantity="other">%d transactions</item>
+    </plurals>
+    <!-- %1$s is the count line above, %2$s the amount that came in. -->
+    <string name="search_month_with_in">%1$s · %2$s in</string>
+    <!-- %1$s is the count line above, %2$s the amount that went out. -->
+    <string name="search_month_with_out">%1$s · %2$s out</string>
+    <string name="search_month_none">No matches</string>
+</resources>

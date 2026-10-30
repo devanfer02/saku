@@ -4,6 +4,7 @@ import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import com.dvnnfrr.saku.R
+import com.dvnnfrr.saku.domain.TxnType
 import com.dvnnfrr.saku.excel.RejectedRow
 import com.dvnnfrr.saku.excel.RowRejection
 import com.dvnnfrr.saku.excel.SheetLayout
@@ -23,6 +24,15 @@ import kotlinx.datetime.LocalDate
 fun ImportEntryPoint.titleRes(): Int = when (this) {
     ImportEntryPoint.MONEY_MANAGER -> R.string.more_import_money_manager
     ImportEntryPoint.EXCEL -> R.string.more_import_excel
+}
+
+/** The row label for a type's count on the finished screen. */
+@StringRes
+fun TxnType.addedRes(): Int = when (this) {
+    TxnType.EXPENSE -> R.string.import_done_expenses
+    TxnType.INCOME -> R.string.import_done_income
+    TxnType.TRANSFER -> R.string.import_done_transfers
+    TxnType.ADJUSTMENT -> R.string.import_done_adjustments
 }
 
 @StringRes
@@ -51,7 +61,7 @@ fun ReadFailure.UnrecognisedLayout.expectedAndFound(): Pair<String, String> {
     )
     val found = stringResource(
         R.string.import_refused_found,
-        mismatch.found.joinToString(" · ").ifEmpty { "—" },
+        mismatch.found.joinToString(" · ").ifEmpty { "(no column names)" },
     )
     return expected to found
 }

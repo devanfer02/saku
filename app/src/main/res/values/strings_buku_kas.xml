@@ -1,0 +1,59 @@
+<resources>
+    <!-- Trans header -->
+    <string name="label_left_over">Left over</string>
+    <string name="label_in">In</string>
+    <string name="label_out">Out</string>
+
+    <!-- Stats headline: "Spent in October Rp 14.026.400" -->
+    <string name="stats_spent_in">Spent in %1$s</string>
+    <string name="stats_earned_in">Earned in %1$s</string>
+    <string name="stats_compare_less">%1$d%% less than %2$s</string>
+    <string name="stats_compare_more">%1$d%% more than %2$s</string>
+    <string name="stats_compare_same">The same as %1$s</string>
+
+    <!-- Stats rows that open a detail, appended to the spoken row -->
+    <string name="stats_row_opens_category">Opens the category</string>
+    <string name="stats_row_opens_other">Opens the categories in Other</string>
+
+    <!-- Chart style and the category detail -->
+    <string name="stats_chart_pie">Pie chart</string>
+    <string name="stats_pie_spent">Spent</string>
+    <string name="stats_pie_earned">Earned</string>
+    <string name="stats_category_share_spending">%1$d%% of spending</string>
+    <string name="stats_category_share_income">%1$d%% of income</string>
+    <string name="stats_category_average">%1$s on average</string>
+
+    <!-- Period strip, spoken per column -->
+    <string name="stats_strip_month">%1$s. In %2$s, out %3$s, net %4$s</string>
+    <string name="stats_strip_month_empty">%1$s. Nothing recorded yet</string>
+    <string name="stats_strip_select">Show this period</string>
+    <string name="stats_strip_month_side">%1$s. %2$s</string>
+    <string name="stats_strip_title_weeks">Weeks</string>
+    <string name="stats_strip_title_months">Months</string>
+    <string name="stats_strip_title_years">Years</string>
+    <string name="stats_strip_collapsed_net">%1$s %2$s</string>
+    <string name="stats_strip_expanded">Expanded</string>
+    <string name="stats_strip_collapsed">Collapsed</string>
+
+    <!-- Accounts -->
+    <string name="accounts_net_worth">Net worth</string>
+    <string name="accounts_split_description">%1$s %2$s, %3$s %4$s</string>
+    <string name="accounts_split_empty">Add an opening balance to see your total</string>
+    <string name="accounts_not_checked">Balance not checked yet</string>
+    <string name="accounts_checked_on">Checked %1$s</string>
+    <string name="accounts_below_zero">Below zero. Set an opening balance</string>
+    <string name="accounts_adjustment_label">Balance check</string>
+
+    <!-- More groups -->
+    <string name="more_group_organise">Organise</string>
+    <string name="more_group_data">Your data</string>
+    <string name="more_group_app">App</string>
+    <string name="more_categories_subtitle">Rename, merge and recolour categories</string>
+    <string name="more_backup_subtitle">Save every account and transaction to one file</string>
+    <string name="more_restore_subtitle">Merge a backup file into what is here</string>
+    <string name="more_import_money_manager_subtitle">Bring in an .xlsx export from Money Manager</string>
+    <string name="more_import_excel_subtitle">Bring in a Saku export or another .xlsx file</string>
+    <string name="more_export_excel_subtitle">Write every transaction to an .xlsx file</string>
+    <string name="more_import_history_subtitle">See past imports and reverse one</string>
+    <string name="more_appearance_subtitle">Light, dark or follow the system</string>
+</resources>

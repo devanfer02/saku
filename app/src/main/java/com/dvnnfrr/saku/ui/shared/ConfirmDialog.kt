@@ -95,7 +95,7 @@ private fun ConfirmDialogPreview() {
     SakuPreviewSurface {
         ConfirmDialog(
             title = "Merge into Makan & Minum?",
-            body = "Jajan & Hiburan will be removed and its subcategories carried across.",
+            body = "Jajan & Hiburan will be archived and its transactions moved across.",
             affectedCount = 214,
             onConfirm = {},
             onDismiss = {},

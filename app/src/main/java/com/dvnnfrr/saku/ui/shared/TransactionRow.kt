@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -24,39 +25,40 @@ import androidx.compose.ui.unit.dp
 import com.dvnnfrr.saku.domain.ColorSlot
 import com.dvnnfrr.saku.domain.Money
 import com.dvnnfrr.saku.domain.TxnType
+import com.dvnnfrr.saku.ui.theme.MoneySign
 import com.dvnnfrr.saku.ui.theme.SakuPreview
 import com.dvnnfrr.saku.ui.theme.SakuPreviewSurface
 import com.dvnnfrr.saku.ui.theme.SakuTheme
 import com.dvnnfrr.saku.ui.theme.forSlotOrNeutral
 
 private const val ARROW = "→"
+private const val SEPARATOR = " · "
 
 /** What a [TransactionRow] renders, resolved from the transaction's shape. */
 @Immutable
 data class TransactionRowLabels(
     val primary: String,
-    val secondary: String?,
-    /** Rendered on the account line, per the spec, not folded in beside the note. */
-    val subcategory: String?,
-    val accountLine: String,
-    val spokenAccountLine: String,
+    /** `Account · note`, never empty: every row names its account. */
+    val secondary: String,
+    val spokenSecondary: String,
     val showsBothAccounts: Boolean,
 )
 
 /**
- * Works out a row's three lines.
+ * Works out a row's two lines.
+ *
+ * The second line leads with the account, then the note. That order is deliberate: the
+ * line ellipsises from the end, so a long note is what gets cut, never the account (gap
+ * 2, a wrong account is how a bad import gets noticed). A stored subcategory is not
+ * shown: the owner dropped subcategories in favour of search on 30 Oct 2026.
  *
  * A transfer names both accounts with an arrow between them, because "which account"
- * is the whole content of a transfer — there is no category to show. Income and expense
- * lead with the category and name the one account they touched.
- *
- * Pure, so the transfer variant is testable without a Compose harness. Every string it
- * can produce arrives as a parameter, so the component carries no copy of its own.
+ * is the whole content of a transfer. Pure, and every string it can produce arrives as a
+ * parameter, so the component carries no copy of its own.
  */
 fun transactionRowLabels(
     type: TxnType,
     category: String?,
-    subcategory: String?,
     note: String?,
     accountName: String,
     toAccountName: String?,
@@ -65,12 +67,7 @@ fun transactionRowLabels(
 ): TransactionRowLabels {
     val showsBoth = type == TxnType.TRANSFER && !toAccountName.isNullOrBlank()
     val primary = category?.takeIf { it.isNotBlank() } ?: titleFallback
-    // Note only. The spec puts the subcategory on the account line — "an account line
-    // showing BCA's colour swatch, 'BCA' and 'Restoran'" — and it matters here beyond
-    // layout: subcategory was the field the old app never captured, and folding it in
-    // beside the note meant a long note ellipsised it away entirely.
-    val secondary = note?.takeIf { it.isNotBlank() }
-    val sub = subcategory?.takeIf { it.isNotBlank() }
+    val text = note?.takeIf { it.isNotBlank() }
 
     val accounts = if (showsBoth) "$accountName $ARROW $toAccountName" else accountName
     val spokenAccounts =
@@ -78,10 +75,9 @@ fun transactionRowLabels(
 
     return TransactionRowLabels(
         primary = primary,
-        secondary = secondary,
-        subcategory = sub,
-        accountLine = if (sub == null) accounts else "$accounts · $sub",
-        spokenAccountLine = if (sub == null) spokenAccounts else "$spokenAccounts, $sub",
+        secondary = listOfNotNull(accounts, text).joinToString(SEPARATOR),
+        // Commas, so TalkBack pauses where the eye sees a dot and never reads the arrow.
+        spokenSecondary = listOfNotNull(spokenAccounts, text).joinToString(", "),
         showsBothAccounts = showsBoth,
     )
 }
@@ -90,21 +86,21 @@ fun transactionRowLabels(
  * One transaction in a list. Consumed by the Daily list and by stats drill-through, so
  * both show the same thing.
  *
- * A transfer renders in the neutral transfer ink rather than as an expense — money that
- * moved between the owner's own accounts left nothing.
+ * The amount carries its direction as a sign. Income keeps the income colour because it
+ * is rare and worth spotting; an expense renders in ink so that the expense colour keeps
+ * meaning "look at this" on the totals. A transfer reads unsigned in the neutral ink:
+ * money that moved between the owner's own accounts left nothing.
  */
 @Composable
 fun TransactionRow(
     amount: Money,
     type: TxnType,
     accountName: String,
-    accountSlot: ColorSlot,
     modifier: Modifier = Modifier,
+    categorySlot: ColorSlot? = null,
     category: String? = null,
-    subcategory: String? = null,
     note: String? = null,
     toAccountName: String? = null,
-    toAccountSlot: ColorSlot? = null,
     titleFallback: String = type.defaultTitle,
     accountConjunction: String = "to",
     onClick: (() -> Unit)? = null,
@@ -114,7 +110,6 @@ fun TransactionRow(
     val labels = transactionRowLabels(
         type = type,
         category = category,
-        subcategory = subcategory,
         note = note,
         accountName = accountName,
         toAccountName = toAccountName,
@@ -131,6 +126,7 @@ fun TransactionRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(spacing.md),
     ) {
+        ColorSwatch(categorySlot)
         Column(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(spacing.xs),
@@ -142,76 +138,28 @@ fun TransactionRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            labels.secondary?.let {
-                Text(
-                    text = it,
-                    style = SakuTheme.typography.caption,
-                    color = colors.ink2,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(spacing.xs),
-                // Otherwise TalkBack announces the arrow glyph between two account
-                // names and the direction of a transfer is conveyed visually only.
-                modifier = Modifier.semantics(mergeDescendants = true) {
-                    contentDescription = labels.spokenAccountLine
-                },
-            ) {
-                ColorSwatch(accountSlot)
-                if (labels.showsBothAccounts) {
-                    Text(
-                        text = accountName,
-                        style = SakuTheme.typography.caption,
-                        color = colors.ink3,
-                        maxLines = 1,
-                    )
-                    Text(
-                        text = ARROW,
-                        style = SakuTheme.typography.caption,
-                        color = colors.ink3,
-                    )
-                    toAccountSlot?.let { ColorSwatch(it) }
-                    Text(
-                        text = toAccountName.orEmpty(),
-                        style = SakuTheme.typography.caption,
-                        color = colors.ink3,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    labels.subcategory?.let {
-                        Text(
-                            text = "· $it",
-                            style = SakuTheme.typography.caption,
-                            color = colors.ink3,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                } else {
-                    Text(
-                        text = labels.accountLine,
-                        style = SakuTheme.typography.caption,
-                        color = colors.ink3,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
+            Text(
+                text = labels.secondary,
+                style = SakuTheme.typography.caption,
+                color = colors.ink2,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.semantics { contentDescription = labels.spokenSecondary },
+            )
         }
 
         MoneyText(
             money = amount,
             type = type,
+            sign = MoneySign.FLOW,
+            color = if (type == TxnType.EXPENSE) colors.ink else null,
             style = SakuTheme.typography.amountMedium,
         )
     }
 }
 
 /**
- * The last-resort title when a row has no category — a transfer never has one, and an
+ * The last-resort title when a row has no category: a transfer never has one, and an
  * imported row may not either. Overridable through `titleFallback`.
  */
 val TxnType.defaultTitle: String
@@ -222,11 +170,11 @@ val TxnType.defaultTitle: String
     }
 
 @Composable
-fun ColorSwatch(slot: ColorSlot?, modifier: Modifier = Modifier) {
+fun ColorSwatch(slot: ColorSlot?, modifier: Modifier = Modifier, color: Color? = null) {
     Box(
         modifier = modifier
             .size(SakuTheme.spacing.swatch)
-            .background(SakuTheme.colors.forSlotOrNeutral(slot), CircleShape),
+            .background(color ?: SakuTheme.colors.forSlotOrNeutral(slot), CircleShape),
     )
 }
 
@@ -236,35 +184,39 @@ private fun TransactionRowPreview() {
     SakuPreviewSurface(padded = false) {
         Column(modifier = Modifier.width(360.dp)) {
             TransactionRow(
+                amount = Money(30_000),
+                type = TxnType.EXPENSE,
+                accountName = "BCA",
+                categorySlot = ColorSlot(3),
+                category = "Jajan & Hiburan",
+                note = "Spotify Premium",
+            )
+            TransactionRow(
                 amount = Money(45_000),
                 type = TxnType.EXPENSE,
                 accountName = "BCA",
-                accountSlot = ColorSlot(0),
+                categorySlot = ColorSlot(1),
                 category = "Makan & Minum",
-                subcategory = "Warung",
                 note = "Nasi padang",
             )
             TransactionRow(
-                amount = Money(4_200_000),
+                amount = Money(16_500_000),
                 type = TxnType.INCOME,
                 accountName = "BCA",
-                accountSlot = ColorSlot(0),
+                categorySlot = ColorSlot(0),
                 category = "Kerjaan",
             )
             TransactionRow(
                 amount = Money(1_000_000),
                 type = TxnType.TRANSFER,
                 accountName = "BCA",
-                accountSlot = ColorSlot(0),
                 toAccountName = "Bibit",
-                toAccountSlot = ColorSlot(2),
             )
             TransactionRow(
                 amount = Money(-25_000),
                 type = TxnType.ADJUSTMENT,
                 accountName = "Tunai",
-                accountSlot = ColorSlot(4),
-                note = "Reconciled",
+                note = "Balance checked",
             )
         }
     }

@@ -77,35 +77,16 @@ interface CategoryDao {
 @Dao
 interface SubcategoryDao {
 
-    @Query("SELECT * FROM subcategory WHERE archived = 0 ORDER BY sortOrder, id")
-    fun observeActive(): Flow<List<SubcategoryEntity>>
-
     /**
-     * Every subcategory, archived included.
-     *
-     * The transaction list renders a subcategory name per row and cannot ask
-     * per category without an N+1. Archived rows are in scope because archiving a
-     * subcategory does not rewrite the transactions that already reference it —
-     * filtering them here blanks the label on real history.
+     * Every subcategory, archived included. The UI no longer shows subcategories; this
+     * feeds export, backup and restore, which still carry them.
      */
     @Query("SELECT * FROM subcategory ORDER BY categoryId, sortOrder, id")
     fun observeAll(): Flow<List<SubcategoryEntity>>
 
-    @Query(
-        "SELECT * FROM subcategory WHERE categoryId = :categoryId AND archived = 0 " +
-            "ORDER BY sortOrder, id",
-    )
-    fun observeActiveForCategory(categoryId: Long): Flow<List<SubcategoryEntity>>
-
-    /** Archived rows included, so the manage screen can offer unarchive. */
-    @Query("SELECT * FROM subcategory WHERE categoryId = :categoryId ORDER BY sortOrder, id")
-    fun observeAllForCategory(categoryId: Long): Flow<List<SubcategoryEntity>>
-
-    @Update
-    suspend fun updateAll(subcategories: List<SubcategoryEntity>)
-
-    @Query("SELECT * FROM subcategory WHERE categoryId = :categoryId AND archived = 0")
-    suspend fun activeForCategory(categoryId: Long): List<SubcategoryEntity>
+    /** One-shot, so it is safe inside `withTransaction` where a Flow's first() is not. */
+    @Query("SELECT * FROM subcategory ORDER BY categoryId, sortOrder, id")
+    suspend fun all(): List<SubcategoryEntity>
 
     @Query("SELECT * FROM subcategory WHERE id = :id")
     suspend fun byId(id: Long): SubcategoryEntity?
@@ -132,14 +113,8 @@ interface SubcategoryDao {
     @Update
     suspend fun update(subcategory: SubcategoryEntity)
 
-    @Query("UPDATE subcategory SET categoryId = :toCategoryId WHERE id = :id")
-    suspend fun moveToCategory(id: Long, toCategoryId: Long)
-
     @Query("UPDATE subcategory SET archived = :archived WHERE id = :id")
     suspend fun setArchived(id: Long, archived: Boolean)
-
-    @Query("DELETE FROM subcategory WHERE id = :id")
-    suspend fun deleteUnused(id: Long)
 }
 
 @Dao

@@ -7,7 +7,6 @@ import com.dvnnfrr.saku.domain.CategoryKind
 import com.dvnnfrr.saku.domain.ColorSlot
 import com.dvnnfrr.saku.domain.DateRange
 import com.dvnnfrr.saku.domain.Money
-import com.dvnnfrr.saku.domain.Subcategory
 import com.dvnnfrr.saku.domain.Transaction
 import com.dvnnfrr.saku.domain.TxnType
 import kotlinx.datetime.Instant
@@ -39,12 +38,10 @@ class TransactionListAssemblyTest {
 
     private val makan = Category(3, "Makan & Minum", CategoryKind.EXPENSE, ColorSlot(2), 0, false)
     private val gaji = Category(4, "Gaji", CategoryKind.INCOME, ColorSlot(3), 0, false)
-    private val restoran = Subcategory(5, categoryId = 3, name = "Restoran", sortOrder = 0, archived = false)
 
     private val index = DisplayIndex(
         accounts = listOf(bca, rdpu),
         categories = listOf(makan, gaji),
-        subcategories = listOf(restoran),
     )
 
     private var nextId = 100L
@@ -57,7 +54,6 @@ class TransactionListAssemblyTest {
         accountId: Long = 1,
         toAccountId: Long? = null,
         categoryId: Long? = 3,
-        subcategoryId: Long? = null,
         note: String? = null,
     ): Transaction {
         // Built as a local Jakarta wall clock and converted, so the test says what it
@@ -66,7 +62,7 @@ class TransactionListAssemblyTest {
         return Transaction(
             id = nextId++, occurredAt = at, type = type, amount = Money(amount),
             accountId = accountId, toAccountId = toAccountId, categoryId = categoryId,
-            subcategoryId = subcategoryId, note = note, createdAt = at,
+            note = note, createdAt = at,
         )
     }
 
@@ -166,12 +162,11 @@ class TransactionListAssemblyTest {
     // --- Rows --------------------------------------------------------------
 
     @Test
-    fun `a row carries its category, subcategory, note and account swatch`() {
-        val row = txn(day = 14, amount = 170_000, subcategoryId = 5, note = "Padang")
+    fun `a row carries its category, note and account swatch`() {
+        val row = txn(day = 14, amount = 170_000, note = "Padang")
             .toRowUi(index)
 
         assertEquals("Makan & Minum", row.categoryName)
-        assertEquals("Restoran", row.subcategoryName)
         assertEquals("Padang", row.note)
         assertEquals("BCA", row.account.name)
         assertEquals(ColorSlot(0), row.account.colorSlot)
@@ -194,17 +189,6 @@ class TransactionListAssemblyTest {
     @Test
     fun `a blank note is treated as no note`() {
         assertNull(txn(day = 14, amount = 1_000, note = "   ").toRowUi(index).note)
-    }
-
-    @Test
-    fun `an archived subcategory still resolves its name`() {
-        val archived = restoran.copy(archived = true)
-        val withArchived = DisplayIndex(listOf(bca), listOf(makan), listOf(archived))
-
-        val row = txn(day = 14, amount = 1_000, subcategoryId = 5).toRowUi(withArchived)
-
-        // Archiving does not rewrite history, so the label has to survive it.
-        assertEquals("Restoran", row.subcategoryName)
     }
 
     // --- Calendar ----------------------------------------------------------

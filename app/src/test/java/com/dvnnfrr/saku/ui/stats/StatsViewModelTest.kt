@@ -2,16 +2,20 @@ package com.dvnnfrr.saku.ui.stats
 
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.dvnnfrr.saku.data.ChartStyleStore
 import com.dvnnfrr.saku.data.local.SakuDatabase
 import com.dvnnfrr.saku.data.repository.RoomAccountRepository
 import com.dvnnfrr.saku.data.repository.RoomCategoryRepository
 import com.dvnnfrr.saku.data.repository.RoomTransactionRepository
 import com.dvnnfrr.saku.domain.AccountType
+import com.dvnnfrr.saku.domain.ChartStyle
 import com.dvnnfrr.saku.domain.CategoryKind
 import com.dvnnfrr.saku.domain.DateRange
 import com.dvnnfrr.saku.domain.Money
 import com.dvnnfrr.saku.domain.PeriodMode
 import com.dvnnfrr.saku.domain.TxnType
+import com.dvnnfrr.saku.ui.filter.SharedFilter
+import com.dvnnfrr.saku.domain.TransactionFilter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -57,6 +61,7 @@ class StatsViewModelTest {
     private lateinit var transactions: RoomTransactionRepository
     private lateinit var accounts: RoomAccountRepository
     private lateinit var categories: RoomCategoryRepository
+    private val shared = SharedFilter()
 
     private var bca = 0L
     private var rdpu = 0L
@@ -120,6 +125,8 @@ class StatsViewModelTest {
         transactionRepository = transactions,
         accountRepository = accounts,
         categoryRepository = categories,
+        sharedFilter = shared,
+        chartStyleStore = ChartStyleStore(ApplicationProvider.getApplicationContext()),
         zone = zone,
         clock = clock,
     )
@@ -391,13 +398,13 @@ class StatsViewModelTest {
         assertNull(vm.state.first { it.side == StatsSide.INCOME }.drill)
     }
 
-    // The subcategory split, which is why the drill exists at all.
+    // Stored subcategories are no longer split out; the drill lists every row as one.
 
     @Test
-    fun `a category's drill splits by subcategory and names the untagged remainder`() =
+    fun `a category's drill lists rows with and without a stored subcategory as one`() =
         runTest(dispatcher) {
             seed()
-            val rutin = categories.createSubcategory(pemberian, "Rutin keluarga")
+            val rutin = categories.findOrCreateSubcategory(pemberian, "Rutin keluarga")
             record(LocalDateTime(2026, 8, 5, 12, 0), 800_000, categoryId = pemberian, subcategoryId = rutin)
             record(LocalDateTime(2026, 8, 6, 12, 0), 200_000, categoryId = pemberian)
 
@@ -406,13 +413,9 @@ class StatsViewModelTest {
             vm.openCategory(pemberian)
 
             val drill = vm.state.first { it.drill != null }.drill as DrillUiState.Category
-            assertEquals(2, drill.subcategories.size)
-            assertEquals("Rutin keluarga", drill.subcategories[0].name)
-            assertEquals(Money(800_000), drill.subcategories[0].total)
-            assertEquals(80, drill.subcategories[0].percent)
-            assertTrue(drill.subcategories[1].isUnassigned)
-            assertEquals(Money(200_000), drill.subcategories[1].total)
-            assertEquals(100, drill.subcategories.sumOf { it.percent })
+            assertEquals(Money(1_000_000), drill.total)
+            assertEquals(2, drill.count)
+            assertEquals(2, drill.rows.size)
         }
 
     // The zone boundary.
@@ -438,11 +441,224 @@ class StatsViewModelTest {
             // And the excluded rows land where they belong rather than nowhere.
             assertEquals(
                 Money(200_000),
-                transactions.observePeriodTotals(august.previous(), zone).first().expense,
+                transactions.observePeriodTotals(august.previous(), zone, TransactionFilter.ALL).first().expense,
             )
             assertEquals(
                 Money(400_000),
-                transactions.observePeriodTotals(august.next(), zone).first().expense,
+                transactions.observePeriodTotals(august.next(), zone, TransactionFilter.ALL).first().expense,
             )
         }
+
+    // transaction-filter: every figure respects the filter.
+
+    @Test
+    fun `a category filter narrows the totals and the ranked shares sum to 100`() = runTest(dispatcher) {
+        seed()
+        val jajan = categories.createCategory("Jajan & Hiburan", CategoryKind.EXPENSE)
+        spend(day = 5, amount = 1_257_700)
+        spend(day = 6, amount = 843_800, categoryId = jajan)
+        spend(day = 7, amount = 1_050_000, categoryId = pemberian)
+
+        shared.set(TransactionFilter(expenseCategoryIds = setOf(makan, jajan)))
+        val state = viewModel().state.first { !it.loading && it.filter.isActive }
+
+        assertEquals(Money(2_101_500), state.totals.expense)
+        assertEquals(listOf(makan, jajan), state.composition.rows.map { it.categoryId })
+        assertEquals(listOf(60, 40), state.composition.rows.map { it.percent })
+    }
+
+    @Test
+    fun `the comparison runs under the same filter`() = runTest(dispatcher) {
+        seed()
+        spend(day = 5, amount = 300_000)
+        spend(day = 6, amount = 900_000, categoryId = pemberian)
+        record(LocalDateTime(2026, 7, 5, 12, 0), 200_000)
+        record(LocalDateTime(2026, 7, 6, 12, 0), 800_000, categoryId = pemberian)
+
+        shared.set(TransactionFilter(expenseCategoryIds = setOf(makan)))
+        val state = viewModel().state.first { !it.loading && it.filter.isActive }
+
+        assertEquals(Money(200_000), state.comparison.previous.expense)
+        assertEquals(Money(300_000), state.comparison.current.expense)
+    }
+
+    @Test
+    fun `a drilled category that leaves the selection closes the drill`() = runTest(dispatcher) {
+        seed()
+        spend(day = 5, amount = 300_000)
+        spend(day = 6, amount = 900_000, categoryId = pemberian)
+        val vm = viewModel()
+        vm.state.first { !it.loading }
+        vm.openCategory(pemberian)
+        assertNotNull(vm.state.first { it.drill != null }.drill)
+
+        shared.set(TransactionFilter(expenseCategoryIds = setOf(makan)))
+
+        val state = vm.state.first { it.filter.isActive && it.drill == null }
+        assertNull(state.drill)
+        assertEquals(Money(300_000), state.totals.expense)
+    }
+
+    @Test
+    fun `a drilled category still selected stays open and is filtered`() = runTest(dispatcher) {
+        seed()
+        spend(day = 5, amount = 300_000)
+        record(LocalDateTime(2026, 8, 6, 12, 0), 150_000, toAccountId = null)
+        val vm = viewModel()
+        vm.state.first { !it.loading }
+        vm.openCategory(makan)
+        vm.state.first { it.drill != null }
+
+        shared.set(TransactionFilter(accountIds = setOf(rdpu)))
+
+        val drill = vm.state.first { it.filter.isActive && it.drill != null }.drill
+        assertEquals(Money.ZERO, drill?.total)
+    }
+
+    // buku-kas: the strip over all history.
+
+    @Test
+    fun `the strip ends on the selected month and agrees with the header`() = runTest(dispatcher) {
+        seed()
+        spend(day = 5, amount = 300_000)
+        record(LocalDateTime(2026, 6, 10, 12, 0), 500_000)
+        record(LocalDateTime(2026, 8, 1, 9, 0), 2_000_000, type = TxnType.INCOME, categoryId = gaji)
+
+        val state = viewModel().state.first { !it.loading && it.strip.isNotEmpty() }
+
+        // June holds the first transaction, so the strip starts there.
+        assertEquals((6..8).map { DateRange.ofMonth(LocalDate(2026, it, 1)) }, state.strip.map { it.range })
+        val august = state.strip.last()
+        assertTrue(august.selected)
+        assertEquals(state.totals.expense, august.expense)
+        assertEquals(state.totals.income, august.income)
+        // July is a quiet month after history began: a zero, not an empty slot.
+        assertTrue(state.strip.none { it.empty })
+        assertEquals(Money.ZERO, state.strip[1].expense)
+    }
+
+    @Test
+    fun `the strip respects the filter and leaves transfers out`() = runTest(dispatcher) {
+        seed()
+        spend(day = 5, amount = 300_000)
+        spend(day = 6, amount = 900_000, categoryId = pemberian)
+        record(LocalDateTime(2026, 8, 7, 12, 0), 1_000_000, type = TxnType.TRANSFER, categoryId = null, toAccountId = rdpu)
+
+        shared.set(TransactionFilter(expenseCategoryIds = setOf(makan)))
+        val state = viewModel().state.first { it.filter.isActive && it.strip.isNotEmpty() }
+
+        assertEquals(Money(300_000), state.strip.last().expense)
+        assertEquals(Money.ZERO, state.strip.last().income)
+    }
+
+    @Test
+    fun `tapping a month in the strip selects it`() = runTest(dispatcher) {
+        seed()
+        record(LocalDateTime(2026, 5, 10, 12, 0), 500_000)
+        spend(day = 5, amount = 300_000)
+        val vm = viewModel()
+        vm.state.first { it.strip.isNotEmpty() }
+
+        vm.selectPeriod(DateRange.ofMonth(LocalDate(2026, 6, 1)))
+
+        val state = vm.state.first { it.range.start == LocalDate(2026, 6, 1) && it.strip.lastOrNull()?.range == it.range }
+        assertTrue(state.strip.last().selected)
+        assertEquals(PeriodMode.MONTHLY, state.range.mode)
+    }
+
+    @Test
+    fun `the strip follows Weekly and Annually and leaves Period`() = runTest(dispatcher) {
+        seed()
+        record(LocalDateTime(2025, 7, 20, 12, 0), 500_000)
+        spend(day = 5, amount = 300_000)
+        val vm = viewModel()
+        vm.state.first { it.strip.isNotEmpty() }
+
+        vm.selectMode(PeriodMode.WEEKLY)
+        val weekly = vm.state.first { it.range.mode == PeriodMode.WEEKLY && it.strip.isNotEmpty() }
+        assertTrue(weekly.strip.all { it.range.mode == PeriodMode.WEEKLY })
+        assertEquals(DateRange.ofWeek(LocalDate(2025, 7, 20)), weekly.strip.first().range)
+        assertEquals(weekly.range, weekly.strip.last().range)
+
+        vm.selectMode(PeriodMode.ANNUALLY)
+        val annual = vm.state.first { it.range.mode == PeriodMode.ANNUALLY && it.strip.isNotEmpty() }
+        assertEquals(listOf(DateRange.ofYear(2025), DateRange.ofYear(2026)), annual.strip.map { it.range })
+
+        vm.selectRange(LocalDate(2026, 8, 1), LocalDate(2026, 8, 10))
+        val custom = vm.state.first { it.range.mode == PeriodMode.CUSTOM }
+        assertTrue(custom.strip.isEmpty())
+    }
+
+    @Test
+    fun `tapping a week in the strip selects that week`() = runTest(dispatcher) {
+        seed()
+        spend(day = 5, amount = 300_000)
+        val vm = viewModel()
+        vm.selectMode(PeriodMode.WEEKLY)
+        vm.state.first { it.range.mode == PeriodMode.WEEKLY && it.strip.isNotEmpty() }
+
+        val week = DateRange.ofWeek(LocalDate(2026, 8, 3))
+        vm.selectPeriod(week)
+
+        val state = vm.state.first { it.range == week && it.strip.lastOrNull()?.range == week }
+        assertEquals(Money(300_000), state.strip.last().expense)
+    }
+
+    // buku-kas: chart style and the category detail.
+
+    @Test
+    fun `the chart style defaults to bars and survives a new ViewModel`() = runTest(dispatcher) {
+        seed()
+        spend(day = 5, amount = 300_000)
+        val vm = viewModel()
+        assertEquals(ChartStyle.BARS, vm.state.first { !it.loading }.chartStyle)
+
+        vm.selectChartStyle(ChartStyle.PIE)
+        vm.state.first { it.chartStyle == ChartStyle.PIE }
+
+        // A restart is a new ViewModel over the same preferences.
+        assertEquals(ChartStyle.PIE, viewModel().state.first { !it.loading }.chartStyle)
+    }
+
+    @Test
+    fun `the category detail carries share, count, average and its own strip`() = runTest(dispatcher) {
+        seed()
+        record(LocalDateTime(2026, 6, 10, 12, 0), 400_000, categoryId = pemberian)
+        spend(day = 3, amount = 300_000, categoryId = pemberian)
+        spend(day = 9, amount = 200_001, categoryId = pemberian)
+        spend(day = 5, amount = 500_000)
+        record(LocalDateTime(2026, 8, 1, 9, 0), 2_000_000, type = TxnType.INCOME, categoryId = gaji)
+        val vm = viewModel()
+        vm.state.first { !it.loading }
+
+        vm.openCategory(pemberian)
+        val drill = vm.state.first { (it.drill as? DrillUiState.Category)?.strip?.isNotEmpty() == true }
+            .drill as DrillUiState.Category
+
+        assertEquals(Money(500_001), drill.total)
+        assertEquals(50, drill.percent)
+        assertEquals(2, drill.count)
+        assertEquals(Money(250_001), drill.average)
+        // June to August: Pemberian's history, its expenses only, nothing of Makan or Gaji.
+        assertEquals((6..8).map { DateRange.ofMonth(LocalDate(2026, it, 1)) }, drill.strip.map { it.range })
+        assertEquals(listOf(400_000L, 0L, 500_001L), drill.strip.map { it.expense.rupiah })
+        assertTrue(drill.strip.all { it.income.isZero })
+    }
+
+    @Test
+    fun `the category strip respects the account filter`() = runTest(dispatcher) {
+        seed()
+        spend(day = 3, amount = 300_000, categoryId = pemberian)
+        val vm = viewModel()
+        vm.state.first { !it.loading }
+        vm.openCategory(pemberian)
+        vm.state.first { (it.drill as? DrillUiState.Category)?.strip?.isNotEmpty() == true }
+
+        shared.set(TransactionFilter(accountIds = setOf(rdpu)))
+
+        val drill = vm.state.first {
+            it.filter.isActive && (it.drill as? DrillUiState.Category)?.strip?.isNotEmpty() == true
+        }.drill as DrillUiState.Category
+        assertTrue(drill.strip.single().empty)
+    }
 }

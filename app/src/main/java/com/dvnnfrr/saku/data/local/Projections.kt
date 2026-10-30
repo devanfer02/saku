@@ -50,3 +50,21 @@ data class IdCount(
     val id: Long,
     val count: Int,
 )
+
+/** One noted transaction, reduced to what note autocomplete folds. See `TxnDao.observeNoteUses`. */
+data class NoteUseRow(
+    val id: Long,
+    val note: String,
+    val categoryId: Long?,
+    val amountIdr: Long,
+    val occurredAtEpochSec: Long,
+)
+
+/** One account's period flows, by leg. See `TxnDao.observeAccountFlows`. */
+data class AccountFlowsRow(
+    val accountId: Long,
+    val income: Long,
+    val expense: Long,
+    val transferIn: Long,
+    val transferOut: Long,
+)

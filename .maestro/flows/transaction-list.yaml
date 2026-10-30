@@ -1,7 +1,7 @@
 appId: com.dvnnfrr.saku
 name: Transaction list
 ---
-# Task 7.7. Month navigation, both tabs, and opening a day from the calendar.
+# Task 7.7. Month navigation and both tabs.
 # Runs on a freshly seeded install, so the month is empty — which is the point of
 # the first assertion: an empty month must say so rather than render nothing.
 - clearState
@@ -9,10 +9,10 @@ name: Transaction list
 
 - assertVisible: "Daily"
 - assertVisible: "Calendar"
-- assertVisible: "Income"
-- assertVisible: "Expenses"
-- assertVisible: "Total"
-- assertVisible: "Nothing recorded this month"
+- assertVisible: "Left over"
+- assertVisible: "In"
+- assertVisible: "Out"
+- assertVisible: "No transactions in .*\\. Tap \\+ to add one\\."
 
 # Month navigation keeps the selected tab. Stepping back and forward must land on
 # the month it started from.

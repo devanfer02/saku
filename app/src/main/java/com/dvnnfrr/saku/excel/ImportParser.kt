@@ -113,11 +113,13 @@ object ImportParser {
      * Layout is decided before a single data row is touched, so an unrecognised file is
      * refused rather than half-parsed into nonsense.
      */
-    fun parse(table: SheetTable, zone: TimeZone): ParseOutcome =
-        when (val match = LayoutDetector.detect(table.headers)) {
+    fun parse(table: SheetTable, zone: TimeZone): ParseOutcome {
+        val sheet = LayoutDetector.withoutMoneyManagerTag(table)
+        return when (val match = LayoutDetector.detect(sheet.headers)) {
             is LayoutMatch.Unrecognised -> ParseOutcome.UnrecognisedLayout(match)
-            is LayoutMatch.Recognised -> ParseOutcome.Parsed(parse(match.layout, table, zone))
+            is LayoutMatch.Recognised -> ParseOutcome.Parsed(parse(match.layout, sheet, zone))
         }
+    }
 
     fun parse(layout: SheetLayout, table: SheetTable, zone: TimeZone): ParsedSheet {
         val rows = mutableListOf<ParsedRow>()

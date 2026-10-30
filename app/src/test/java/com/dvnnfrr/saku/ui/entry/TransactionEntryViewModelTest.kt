@@ -2,6 +2,7 @@ package com.dvnnfrr.saku.ui.entry
 
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.dvnnfrr.saku.data.FirstRunSeed
 import com.dvnnfrr.saku.data.local.SakuDatabase
 import com.dvnnfrr.saku.data.repository.RoomAccountRepository
 import com.dvnnfrr.saku.data.repository.RoomCategoryRepository
@@ -11,10 +12,12 @@ import com.dvnnfrr.saku.domain.CategoryKind
 import com.dvnnfrr.saku.domain.DateRange
 import com.dvnnfrr.saku.domain.Money
 import com.dvnnfrr.saku.domain.TxnType
+import com.dvnnfrr.saku.domain.TransactionFilter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asExecutor
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -94,7 +97,7 @@ class TransactionEntryViewModelTest {
         rdpu = accounts.create("RDPU", AccountType.INVESTMENT, Money.ZERO, asOf)
         makan = categories.createCategory("Makan & Minum", CategoryKind.EXPENSE)
         gaji = categories.createCategory("Gaji", CategoryKind.INCOME)
-        restoran = categories.createSubcategory(makan, "Restoran")
+        restoran = categories.findOrCreateSubcategory(makan, "Restoran")
     }
 
     private fun viewModel() = TransactionEntryViewModel(
@@ -125,6 +128,57 @@ class TransactionEntryViewModelTest {
         assertEquals(listOf("Makan & Minum"), state.categories.map { it.name })
     }
 
+    /**
+     * A brand-new install seeds Cash and Card and no categories. The picker gets an
+     * empty list (it still offers "New category"), and the first category is made from
+     * the sheet itself, after which the entry saves.
+     */
+    @Test
+    fun `after first run the sheet opens with no categories and creates the first one`() =
+        runTest(dispatcher) {
+            FirstRunSeed.applyIfEmpty(db, openingAsOf = clock.now(), zone = zone)
+            val vm = viewModel()
+            vm.open()
+            advanceUntilIdle()
+
+            val opened = vm.state.value
+            assertEquals(listOf("Cash", "Card"), opened.accounts.map { it.name })
+            assertEquals(opened.accounts.first().id, opened.form.accountId)
+            assertTrue(opened.categories.isEmpty())
+
+            type(vm, "25000")
+            vm.createCategory("Food")
+            advanceUntilIdle()
+            val created = vm.state.value
+            assertEquals(listOf("Food"), created.categories.map { it.name })
+            assertEquals(created.categories.single().id, created.form.categoryId)
+
+            vm.save()
+            advanceUntilIdle()
+            val stored = transactions.observeInRange(august, zone, TransactionFilter.ALL).first().single()
+            assertEquals(Money(25_000), stored.amount)
+            assertEquals(created.form.categoryId, stored.categoryId)
+            assertTrue(vm.state.value.saved)
+        }
+
+    @Test
+    fun `after first run an income category is created with the income kind`() =
+        runTest(dispatcher) {
+            FirstRunSeed.applyIfEmpty(db, openingAsOf = clock.now(), zone = zone)
+            val vm = viewModel()
+            vm.open()
+            advanceUntilIdle()
+
+            vm.setType(TxnType.INCOME)
+            advanceUntilIdle()
+            assertTrue(vm.state.value.categories.isEmpty())
+
+            vm.createCategory("Salary")
+            advanceUntilIdle()
+            assertEquals(CategoryKind.INCOME, categories.allCategories().single().kind)
+            assertEquals(listOf("Salary"), vm.state.value.categories.map { it.name })
+        }
+
     @Test
     fun `recording an expense stores it`() = runTest(dispatcher) {
         seed()
@@ -140,7 +194,7 @@ class TransactionEntryViewModelTest {
         vm.save()
         advanceUntilIdle()
 
-        val stored = transactions.observeInRange(august, zone).first()
+        val stored = transactions.observeInRange(august, zone, TransactionFilter.ALL).first()
         assertEquals(1, stored.size)
         assertEquals(Money(187_000), stored.single().amount)
         assertEquals(makan, stored.single().categoryId)
@@ -163,7 +217,7 @@ class TransactionEntryViewModelTest {
         vm.save()
         advanceUntilIdle()
 
-        val stored = transactions.observeInRange(august, zone).first()
+        val stored = transactions.observeInRange(august, zone, TransactionFilter.ALL).first()
         assertEquals(1, stored.size)
         assertEquals(Money(30_000), stored.single().amount)
     }
@@ -179,7 +233,7 @@ class TransactionEntryViewModelTest {
         vm.save()
         advanceUntilIdle()
 
-        assertTrue(transactions.observeInRange(august, zone).first().isEmpty())
+        assertTrue(transactions.observeInRange(august, zone, TransactionFilter.ALL).first().isEmpty())
         assertEquals(EntryProblem.CATEGORY_MISSING, vm.state.value.problemFor(EntryField.CATEGORY))
         assertFalse(vm.state.value.saved)
     }
@@ -209,44 +263,73 @@ class TransactionEntryViewModelTest {
         assertNull(vm.state.value.form.categoryId)
     }
 
-    @Test
-    fun `selecting a category recalls the subcategory last used with it`() = runTest(dispatcher) {
-        seed()
-        transactions.record(
+    /** A row from before subcategories were dropped, still carrying Restoran. */
+    private suspend fun recordWithStoredSubcategory(): Long {
+        val id = transactions.record(
             occurredAt = LocalDateTime(2026, 8, 10, 12, 0).toInstant(zone),
             type = TxnType.EXPENSE,
             amount = Money(50_000),
             accountId = bca,
             categoryId = makan,
-            subcategoryId = restoran,
+            note = "Padang",
         )
-
-        val vm = viewModel()
-        vm.open()
-        advanceUntilIdle()
-        vm.selectCategory(makan)
-        advanceUntilIdle()
-
-        assertEquals(restoran, vm.state.value.form.subcategoryId)
+        transactions.update(requireNotNull(transactions.byId(id)).copy(subcategoryId = restoran))
+        return id
     }
 
     @Test
-    fun `changing the category clears a subcategory that has no recall`() = runTest(dispatcher) {
+    fun `a new transaction saves no subcategory even where one was used before`() =
+        runTest(dispatcher) {
+            seed()
+            recordWithStoredSubcategory()
+            val vm = viewModel()
+            vm.open()
+            advanceUntilIdle()
+            vm.selectCategory(makan)
+            type(vm, "25000")
+            vm.save()
+            advanceUntilIdle()
+
+            val saved = transactions.observeInRange(august, zone, TransactionFilter.ALL).first()
+                .single { it.amount == Money(25_000) }
+            assertNull(saved.subcategoryId)
+        }
+
+    @Test
+    fun `editing an old row's note keeps its stored subcategory`() = runTest(dispatcher) {
         seed()
-        val lain = categories.createCategory("Jajan", CategoryKind.EXPENSE)
+        val id = recordWithStoredSubcategory()
         val vm = viewModel()
-        vm.open()
-        advanceUntilIdle()
-        vm.selectCategory(makan)
-        advanceUntilIdle()
-        vm.selectSubcategory(restoran)
-
-        vm.selectCategory(lain)
+        vm.open(editingId = id)
         advanceUntilIdle()
 
-        assertNull(vm.state.value.form.subcategoryId)
-        assertEquals(lain, vm.state.value.form.categoryId)
+        vm.setNote("Padang Sederhana")
+        vm.save()
+        advanceUntilIdle()
+
+        val stored = requireNotNull(transactions.byId(id))
+        assertEquals("Padang Sederhana", stored.note)
+        assertEquals(restoran, stored.subcategoryId)
     }
+
+    @Test
+    fun `moving an old row to another category clears its stored subcategory`() =
+        runTest(dispatcher) {
+            seed()
+            val lain = categories.createCategory("Jajan", CategoryKind.EXPENSE)
+            val id = recordWithStoredSubcategory()
+            val vm = viewModel()
+            vm.open(editingId = id)
+            advanceUntilIdle()
+
+            vm.selectCategory(lain)
+            vm.save()
+            advanceUntilIdle()
+
+            val stored = requireNotNull(transactions.byId(id))
+            assertEquals(lain, stored.categoryId)
+            assertNull(stored.subcategoryId)
+        }
 
     @Test
     fun `creating a category inline selects it and keeps the other fields`() = runTest(dispatcher) {
@@ -301,7 +384,7 @@ class TransactionEntryViewModelTest {
             EntryProblem.DESTINATION_SAME_AS_SOURCE,
             vm.state.value.problemFor(EntryField.DESTINATION),
         )
-        assertTrue(transactions.observeInRange(august, zone).first().isEmpty())
+        assertTrue(transactions.observeInRange(august, zone, TransactionFilter.ALL).first().isEmpty())
     }
 
     @Test
@@ -318,7 +401,7 @@ class TransactionEntryViewModelTest {
         vm.save()
         advanceUntilIdle()
 
-        val stored = transactions.observeInRange(august, zone).first().single()
+        val stored = transactions.observeInRange(august, zone, TransactionFilter.ALL).first().single()
         assertEquals(TxnType.TRANSFER, stored.type)
         assertEquals(bca, stored.accountId)
         assertEquals(rdpu, stored.toAccountId)
@@ -372,5 +455,158 @@ class TransactionEntryViewModelTest {
 
         assertNull(transactions.byId(drop))
         assertNotNull(transactions.byId(keep))
+    }
+
+    // --- Note autocomplete (specs/note-autocomplete/spec.md) -------------------
+
+    private suspend fun recordNoted(
+        note: String,
+        amount: Long,
+        type: TxnType = TxnType.EXPENSE,
+        day: Int = 10,
+    ) = transactions.record(
+        occurredAt = LocalDateTime(2026, 8, day, 12, 0).toInstant(zone),
+        type = type,
+        amount = Money(amount),
+        accountId = bca,
+        categoryId = if (type == TxnType.INCOME) gaji else makan,
+        note = note,
+    )
+
+    private fun kotlinx.coroutines.test.TestScope.collectSuggestions(vm: TransactionEntryViewModel) {
+        backgroundScope.launch(dispatcher) { vm.suggestions.collect {} }
+    }
+
+    @Test
+    fun `typing suggests expense notes and picking fills category and last amount`() =
+        runTest(dispatcher) {
+            seed()
+            recordNoted("bensin motor", 25_000, day = 3)
+            recordNoted("bensin motor", 30_000, day = 9)
+            val vm = viewModel()
+            collectSuggestions(vm)
+            vm.open()
+            advanceUntilIdle()
+            vm.setAccount(rdpu)
+
+            vm.setNote("be")
+            advanceUntilIdle()
+            val suggestion = vm.suggestions.value.single()
+            assertEquals("bensin motor", suggestion.note)
+            assertEquals(makan, suggestion.category?.id)
+            assertEquals(Money(30_000), suggestion.lastAmount)
+
+            vm.pickSuggestion(suggestion)
+            advanceUntilIdle()
+            val form = vm.state.value.form
+            assertEquals("bensin motor", form.note)
+            assertEquals(makan, form.categoryId)
+            assertEquals(Money(30_000), form.amount.value)
+            assertEquals(rdpu, form.accountId)
+            assertTrue(vm.suggestions.value.isEmpty())
+        }
+
+    @Test
+    fun `suggestions follow the type and transfers get none`() = runTest(dispatcher) {
+        seed()
+        recordNoted("uang arisan", 500_000)
+        recordNoted("uang saku", 1_000_000, type = TxnType.INCOME)
+        val vm = viewModel()
+        collectSuggestions(vm)
+        vm.open()
+        advanceUntilIdle()
+
+        vm.setNote("ua")
+        advanceUntilIdle()
+        assertEquals(listOf("uang arisan"), vm.suggestions.value.map { it.note })
+
+        vm.setType(TxnType.INCOME)
+        vm.setNote("uan")
+        advanceUntilIdle()
+        assertEquals(listOf("uang saku"), vm.suggestions.value.map { it.note })
+
+        vm.setType(TxnType.TRANSFER)
+        vm.setNote("uang")
+        advanceUntilIdle()
+        assertTrue(vm.suggestions.value.isEmpty())
+    }
+
+    @Test
+    fun `opening an edit with a note shows nothing until the note changes`() = runTest(dispatcher) {
+        seed()
+        val id = recordNoted("bensin motor", 30_000)
+        val vm = viewModel()
+        collectSuggestions(vm)
+
+        vm.open(id)
+        advanceUntilIdle()
+        assertEquals("bensin motor", vm.state.value.form.note)
+        assertTrue(vm.suggestions.value.isEmpty())
+
+        vm.setNote("bensin moto")
+        advanceUntilIdle()
+        assertEquals(listOf("bensin motor"), vm.suggestions.value.map { it.note })
+    }
+
+    @Test
+    fun `dismissing closes the list and typing reopens it`() = runTest(dispatcher) {
+        seed()
+        recordNoted("laundry", 35_000)
+        val vm = viewModel()
+        collectSuggestions(vm)
+        vm.open()
+        advanceUntilIdle()
+
+        vm.setNote("la")
+        advanceUntilIdle()
+        assertEquals(1, vm.suggestions.value.size)
+
+        vm.dismissSuggestions()
+        advanceUntilIdle()
+        assertTrue(vm.suggestions.value.isEmpty())
+        assertEquals("la", vm.state.value.form.note)
+
+        vm.setNote("lau")
+        advanceUntilIdle()
+        assertEquals(1, vm.suggestions.value.size)
+    }
+
+    @Test
+    fun `a typed amount survives a pick`() = runTest(dispatcher) {
+        seed()
+        recordNoted("bensin motor", 30_000)
+        val vm = viewModel()
+        collectSuggestions(vm)
+        vm.open()
+        advanceUntilIdle()
+
+        type(vm, "50000")
+        vm.setNote("bensin")
+        advanceUntilIdle()
+        vm.pickSuggestion(vm.suggestions.value.single())
+
+        assertEquals(Money(50_000), vm.state.value.form.amount.value)
+        assertEquals(makan, vm.state.value.form.categoryId)
+    }
+
+    @Test
+    fun `a saved note is suggested on the next sheet`() = runTest(dispatcher) {
+        seed()
+        val vm = viewModel()
+        collectSuggestions(vm)
+        vm.open()
+        advanceUntilIdle()
+        type(vm, "15000")
+        vm.selectCategory(makan)
+        vm.setNote("es teh")
+        vm.save()
+        advanceUntilIdle()
+
+        vm.open()
+        advanceUntilIdle()
+        vm.setNote("es")
+        advanceUntilIdle()
+
+        assertEquals(listOf("es teh"), vm.suggestions.value.map { it.note })
     }
 }

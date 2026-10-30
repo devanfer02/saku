@@ -4,10 +4,11 @@ import com.dvnnfrr.saku.domain.ColorSlot
 import com.dvnnfrr.saku.domain.DateRange
 import com.dvnnfrr.saku.domain.Money
 import com.dvnnfrr.saku.domain.PeriodTotals
+import com.dvnnfrr.saku.domain.TransactionFilter
 import com.dvnnfrr.saku.domain.TxnType
 import kotlinx.datetime.LocalDate
 
-enum class TransactionTab { DAILY, CALENDAR }
+enum class TransactionTab { DAILY, CALENDAR, MONTHLY }
 
 /**
  * Everything the transaction screen draws, already resolved.
@@ -25,8 +26,20 @@ data class TransactionListUiState(
     val calendar: CalendarMonth? = null,
     /** Set when the user opens a day from the calendar; cleared once consumed. */
     val pendingScrollTo: LocalDate? = null,
+    /** The Calendar's picked dates, folded. Null when nothing is picked. */
+    val calendarRange: CalendarRangeSummary? = null,
+    /** The filter the figures above were computed under, for the bar and the action. */
+    val filter: TransactionFilter = TransactionFilter.ALL,
+    /** The Monthly year. Null outside the Monthly tab, which is not queried until opened. */
+    val monthly: MonthlyYear? = null,
     val loading: Boolean = true,
-)
+) {
+    /** What the header names and the filter sheet opens on: the year in Monthly, else the month. */
+    val headerRange: DateRange
+        get() = monthly?.let { DateRange.ofYear(it.year) } ?: range
+
+    val headerTotals: PeriodTotals get() = monthly?.totals ?: totals
+}
 
 /**
  * One day header plus its rows.
@@ -49,11 +62,12 @@ data class TransactionRowUi(
     val type: TxnType,
     val amount: Money,
     val categoryName: String?,
-    val subcategoryName: String?,
     val note: String?,
     val account: AccountRef,
     /** Present only on a transfer, which shows both ends. */
     val toAccount: AccountRef?,
+    /** The category's colour for the row's dot. Null on a row with no category. */
+    val categorySlot: ColorSlot? = null,
 )
 
 /** An account reduced to what a row draws: a name and a swatch. */

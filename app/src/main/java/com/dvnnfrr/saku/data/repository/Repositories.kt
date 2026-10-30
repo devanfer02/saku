@@ -1,6 +1,7 @@
 package com.dvnnfrr.saku.data.repository
 
 import com.dvnnfrr.saku.domain.Account
+import com.dvnnfrr.saku.domain.AccountFlows
 import com.dvnnfrr.saku.domain.AccountSummary
 import com.dvnnfrr.saku.domain.AccountType
 import com.dvnnfrr.saku.domain.Category
@@ -11,10 +12,13 @@ import com.dvnnfrr.saku.domain.DailyTotals
 import com.dvnnfrr.saku.domain.DateRange
 import com.dvnnfrr.saku.domain.ImportBatch
 import com.dvnnfrr.saku.domain.Money
+import com.dvnnfrr.saku.domain.NoteUsage
 import com.dvnnfrr.saku.domain.PeriodTotals
 import com.dvnnfrr.saku.domain.Subcategory
 import com.dvnnfrr.saku.domain.Transaction
+import com.dvnnfrr.saku.domain.TransactionFilter
 import com.dvnnfrr.saku.domain.TxnType
+import com.dvnnfrr.saku.excel.BackupContents
 import kotlinx.coroutines.flow.Flow
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
@@ -28,7 +32,18 @@ import kotlinx.datetime.TimeZone
  */
 
 interface TransactionRepository {
-    fun observeInRange(range: DateRange, zone: TimeZone): Flow<List<Transaction>>
+    /*
+     * Every read that feeds Trans and Stats takes a required [TransactionFilter]. Not a
+     * default argument: a screen that forgot it would compile and silently ignore the
+     * filter, and the compiler listing every caller is the point. Pass
+     * [TransactionFilter.ALL] where a screen is deliberately unfiltered.
+     */
+
+    fun observeInRange(
+        range: DateRange,
+        zone: TimeZone,
+        filter: TransactionFilter,
+    ): Flow<List<Transaction>>
 
     /**
      * Drill-through from a stats row. [type] is required, not optional: the row that
@@ -41,6 +56,7 @@ interface TransactionRepository {
         zone: TimeZone,
         categoryId: Long,
         type: TxnType,
+        filter: TransactionFilter,
     ): Flow<List<Transaction>>
 
     /** Drill-through for the stats screen's aggregated "Other" slice. */
@@ -49,28 +65,55 @@ interface TransactionRepository {
         zone: TimeZone,
         categoryIds: List<Long>,
         type: TxnType,
+        filter: TransactionFilter,
     ): Flow<List<Transaction>>
 
     /** Income and expense for the period. Transfers and adjustments are excluded. */
-    fun observePeriodTotals(range: DateRange, zone: TimeZone): Flow<PeriodTotals>
+    fun observePeriodTotals(
+        range: DateRange,
+        zone: TimeZone,
+        filter: TransactionFilter,
+    ): Flow<PeriodTotals>
 
-    /** Per-day subtotals for the Daily headers and Calendar cells. */
-    fun observeDailyTotals(range: DateRange, zone: TimeZone): Flow<List<DailyTotals>>
+    /** Per-day subtotals for the Daily headers, Calendar cells and Monthly rows. */
+    fun observeDailyTotals(
+        range: DateRange,
+        zone: TimeZone,
+        filter: TransactionFilter,
+    ): Flow<List<DailyTotals>>
 
     /** Ranked category composition for one side of the stats screen. */
     fun observeCategoryTotals(
         range: DateRange,
         zone: TimeZone,
         type: TxnType,
+        filter: TransactionFilter,
     ): Flow<List<CategoryTotal>>
+
+    /**
+     * Income, expense and both transfer legs per account for the period, adjustments
+     * excluded. Unfiltered on purpose: the filter sheet lists every account so the user
+     * can choose among them. An account nothing moved through has no entry.
+     */
+    fun observeAccountFlows(range: DateRange, zone: TimeZone): Flow<List<AccountFlows>>
+
+    /** Every transaction passing [filter], newest first, across all history. For search. */
+    fun observeAll(filter: TransactionFilter): Flow<List<Transaction>>
+
+    /**
+     * Distinct non-blank notes of [type], each with its use count, last use, last amount
+     * and most-used category, unordered. For the entry sheet's note autocomplete, which
+     * caches this and filters it in memory per keystroke.
+     */
+    fun observeNoteUsage(type: TxnType): Flow<List<NoteUsage>>
 
     suspend fun byId(id: Long): Transaction?
 
     /** Every transaction, oldest first. For export, which cannot be range-scoped. */
     suspend fun all(): List<Transaction>
 
-    /** Pre-fill for the entry sheet, so subcategory stays optional without staying empty. */
-    suspend fun lastSubcategoryFor(categoryId: Long): Long?
+    /** When the user last logged a transaction, or null for an empty ledger. See `TxnDao`. */
+    suspend fun lastEnteredAt(): Instant?
 
     suspend fun record(
         occurredAt: Instant,
@@ -150,57 +193,28 @@ interface CategoryRepository {
 
     fun observeActiveByKind(kind: CategoryKind): Flow<List<Category>>
 
-    fun observeSubcategories(categoryId: Long): Flow<List<Subcategory>>
-
-    /** Includes archived, so the manage screen can offer unarchive. */
-    fun observeAllSubcategories(categoryId: Long): Flow<List<Subcategory>>
-
-    /**
-     * Every subcategory across every category, archived included.
-     *
-     * The transaction list needs a name for whatever subcategory a row points at, and
-     * asking per category is an N+1. Archived rows stay in: archiving does not rewrite
-     * the transactions already referencing the subcategory, so excluding them blanks
-     * the label on real history.
-     */
-    fun observeAllSubcategories(): Flow<List<Subcategory>>
-
     suspend fun byId(id: Long): Category?
-
-    suspend fun subcategoryById(id: Long): Subcategory?
 
     /** Throws [DuplicateNameException] on a case- and whitespace-insensitive clash. */
     suspend fun createCategory(name: String, kind: CategoryKind): Long
 
-    suspend fun createSubcategory(categoryId: Long, name: String): Long
-
     suspend fun renameCategory(id: Long, name: String)
-
-    suspend fun renameSubcategory(id: Long, name: String)
 
     suspend fun recolorCategory(id: Long, slot: ColorSlot)
 
     suspend fun reorderCategories(orderedIds: List<Long>)
 
-    suspend fun reorderSubcategories(categoryId: Long, orderedIds: List<Long>)
-
     suspend fun setCategoryArchived(id: Long, archived: Boolean)
-
-    suspend fun setSubcategoryArchived(id: Long, archived: Boolean)
 
     suspend fun isCategoryDeletable(id: Long): Boolean
 
-    suspend fun isSubcategoryDeletable(id: Long): Boolean
-
     suspend fun deleteCategory(id: Long)
-
-    suspend fun deleteSubcategory(id: Long)
 
     /** How many transactions a merge would move. Shown before the merge runs. */
     suspend fun transactionCount(categoryId: Long): Int
 
     /**
-     * Transaction counts for every category and every subcategory in one query each.
+     * Transaction counts for every category in one query.
      *
      * The category screen shows a count on every row and disables delete on any row
      * that has one. Asking per row is nineteen-plus suspend calls to paint one list —
@@ -208,11 +222,13 @@ interface CategoryRepository {
      */
     suspend fun transactionCountsByCategory(): Map<Long, Int>
 
-    suspend fun transactionCountsBySubcategory(): Map<Long, Int>
-
     /** One-shot reads for export, which cannot be range-scoped or Flow-driven. */
     suspend fun allCategories(): List<Category>
 
+    /**
+     * Every stored subcategory, archived included. The UI no longer shows subcategories
+     * (dropped for search, 30 Oct 2026); export, backup and restore still carry them.
+     */
     suspend fun allSubcategories(): List<Subcategory>
 
     /**
@@ -254,7 +270,37 @@ interface ImportRepository {
 
     /** Removes only the transactions this batch inserted; the batch record survives. */
     suspend fun reverse(batchId: Long, at: Instant): Int
+
+    /**
+     * Every account, category, subcategory and transaction, archived included, read in
+     * one transaction so a transaction can never name an account the snapshot lacks.
+     */
+    suspend fun backupSnapshot(): BackupSnapshot
+
+    /**
+     * Inserts what [backup] has and this database lacks, in one transaction: missing
+     * accounts, categories and subcategories first, then the transactions as one import
+     * batch through [commit]. Matches by name and never updates an existing record, so a
+     * same-named account keeps its own settings. Any failure leaves nothing behind.
+     */
+    suspend fun restore(backup: BackupContents, fileName: String, at: Instant): RestoreResult
 }
+
+/** The whole database as domain values, for writing a backup. */
+data class BackupSnapshot(
+    val accounts: List<Account>,
+    val categories: List<Category>,
+    val subcategories: List<Subcategory>,
+    val transactions: List<Transaction>,
+)
+
+/** What a restore created. The transactions are in [batch], so Import history can reverse them. */
+data class RestoreResult(
+    val accountsCreated: Int,
+    val categoriesCreated: Int,
+    val subcategoriesCreated: Int,
+    val batch: ImportBatch,
+)
 
 /** A parsed, fully mapped row waiting on the user's confirmation. */
 data class PendingRow(

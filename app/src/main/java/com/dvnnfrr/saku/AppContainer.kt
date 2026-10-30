@@ -7,7 +7,9 @@ import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.dvnnfrr.saku.data.AppearanceStore
+import com.dvnnfrr.saku.data.ChartStyleStore
 import com.dvnnfrr.saku.data.FirstRunSeed
+import com.dvnnfrr.saku.data.ReminderStore
 import com.dvnnfrr.saku.data.SharedPreferencesAppearanceStore
 import com.dvnnfrr.saku.data.local.SakuDatabase
 import com.dvnnfrr.saku.data.repository.AccountRepository
@@ -18,12 +20,15 @@ import com.dvnnfrr.saku.data.repository.RoomCategoryRepository
 import com.dvnnfrr.saku.data.repository.RoomImportRepository
 import com.dvnnfrr.saku.data.repository.RoomTransactionRepository
 import com.dvnnfrr.saku.data.repository.TransactionRepository
+import com.dvnnfrr.saku.reminder.ReminderScheduler
+import com.dvnnfrr.saku.ui.filter.SharedFilter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
+import java.io.File
 
 /**
  * The one place repositories are constructed.
@@ -43,6 +48,21 @@ interface AppContainer {
     val categories: CategoryRepository
     val imports: ImportRepository
     val appearance: AppearanceStore
+
+    /** The Stats chart style, remembered across restarts. */
+    val chartStyle: ChartStyleStore
+
+    /** The Trans and Stats filter. Process-scoped and never persisted. */
+    val filter: SharedFilter
+
+    /** The weekly logging reminder's settings. */
+    val reminders: ReminderStore
+
+    /** Arms the weekly reminder's alarm from [reminders]. */
+    val reminderScheduler: ReminderScheduler
+
+    /** Where a picked file is copied to be read once, as the database import does. */
+    val cacheDir: File
 }
 
 class RoomAppContainer(context: Context) : AppContainer {
@@ -62,6 +82,16 @@ class RoomAppContainer(context: Context) : AppContainer {
      * construction only moves the same work behind a lock on the main thread.
      */
     override val appearance: AppearanceStore = SharedPreferencesAppearanceStore(context)
+
+    override val chartStyle: ChartStyleStore by lazy { ChartStyleStore(context) }
+
+    override val filter: SharedFilter = SharedFilter()
+
+    override val reminders: ReminderStore by lazy { ReminderStore(context) }
+
+    override val reminderScheduler: ReminderScheduler by lazy { ReminderScheduler(context) }
+
+    override val cacheDir: File = context.cacheDir
 }
 
 /**
@@ -93,10 +123,17 @@ class SakuApplication : Application() {
         val roomContainer = RoomAppContainer(this)
         container = roomContainer
 
-        // The seed is what makes a fresh install usable: with no accounts and no
-        // categories the entry sheet cannot save anything. applyIfEmpty is idempotent
+        // The seed is what makes a fresh install usable: with no account the entry
+        // sheet cannot save anything. Categories are not seeded; the entry sheet
+        // creates them inline. applyIfEmpty is idempotent
         // and returns on the first query when the database already has data, so this
         // costs one read per launch rather than needing a "has run" flag.
+        // Re-arms the reminder on every launch. A battery saver or a force-stop drops
+        // alarms without telling the app, and this is the one moment it can notice.
+        scope.launch {
+            roomContainer.reminderScheduler.sync(roomContainer.reminders.current())
+        }
+
         scope.launch {
             FirstRunSeed.applyIfEmpty(
                 db = roomContainer.database,

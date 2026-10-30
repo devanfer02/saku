@@ -3,8 +3,8 @@ name: Accounts and the balance donut
 ---
 # Task 10.7, plus the list-and-donut half of track D's definition of done.
 #
-# Runs on a freshly seeded install, so the four default accounts exist and every one of
-# them opens at zero. That is what makes the first block worth asserting: with nothing
+# Runs on a freshly seeded install, so the two default accounts (Cash and Card) exist
+# and both open at zero. That is what makes the first block worth asserting: with nothing
 # held anywhere the donut must say so rather than draw a ring of nothing, and the
 # Liabilities figure must be absent rather than sitting at zero.
 - clearState
@@ -15,17 +15,16 @@ name: Accounts and the balance donut
 # The header. Two figures, not three, until a liability account exists.
 - assertVisible: "Spendable"
 - assertVisible: "Invested"
-- assertVisible: "Total"
+- assertVisible: "Net worth"
 - assertNotVisible: "Liabilities"
 
-# The seeded four, under their type headings, every one never reconciled.
-- assertVisible: "BCA"
-- assertVisible: "Jago"
-- assertVisible: "RDPU SucorInvest"
-- assertVisible: "Never reconciled"
+# The seeded two, under their type headings, neither balance checked yet.
+- assertVisible: "Cash"
+- assertVisible: "Card"
+- assertVisible: "Balance not checked yet"
 
-# Nothing holds a positive balance, so there is nothing to chart.
-- assertVisible: "Nothing to chart yet"
+# Nothing holds a positive balance, so the split bar is replaced by a prompt.
+- assertVisible: "Add an opening balance to see your total"
 
 # Add an account with a real opening balance.
 - tapOn: "Add account"
@@ -39,19 +38,16 @@ name: Accounts and the balance donut
 
 - tapOn: "Create"
 
-# It joins the list and the chart. The only positive balance in the app owns the whole
-# ring, so its legend row reads 100% — which is the donut's share arithmetic, asserted
-# through the label rather than through pixels.
+# It joins the list, and with one positive balance the split bar replaces the prompt.
 - assertVisible: "Gopay"
-- assertNotVisible: "Nothing to chart yet"
-- assertVisible: "100%"
+- assertNotVisible: "Add an opening balance to see your total"
 
-# Into the account, and reconcile it to a figure 50.000 lower than the app believes.
+# Into the account, and check its balance against to a figure 50.000 lower than the app believes.
 - tapOn: "Gopay"
-- assertVisible: "Never reconciled"
+- assertVisible: "Balance not checked yet"
 
-- tapOn: "Reconcile"
-- assertVisible: "Reconcile Gopay"
+- tapOn: "Check balance"
+- assertVisible: "Check the Gopay balance"
 - assertVisible: "Balance on record"
 
 - tapOn: "500000"
@@ -66,7 +62,7 @@ name: Accounts and the balance donut
 - tapOn: "Done"
 
 # The balance has moved, and the account is no longer flagged as unchecked.
-- assertNotVisible: "Never reconciled"
+- assertNotVisible: "Balance not checked yet"
 
 # The adjustment is an ordinary transaction. This is the assertion that proves the app
 # recorded the drift rather than quietly rewriting the balance to match.

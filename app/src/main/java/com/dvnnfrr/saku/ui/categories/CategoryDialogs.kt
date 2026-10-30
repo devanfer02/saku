@@ -60,13 +60,7 @@ fun CategoryDialogHost(
 
         is ConfirmDeletePrompt -> ConfirmDialog(
             title = stringResource(R.string.categories_delete_title, dialog.name),
-            body = stringResource(
-                if (dialog.isSubcategory) {
-                    R.string.categories_delete_subcategory_body
-                } else {
-                    R.string.categories_delete_body
-                },
-            ),
+            body = stringResource(R.string.categories_delete_body),
             // Null rather than zero: delete is offered only where the count is zero, and
             // "0 transactions affected" reads as a warning where there is nothing to warn.
             affectedCount = null,
@@ -111,7 +105,6 @@ private fun NamePromptDialog(
 ) {
     val initial = when (prompt) {
         is RenameCategoryPrompt -> prompt.currentName
-        is RenameSubcategoryPrompt -> prompt.currentName
         else -> ""
     }
     // Keyed on the prompt's identity rather than remembered flat: a rejected name has to
@@ -120,19 +113,10 @@ private fun NamePromptDialog(
 
     val title = when (prompt) {
         is CreateCategoryPrompt -> stringResource(R.string.categories_new_category)
-        is CreateSubcategoryPrompt -> stringResource(R.string.categories_new_subcategory)
         is RenameCategoryPrompt -> stringResource(
             R.string.categories_rename_title,
             prompt.currentName,
         )
-
-        is RenameSubcategoryPrompt -> stringResource(
-            R.string.categories_rename_title,
-            prompt.currentName,
-        )
-    }
-    val subtitle = (prompt as? CreateSubcategoryPrompt)?.let {
-        stringResource(R.string.categories_subcategory_of, it.parentName)
     }
     val error = when (val problem = prompt.error) {
         null -> null
@@ -143,7 +127,7 @@ private fun NamePromptDialog(
         )
     }
     val confirmLabel = when (prompt) {
-        is CreateCategoryPrompt, is CreateSubcategoryPrompt -> R.string.action_create
+        is CreateCategoryPrompt -> R.string.action_create
         else -> R.string.action_save
     }
 
@@ -154,13 +138,6 @@ private fun NamePromptDialog(
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(SakuTheme.spacing.sm)) {
-                subtitle?.let {
-                    Text(
-                        text = it,
-                        style = SakuTheme.typography.caption,
-                        color = SakuTheme.colors.ink2,
-                    )
-                }
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },

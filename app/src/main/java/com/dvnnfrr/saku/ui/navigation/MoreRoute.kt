@@ -5,12 +5,12 @@ import com.dvnnfrr.saku.ui.shell.MoreEntry
 /**
  * The screens reached from the More menu.
  *
- * These are pushed onto the back stack rather than being tabs: there are five of
+ * These are pushed onto the back stack rather than being tabs: there are seven of
  * them and a bottom bar holds four, and none is somewhere the user lives. Because
  * they are pushed, the More tab has to stay lit while one is open — see
  * [SakuDestination.owning].
  *
- * [MoreEntry.APPEARANCE] has no route. It is a dialog over the menu, not a
+ * [MoreEntry.APPEARANCE] and [MoreEntry.REMINDER] have no route. Each is a dialog over the menu, not a
  * destination, so opening it must not cost a back press to undo.
  */
 enum class MoreRoute(val route: String, val entry: MoreEntry) {
@@ -19,6 +19,9 @@ enum class MoreRoute(val route: String, val entry: MoreEntry) {
     IMPORT_EXCEL("more/import-excel", MoreEntry.IMPORT_EXCEL),
     EXPORT_EXCEL("more/export-excel", MoreEntry.EXPORT_EXCEL),
     IMPORT_HISTORY("more/import-history", MoreEntry.IMPORT_HISTORY),
+    BACKUP("more/backup", MoreEntry.BACKUP),
+    RESTORE("more/restore", MoreEntry.RESTORE),
+    IMPORT_DATABASE("more/import-database", MoreEntry.IMPORT_DATABASE),
     ;
 
     companion object {

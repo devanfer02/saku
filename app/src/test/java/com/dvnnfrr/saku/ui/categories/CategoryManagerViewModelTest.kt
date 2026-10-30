@@ -119,42 +119,21 @@ class CategoryManagerViewModelTest {
     // Requirement: Manage categories from a dedicated screen
 
     @Test
-    fun `expense categories are listed in sort order with a colour and a subcategory count`() =
+    fun `expense categories are listed in sort order with a colour and a transaction count`() =
         runTest(dispatcher) {
             val pemberian = categories.createCategory("Pemberian", CategoryKind.EXPENSE)
             categories.createCategory("Makan & Minum", CategoryKind.EXPENSE)
             categories.createCategory("Gaji", CategoryKind.INCOME)
-            categories.createSubcategory(pemberian, "Arisan")
-            categories.createSubcategory(pemberian, "Rumah")
+            spend(pemberian, times = 3)
 
             val viewModel = manager()
             advanceUntilIdle()
 
             val state = viewModel.state.value
             assertEquals(listOf("Pemberian", "Makan & Minum"), state.active.map { it.name })
-            assertEquals(2, state.active.first().subcategoryCount)
+            assertEquals(3, state.active.first().transactionCount)
             assertEquals(ColorSlot(0), state.active.first().colorSlot)
             assertEquals(ColorSlot(1), state.active[1].colorSlot)
-        }
-
-    @Test
-    fun `expanding a category reveals its subcategories with their transaction counts`() =
-        runTest(dispatcher) {
-            val pemberian = categories.createCategory("Pemberian", CategoryKind.EXPENSE)
-            val arisan = categories.createSubcategory(pemberian, "Arisan")
-            categories.createSubcategory(pemberian, "Rumah")
-            spend(pemberian, arisan, times = 3)
-
-            val viewModel = manager()
-            advanceUntilIdle()
-            viewModel.toggleExpanded(pemberian)
-            advanceUntilIdle()
-
-            assertEquals(pemberian, viewModel.state.value.expandedId)
-            val subcategories = viewModel.state.value.active.single().subcategories
-            assertEquals(listOf("Arisan", "Rumah"), subcategories.map { it.name })
-            assertEquals(3, subcategories.first().transactionCount)
-            assertEquals(0, subcategories.last().transactionCount)
         }
 
     @Test
@@ -170,7 +149,7 @@ class CategoryManagerViewModelTest {
         assertEquals(listOf("Gaji"), viewModel.state.value.active.map { it.name })
     }
 
-    // Requirement: Create categories and subcategories
+    // Requirement: Create categories
 
     @Test
     fun `creating a category stores it with the next colour slot and appends it to the order`() =
@@ -223,49 +202,6 @@ class CategoryManagerViewModelTest {
     }
 
     @Test
-    fun `a blank subcategory name is refused with an inline message`() = runTest(dispatcher) {
-        val pemberian = categories.createCategory("Pemberian", CategoryKind.EXPENSE)
-
-        val viewModel = manager()
-        advanceUntilIdle()
-        viewModel.promptCreateSubcategory(pemberian)
-        viewModel.submitName("")
-        advanceUntilIdle()
-
-        assertEquals(NameError.Blank, (viewModel.state.value.dialog as NamePrompt).error)
-        assertTrue(categories.allSubcategories().isEmpty())
-    }
-
-    @Test
-    fun `a duplicate subcategory in one category is refused, the same name elsewhere is not`() =
-        runTest(dispatcher) {
-            val pemberian = categories.createCategory("Pemberian", CategoryKind.EXPENSE)
-            val makan = categories.createCategory("Makan & Minum", CategoryKind.EXPENSE)
-            categories.createSubcategory(pemberian, "Arisan")
-
-            val viewModel = manager()
-            advanceUntilIdle()
-            viewModel.promptCreateSubcategory(pemberian)
-            viewModel.submitName("  arisan  ")
-            advanceUntilIdle()
-
-            // Case- and whitespace-insensitive, and refused rather than folded into the
-            // existing row: on this screen the user is editing the list, not filing a
-            // transaction, so a silent merge would lose the name they just typed.
-            val error = (viewModel.state.value.dialog as NamePrompt).error
-            assertEquals(NameError.Duplicate("Arisan"), error)
-            assertEquals(1, categories.allSubcategories().size)
-
-            viewModel.dismissDialog()
-            viewModel.promptCreateSubcategory(makan)
-            viewModel.submitName("Arisan")
-            advanceUntilIdle()
-
-            assertNull(viewModel.state.value.dialog)
-            assertEquals(2, categories.allSubcategories().size)
-        }
-
-    @Test
     fun `a duplicate category name is refused`() = runTest(dispatcher) {
         categories.createCategory("Pemberian", CategoryKind.EXPENSE)
 
@@ -303,24 +239,6 @@ class CategoryManagerViewModelTest {
         }
 
     @Test
-    fun `renaming a subcategory keeps its transactions`() = runTest(dispatcher) {
-        val pemberian = categories.createCategory("Pemberian", CategoryKind.EXPENSE)
-        val arisan = categories.createSubcategory(pemberian, "Arisan")
-        spend(pemberian, arisan, times = 5)
-
-        val viewModel = manager()
-        advanceUntilIdle()
-        viewModel.toggleExpanded(pemberian)
-        advanceUntilIdle()
-        viewModel.promptRenameSubcategory(arisan)
-        viewModel.submitName("Ibu")
-        advanceUntilIdle()
-
-        assertEquals("Ibu", categories.subcategoryById(arisan)?.name)
-        assertEquals(5, transactions.all().count { it.subcategoryId == arisan })
-    }
-
-    @Test
     fun `changing a colour slot moves that category only`() = runTest(dispatcher) {
         val pemberian = categories.createCategory("Pemberian", CategoryKind.EXPENSE)
         val makan = categories.createCategory("Makan & Minum", CategoryKind.EXPENSE)
@@ -336,25 +254,6 @@ class CategoryManagerViewModelTest {
         assertEquals(before, categories.byId(makan)?.colorSlot)
         assertNull(viewModel.state.value.dialog)
     }
-
-    @Test
-    fun `subcategories follow the parent's colour because they carry none`() =
-        runTest(dispatcher) {
-            val pemberian = categories.createCategory("Pemberian", CategoryKind.EXPENSE)
-            categories.createSubcategory(pemberian, "Arisan")
-
-            val viewModel = manager()
-            advanceUntilIdle()
-            viewModel.promptRecolor(pemberian)
-            viewModel.recolor(ColorSlot(6))
-            advanceUntilIdle()
-
-            val row = viewModel.state.value.active.single()
-            // One slot for the whole group: the screen paints each child's swatch from
-            // the row above it, so there is no second value that could go stale.
-            assertEquals(ColorSlot(6), row.colorSlot)
-            assertEquals(1, row.subcategories.size)
-        }
 
     @Test
     fun `moving a category down persists the new sort order`() = runTest(dispatcher) {
@@ -441,10 +340,12 @@ class CategoryManagerViewModelTest {
     }
 
     @Test
-    fun `deleting an unused category removes it and its subcategories`() = runTest(dispatcher) {
+    fun `deleting an unused category removes it and its stored subcategories`() = runTest(dispatcher) {
+        // Subcategories are no longer shown, but an older backup can still bring them in.
+        // None can hold a transaction here, because the category itself holds none.
         val asuransi = categories.createCategory("Asuransi", CategoryKind.EXPENSE)
-        categories.createSubcategory(asuransi, "Jiwa")
-        categories.createSubcategory(asuransi, "Kesehatan")
+        categories.findOrCreateSubcategory(asuransi, "Jiwa")
+        categories.findOrCreateSubcategory(asuransi, "Kesehatan")
 
         val viewModel = manager()
         advanceUntilIdle()
@@ -494,45 +395,6 @@ class CategoryManagerViewModelTest {
         }
 
     @Test
-    fun `archiving a subcategory hides it from pickers and keeps its transactions`() =
-        runTest(dispatcher) {
-            val pemberian = categories.createCategory("Pemberian", CategoryKind.EXPENSE)
-            val arisan = categories.createSubcategory(pemberian, "Arisan")
-            spend(pemberian, arisan, times = 4)
-
-            val viewModel = manager()
-            advanceUntilIdle()
-            viewModel.setSubcategoryArchived(arisan, archived = true)
-            advanceUntilIdle()
-
-            assertTrue(categories.observeSubcategories(pemberian).first().isEmpty())
-            assertEquals(4, transactions.all().count { it.subcategoryId == arisan })
-            assertEquals(0, viewModel.state.value.active.single().subcategoryCount)
-        }
-
-    @Test
-    fun `delete is not offered for a subcategory in use`() = runTest(dispatcher) {
-        val pemberian = categories.createCategory("Pemberian", CategoryKind.EXPENSE)
-        val arisan = categories.createSubcategory(pemberian, "Arisan")
-        spend(pemberian, arisan, times = 2)
-
-        val viewModel = manager()
-        advanceUntilIdle()
-        viewModel.toggleExpanded(pemberian)
-        advanceUntilIdle()
-
-        assertFalse(viewModel.state.value.active.single().subcategories.single().deletable)
-
-        viewModel.promptDeleteSubcategory(arisan)
-        advanceUntilIdle()
-
-        assertNull(viewModel.state.value.dialog)
-        assertNotNull(categories.subcategoryById(arisan))
-    }
-
-    // Requirement: Merge one category into another
-
-    @Test
     fun `a merge states the count, moves every transaction and archives the source`() =
         runTest(dispatcher) {
             val jajan = categories.createCategory("Jajan & Hiburan", CategoryKind.EXPENSE)
@@ -569,13 +431,13 @@ class CategoryManagerViewModelTest {
         }
 
     @Test
-    fun `a merge carries subcategories across and folds a name clash into the existing one`() =
+    fun `a merge carries stored subcategories across and folds a name clash into one`() =
         runTest(dispatcher) {
             val jajan = categories.createCategory("Jajan & Hiburan", CategoryKind.EXPENSE)
             val makan = categories.createCategory("Makan & Minum", CategoryKind.EXPENSE)
-            val jajanWarung = categories.createSubcategory(jajan, "Warung")
-            val jajanBioskop = categories.createSubcategory(jajan, "Bioskop")
-            val makanWarung = categories.createSubcategory(makan, "Warung")
+            val jajanWarung = categories.findOrCreateSubcategory(jajan, "Warung")
+            val jajanBioskop = categories.findOrCreateSubcategory(jajan, "Bioskop")
+            val makanWarung = categories.findOrCreateSubcategory(makan, "Warung")
             spend(jajan, jajanWarung, times = 3)
             spend(jajan, jajanBioskop, times = 2)
             spend(makan, makanWarung, times = 1)
@@ -594,14 +456,16 @@ class CategoryManagerViewModelTest {
             assertEquals(totalBefore, after.size)
             assertEquals(6, after.count { it.categoryId == makan })
 
-            val survivors = categories.observeSubcategories(makan).first()
+            val survivors = categories.allSubcategories()
+                .filter { it.categoryId == makan && !it.archived }
+                .sortedBy { it.sortOrder }
             assertEquals(listOf("Warung", "Bioskop"), survivors.map { it.name })
             // The clashing pair became one row, and the rows that pointed at the source's
             // "Warung" were moved onto the target's rather than left dangling.
             assertEquals(4, after.count { it.subcategoryId == makanWarung })
             assertEquals(0, after.count { it.subcategoryId == jajanWarung })
             assertEquals(2, after.count { it.subcategoryId == jajanBioskop })
-            assertEquals(makan, categories.subcategoryById(jajanBioskop)?.categoryId)
+            assertEquals(makan, categories.allSubcategories().single { it.id == jajanBioskop }.categoryId)
         }
 
     @Test
@@ -636,42 +500,11 @@ class CategoryManagerViewModelTest {
         assertNull(viewModel.state.value.dialog)
     }
 
-    // Requirement: Seed the default Indonesian categories
+    // Requirement: first run seeds no categories (decided 30 Oct 2026, so the app is
+    // not tailored to its first owner).
 
     @Test
-    fun `the sixteen seeded categories are ordinary editable records`() = runTest(dispatcher) {
-        FirstRunSeed.applyIfEmpty(
-            db = db,
-            openingAsOf = LocalDateTime(2026, 8, 17, 9, 0).toInstant(zone),
-            zone = zone,
-        )
-
-        val viewModel = manager()
-        advanceUntilIdle()
-
-        val names = viewModel.state.value.active.map { it.name }
-        assertEquals(FirstRunSeed.DEFAULT_EXPENSE_CATEGORIES, names)
-        assertEquals(16, names.size)
-        assertTrue(viewModel.state.value.active.all { it.colorSlot.index in 0 until ColorSlot.COUNT })
-
-        // Nothing about a seeded row is special-cased: it renames, recolours, archives.
-        val pemberian = viewModel.state.value.active.first()
-        assertEquals("Pemberian", pemberian.name)
-        assertEquals(4, pemberian.subcategoryCount)
-
-        viewModel.promptRenameCategory(pemberian.id)
-        viewModel.submitName("Pemberian Keluarga")
-        advanceUntilIdle()
-        assertEquals("Pemberian Keluarga", categories.byId(pemberian.id)?.name)
-
-        viewModel.setCategoryArchived(pemberian.id, archived = true)
-        advanceUntilIdle()
-        assertEquals(15, viewModel.state.value.active.size)
-        assertEquals(1, viewModel.state.value.archived.size)
-    }
-
-    @Test
-    fun `creating a subcategory under Pemberian opens the parent so the result is visible`() =
+    fun `after first run the manager is empty and the first category can be created`() =
         runTest(dispatcher) {
             FirstRunSeed.applyIfEmpty(
                 db = db,
@@ -681,17 +514,18 @@ class CategoryManagerViewModelTest {
 
             val viewModel = manager()
             advanceUntilIdle()
-            val pemberian = viewModel.state.value.active.first { it.name == "Pemberian" }
+            assertEquals(emptyList<Any>(), viewModel.state.value.active)
+            assertEquals(emptyList<Any>(), viewModel.state.value.archived)
+            // Income included: the manager shows one kind at a time, the table holds both.
+            assertEquals(0, db.categoryDao().all().size)
 
-            viewModel.promptCreateSubcategory(pemberian.id)
-            viewModel.submitName("Adik")
+            viewModel.promptCreateCategory()
+            viewModel.submitName("Groceries")
             advanceUntilIdle()
 
-            assertEquals(pemberian.id, viewModel.state.value.expandedId)
-            val row = viewModel.state.value.active.first { it.id == pemberian.id }
-            assertTrue(row.subcategories.any { it.name == "Adik" })
-            // The entry sheet reads the same query, so it can file against it immediately.
-            val offered = categories.observeSubcategories(pemberian.id).first()
-            assertTrue(offered.any { it.name == "Adik" })
+            val created = viewModel.state.value.active.single()
+            assertEquals("Groceries", created.name)
+            assertEquals(ColorSlot(0), created.colorSlot)
+            assertNull(viewModel.state.value.dialog)
         }
 }

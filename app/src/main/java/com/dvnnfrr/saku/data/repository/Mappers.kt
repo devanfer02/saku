@@ -1,6 +1,7 @@
 package com.dvnnfrr.saku.data.repository
 
 import com.dvnnfrr.saku.data.local.AccountBalanceRow
+import com.dvnnfrr.saku.data.local.AccountFlowsRow
 import com.dvnnfrr.saku.data.local.AccountEntity
 import com.dvnnfrr.saku.data.local.CategoryEntity
 import com.dvnnfrr.saku.data.local.CategoryTotalRow
@@ -8,6 +9,7 @@ import com.dvnnfrr.saku.data.local.ImportBatchEntity
 import com.dvnnfrr.saku.data.local.SubcategoryEntity
 import com.dvnnfrr.saku.data.local.TxnEntity
 import com.dvnnfrr.saku.domain.Account
+import com.dvnnfrr.saku.domain.AccountFlows
 import com.dvnnfrr.saku.domain.AccountType
 import com.dvnnfrr.saku.domain.Category
 import com.dvnnfrr.saku.domain.CategoryTotal
@@ -16,6 +18,7 @@ import com.dvnnfrr.saku.domain.ImportBatch
 import com.dvnnfrr.saku.domain.Money
 import com.dvnnfrr.saku.domain.Subcategory
 import com.dvnnfrr.saku.domain.Transaction
+import com.dvnnfrr.saku.domain.TransactionFilter
 import kotlinx.datetime.Instant
 
 internal fun Long.asInstant(): Instant = Instant.fromEpochSeconds(this)
@@ -133,3 +136,36 @@ internal fun List<CategoryTotalRow>.toDomain(): List<CategoryTotal> {
         if (index == 0) total.copy(shareBasisPoints = total.shareBasisPoints + drift) else total
     }
 }
+
+/**
+ * A [TransactionFilter] as the six arguments `TXN_FILTER_WHERE` binds.
+ *
+ * "All" becomes a true flag with an empty list, and an explicit selection a false flag
+ * with its ids. An empty selection is a false flag with an empty list, which SQLite reads
+ * as `IN ()` and therefore matches nothing: "none ticked" hides that side.
+ */
+internal data class FilterArgs(
+    val allAccounts: Boolean,
+    val accountIds: List<Long>,
+    val allIncome: Boolean,
+    val incomeIds: List<Long>,
+    val allExpense: Boolean,
+    val expenseIds: List<Long>,
+)
+
+internal fun TransactionFilter.toArgs(): FilterArgs = FilterArgs(
+    allAccounts = accountIds == null,
+    accountIds = accountIds.orEmpty().toList(),
+    allIncome = incomeCategoryIds == null,
+    incomeIds = incomeCategoryIds.orEmpty().toList(),
+    allExpense = expenseCategoryIds == null,
+    expenseIds = expenseCategoryIds.orEmpty().toList(),
+)
+
+internal fun AccountFlowsRow.toDomain(): AccountFlows = AccountFlows(
+    accountId = accountId,
+    income = Money(income),
+    expense = Money(expense),
+    transferIn = Money(transferIn),
+    transferOut = Money(transferOut),
+)

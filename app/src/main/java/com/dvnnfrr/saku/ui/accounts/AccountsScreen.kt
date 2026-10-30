@@ -6,12 +6,20 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
@@ -28,10 +36,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.selected
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.dvnnfrr.saku.R
 import com.dvnnfrr.saku.domain.AccountSummary
@@ -39,8 +49,6 @@ import com.dvnnfrr.saku.domain.AccountType
 import com.dvnnfrr.saku.domain.ColorSlot
 import com.dvnnfrr.saku.domain.Money
 import com.dvnnfrr.saku.ui.shared.ConfirmDialog
-import com.dvnnfrr.saku.ui.shared.Donut
-import com.dvnnfrr.saku.ui.shared.DonutSegment
 import com.dvnnfrr.saku.ui.shared.EmptyState
 import com.dvnnfrr.saku.ui.shared.MoneyText
 import com.dvnnfrr.saku.ui.shared.RankedRow
@@ -48,17 +56,15 @@ import com.dvnnfrr.saku.ui.theme.SakuPreview
 import com.dvnnfrr.saku.ui.theme.SakuPreviewSurface
 import com.dvnnfrr.saku.ui.theme.SakuTheme
 import com.dvnnfrr.saku.ui.theme.formatIdr
-import com.dvnnfrr.saku.ui.transactions.dayHeaderLabel
+import com.dvnnfrr.saku.ui.transactions.dateLabel
 import kotlinx.datetime.LocalDate
 
 /**
- * The Accounts destination: what is held, where it sits, and how far each account has
- * drifted from what is really there.
+ * The Accounts destination: what is held, how it splits, and which balances are not
+ * yet trustworthy.
  *
- * The donut and the list beneath it read the same [AccountsUiState.mix], so the chart
- * and its legend cannot disagree, and the header is folded from the same list of
- * accounts as the rows — a net worth that did not equal the sum of the rows under it
- * would be the least forgivable bug in the app.
+ * The header is folded from the same list of accounts as the rows, so a net worth that
+ * did not equal the sum of the rows under it cannot happen.
  */
 @Composable
 fun AccountsScreen(
@@ -67,7 +73,7 @@ fun AccountsScreen(
 ) {
     val state by viewModel.state.collectAsState()
     var editing by remember { mutableStateOf<AccountFormState?>(null) }
-    var reconciling by remember { mutableStateOf<AccountRowUi?>(null) }
+    var checking by remember { mutableStateOf<AccountRowUi?>(null) }
     var archiving by remember { mutableStateOf<AccountRowUi?>(null) }
 
     val detail = state.detail
@@ -78,7 +84,7 @@ fun AccountsScreen(
             modifier = modifier,
             onBack = viewModel::closeDetail,
             onEdit = { editing = viewModel.editFormFor(detail.account.id) },
-            onReconcile = { reconciling = detail.account },
+            onCheckBalance = { checking = detail.account },
             onArchive = { archiving = detail.account },
             onRestore = { viewModel.setArchived(detail.account.id, false) },
         )
@@ -86,7 +92,6 @@ fun AccountsScreen(
         Box(modifier = modifier.fillMaxSize()) {
             AccountsList(
                 state = state,
-                onSegmentSelect = viewModel::selectSegment,
                 onAccountClick = viewModel::openDetail,
             )
 
@@ -114,13 +119,13 @@ fun AccountsScreen(
         )
     }
 
-    reconciling?.let { account ->
+    checking?.let { account ->
         ReconcileDialog(
             account = account,
-            onDismiss = { reconciling = null },
+            onDismiss = { checking = null },
             onConfirm = { trueBalance ->
                 viewModel.reconcile(account.id, trueBalance)
-                reconciling = null
+                checking = null
             },
         )
     }
@@ -149,7 +154,6 @@ fun AccountsScreen(
 @Composable
 private fun AccountsList(
     state: AccountsUiState,
-    onSegmentSelect: (Int?) -> Unit,
     onAccountClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -164,12 +168,12 @@ private fun AccountsList(
         return
     }
 
-    LazyColumn(modifier = modifier.fillMaxSize()) {
-        item {
-            BalanceChart(state = state, onSegmentSelect = onSegmentSelect)
-        }
-        item {
-            SummaryFigures(summary = state.summary)
+    LazyColumn(
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = FAB_CLEARANCE),
+    ) {
+        item(key = "net-worth") {
+            NetWorthHeader(split = state.split)
             HorizontalDivider(color = SakuTheme.colors.line)
         }
 
@@ -178,11 +182,7 @@ private fun AccountsList(
                 SectionHeading(stringResource(group.type.labelRes()))
             }
             items(group.rows, key = { it.id }) { row ->
-                AccountRow(
-                    row = row,
-                    selected = row.id == state.selectedAccountId,
-                    onClick = { onAccountClick(row.id) },
-                )
+                AccountRow(row = row, onClick = { onAccountClick(row.id) })
             }
         }
 
@@ -191,7 +191,7 @@ private fun AccountsList(
                 SectionHeading(stringResource(R.string.accounts_archived))
             }
             items(state.archived, key = { "archived-${it.id}" }) { row ->
-                AccountRow(row = row, selected = false, onClick = { onAccountClick(row.id) })
+                AccountRow(row = row, onClick = { onAccountClick(row.id) })
             }
         }
 
@@ -201,100 +201,117 @@ private fun AccountsList(
 }
 
 /**
- * The donut, plus whatever the centre should currently read.
+ * Net worth as the largest figure, then one bar split into Spendable and Invested with
+ * both amounts written out, and what is owed beside them once a liability exists.
  *
- * With a segment selected the centre names that account instead of the total, which is
- * what makes a tap on the ring mean something. Colour is never the only cue: the same
- * selection lights up the account's row in the list below.
+ * The bar is ink and secondary ink rather than chart colours: the chart slots are pinned
+ * to accounts for life, and a blue Spendable segment would read as "this is BCA".
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun BalanceChart(
-    state: AccountsUiState,
-    onSegmentSelect: (Int?) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val byId = state.rows.associateBy { it.id }
-    val segments = state.mix.mapNotNull { share ->
-        val row = byId[share.accountId] ?: return@mapNotNull null
-        DonutSegment(slot = row.colorSlot, value = row.balance.rupiah, label = row.name)
-    }
-    val selectedIndex = state.selectedAccountId
-        ?.let { id -> state.mix.indexOfFirst { it.accountId == id } }
-        ?.takeIf { it >= 0 }
-    val selected = state.selected
+private fun NetWorthHeader(split: NetWorthSplit, modifier: Modifier = Modifier) {
+    val colors = SakuTheme.colors
+    val spacing = SakuTheme.spacing
+    val netWorthLabel = stringResource(R.string.accounts_net_worth)
+    val spendableLabel = stringResource(R.string.accounts_spendable)
+    val investedLabel = stringResource(R.string.accounts_invested)
 
     Column(
-        modifier = modifier.fillMaxWidth().padding(vertical = SakuTheme.spacing.lg),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        if (segments.isEmpty()) {
-            Text(
-                text = stringResource(R.string.accounts_donut_empty),
-                style = SakuTheme.typography.caption,
-                color = SakuTheme.colors.ink3,
-                modifier = Modifier.padding(bottom = SakuTheme.spacing.sm),
-            )
-        }
-        Donut(
-            segments = segments,
-            centerLabel = selected?.name ?: stringResource(R.string.label_total),
-            centerValue = selected?.balance ?: state.summary.total,
-            selectedIndex = selectedIndex,
-            onSegmentSelect = onSegmentSelect,
-        )
-    }
-}
-
-@Composable
-private fun SummaryFigures(summary: AccountSummary, modifier: Modifier = Modifier) {
-    val spacing = SakuTheme.spacing
-    Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = spacing.screen, vertical = spacing.md),
-        horizontalArrangement = Arrangement.spacedBy(spacing.md),
+            .padding(horizontal = spacing.screen, vertical = spacing.lg),
+        verticalArrangement = Arrangement.spacedBy(spacing.sm),
     ) {
-        Figure(
-            label = stringResource(R.string.accounts_spendable),
-            value = summary.spendable,
-            modifier = Modifier.weight(1f),
+        Text(
+            text = netWorthLabel,
+            style = SakuTheme.typography.caption.let { it.copy(fontSize = it.fontSize * NET_WORTH_LABEL_SCALE) },
+            color = colors.ink2,
         )
-        Figure(
-            label = stringResource(R.string.accounts_invested),
-            value = summary.invested,
-            modifier = Modifier.weight(1f),
+        MoneyText(
+            money = split.total,
+            style = SakuTheme.typography.amountLarge,
+            contentDescription = "$netWorthLabel ${formatIdr(split.total)}",
         )
-        // Only once a liability account exists. A Liabilities figure parked at zero for
-        // ever reads as a debt of nothing rather than as no debts.
-        summary.owed?.let {
-            Figure(
-                label = stringResource(R.string.accounts_liabilities),
-                value = it,
-                modifier = Modifier.weight(1f),
+
+        if (split.hasBar) {
+            SplitBar(
+                split = split,
+                description = stringResource(
+                    R.string.accounts_split_description,
+                    spendableLabel,
+                    formatIdr(split.spendable),
+                    investedLabel,
+                    formatIdr(split.invested),
+                ),
             )
+        } else {
+            Text(
+                text = stringResource(R.string.accounts_split_empty),
+                style = SakuTheme.typography.caption,
+                color = colors.ink2,
+            )
+        }
+
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(spacing.xs),
+        ) {
+            SplitFigure(spendableLabel, split.spendable, colors.netSpendable)
+            SplitFigure(investedLabel, split.invested, colors.netInvested)
+            // Only once a liability account exists. A figure parked at zero for ever
+            // reads as a debt of nothing rather than as no debts.
+            split.owed?.let { SplitFigure(stringResource(R.string.accounts_liabilities), it, dot = null) }
         }
     }
 }
 
 @Composable
-private fun Figure(label: String, value: Money, modifier: Modifier = Modifier) {
-    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            text = label,
-            style = SakuTheme.typography.label,
-            color = SakuTheme.colors.ink2,
-            textAlign = TextAlign.Center,
-        )
-        // type = null: a balance has no direction, and announcing one as an expense is
-        // both wrong and the reason MoneyText made the parameter optional.
+private fun SplitBar(split: NetWorthSplit, description: String) {
+    val colors = SakuTheme.colors
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(SPLIT_BAR_HEIGHT)
+            .clip(RoundedCornerShape(SPLIT_BAR_HEIGHT / 2))
+            .background(colors.surfaceAlt)
+            // The figures beneath already speak; the bar adds one sentence, not two loose
+            // coloured boxes.
+            .clearAndSetSemantics { contentDescription = description },
+    ) {
+        // Weights are the permille shares; only the layout turns them into a fraction.
+        if (split.spendablePermille > 0) {
+            Box(Modifier.weight(split.spendablePermille.toFloat()).fillMaxHeight().background(colors.netSpendable))
+        }
+        if (split.investedPermille > 0) {
+            Box(Modifier.weight(split.investedPermille.toFloat()).fillMaxHeight().background(colors.netInvested))
+        }
+    }
+}
+
+@Composable
+private fun SplitFigure(label: String, value: Money, dot: Color?) {
+    val spacing = SakuTheme.spacing
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(spacing.xs),
+    ) {
+        dot?.let { Box(Modifier.size(spacing.swatch).background(it, CircleShape)) }
+        Text(text = label, style = SakuTheme.typography.caption, color = SakuTheme.colors.ink2)
         MoneyText(
             money = value,
-            type = null,
-            style = SakuTheme.typography.amountMedium,
+            style = SakuTheme.typography.amountSmall,
             contentDescription = "$label ${formatIdr(value)}",
         )
     }
 }
+
+private val SPLIT_BAR_HEIGHT = 10.dp
+
+/** The owner asked for the label above net worth at 20% over the caption size. */
+private const val NET_WORTH_LABEL_SCALE = 1.2f
+
+/** Room for the floating add button, which is 56dp plus its 16dp margin. */
+private val FAB_CLEARANCE = 88.dp
 
 @Composable
 private fun SectionHeading(text: String, modifier: Modifier = Modifier) {
@@ -311,56 +328,51 @@ private fun SectionHeading(text: String, modifier: Modifier = Modifier) {
     )
 }
 
-/**
- * One account, as the donut's legend and as the way into its detail.
- *
- * The row is the accessible path to everything the ring offers: it names the account
- * the colour stands for, states its share as a number, and is a full-height tap target,
- * none of which an 18dp arc can claim.
- */
+/** One account, and the way into its detail. */
 @Composable
 private fun AccountRow(
     row: AccountRowUi,
-    selected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val colors = SakuTheme.colors
-
     RankedRow(
         colorSlot = row.colorSlot,
         name = row.name,
         value = row.balance,
-        sharePercent = row.sharePercent,
-        supporting = row.reconciliation.supportingText(),
-        supportingColor = when (row.reconciliation) {
-            is Reconciliation.Never -> colors.expense
-            is Reconciliation.Stale -> colors.warning
-            is Reconciliation.Current -> colors.ink3
-        },
+        supporting = row.statusText(),
+        supportingColor = row.statusColor(),
+        valueColor = SakuTheme.colors.warning.takeIf { row.belowZero },
         onClick = onClick,
-        // `selected` and nothing else. The row is a merged semantics node, so a
-        // contentDescription here would replace the name, the share and the balance
-        // with one sentence — the opposite of what a legend row is for.
-        modifier = modifier
-            .then(if (selected) Modifier.background(colors.accentWash) else Modifier)
-            .semantics { this.selected = selected },
+        modifier = modifier,
     )
 }
 
+/**
+ * The one line under an account's name, shared by the list and the detail so the two
+ * never word a state differently.
+ *
+ * Amber is spent only where the figure needs attention: a balance below zero, or a check
+ * past the staleness window. An account that was never checked is the normal state of
+ * every imported account and reads in plain secondary ink.
+ */
 @Composable
-private fun Reconciliation.supportingText(): String = when (this) {
-    is Reconciliation.Never -> stringResource(R.string.accounts_never_reconciled)
-    is Reconciliation.Stale -> stringResource(R.string.accounts_stale, lastReconciled.label())
-    is Reconciliation.Current ->
-        stringResource(R.string.accounts_reconciled_on, lastReconciled.label())
+internal fun AccountRowUi.statusText(): String = when {
+    belowZero -> stringResource(R.string.accounts_below_zero)
+    else -> when (val check = reconciliation) {
+        is Reconciliation.Never -> stringResource(R.string.accounts_not_checked)
+        is Reconciliation.Stale -> stringResource(R.string.accounts_checked_on, check.lastReconciled.label())
+        is Reconciliation.Current -> stringResource(R.string.accounts_checked_on, check.lastReconciled.label())
+    }
 }
 
-/**
- * Dates read the same everywhere in the app, so this borrows the transaction list's
- * label rather than growing a second format that could drift from it.
- */
-internal fun LocalDate.label(): String = dayHeaderLabel()
+@Composable
+internal fun AccountRowUi.statusColor(): Color = when {
+    belowZero || reconciliation is Reconciliation.Stale -> SakuTheme.colors.warning
+    else -> SakuTheme.colors.ink2
+}
+
+/** Dates read the same everywhere in the app, so this borrows the shared label. */
+internal fun LocalDate.label(): String = dateLabel()
 
 @StringRes
 internal fun AccountType.labelRes(): Int = when (this) {
@@ -408,23 +420,7 @@ private fun AccountsMessageDialog(message: AccountsMessage, onDismiss: () -> Uni
 @Composable
 private fun AccountsScreenPreview() {
     SakuPreviewSurface(padded = false) {
-        AccountsList(
-            state = previewState(),
-            onSegmentSelect = {},
-            onAccountClick = {},
-        )
-    }
-}
-
-@SakuPreview
-@Composable
-private fun AccountsScreenSelectedPreview() {
-    SakuPreviewSurface(padded = false) {
-        AccountsList(
-            state = previewState().copy(selectedAccountId = 2),
-            onSegmentSelect = {},
-            onAccountClick = {},
-        )
+        AccountsList(state = previewState(), onAccountClick = {})
     }
 }
 
@@ -437,7 +433,6 @@ internal fun previewState(): AccountsUiState {
         slot: Int,
         balance: Long,
         reconciliation: Reconciliation,
-        share: Int?,
     ) = AccountRowUi(
         id = id,
         name = name,
@@ -446,34 +441,22 @@ internal fun previewState(): AccountsUiState {
         balance = Money(balance),
         archived = false,
         reconciliation = reconciliation,
-        sharePercent = share,
+        belowZero = balance < 0 && type != AccountType.LIABILITY,
         openingBalance = Money(balance),
         openingAsOf = asOf,
     )
 
-    val bca = row(
-        1, "BCA", AccountType.BANK, 0, 8_420_000,
-        Reconciliation.Current(LocalDate(2026, 8, 14)), 53,
-    )
-    val jago = row(
-        2, "Jago", AccountType.BANK, 1, 2_150_000,
-        Reconciliation.Stale(LocalDate(2026, 6, 20)), 14,
-    )
-    val cash = row(3, "Cash", AccountType.CASH, 2, 385_000, Reconciliation.Never, 2)
-    val rdpu = row(
-        4, "RDPU SucorInvest", AccountType.INVESTMENT, 3, 5_000_000,
-        Reconciliation.Never, 31,
-    )
-    val card = row(
-        5, "Kartu Kredit", AccountType.LIABILITY, 4, -2_000_000,
-        Reconciliation.Never, null,
-    )
+    val bca = row(1, "BCA", AccountType.BANK, 0, 2_745_315, Reconciliation.Current(LocalDate(2026, 10, 14)))
+    val jago = row(2, "Jago", AccountType.BANK, 1, 1_300_000, Reconciliation.Stale(LocalDate(2026, 6, 20)))
+    val cash = row(3, "Cash", AccountType.CASH, 2, -1_038_500, Reconciliation.Never)
+    val rdpu = row(4, "RDPU SucorInvest", AccountType.INVESTMENT, 3, 14_550_800, Reconciliation.Never)
+    val card = row(5, "Kartu Kredit", AccountType.LIABILITY, 4, -2_000_000, Reconciliation.Never)
 
     return AccountsUiState(
         loading = false,
         summary = AccountSummary(
-            spendable = Money(10_955_000),
-            invested = Money(5_000_000),
+            spendable = Money(3_006_815),
+            invested = Money(14_550_800),
             owed = Money(2_000_000),
         ),
         groups = listOf(
@@ -481,12 +464,6 @@ internal fun previewState(): AccountsUiState {
             AccountGroupUi(AccountType.BANK, listOf(bca, jago)),
             AccountGroupUi(AccountType.INVESTMENT, listOf(rdpu)),
             AccountGroupUi(AccountType.LIABILITY, listOf(card)),
-        ),
-        mix = listOf(
-            AccountShare(1, 53),
-            AccountShare(4, 31),
-            AccountShare(2, 14),
-            AccountShare(3, 2),
         ),
     )
 }

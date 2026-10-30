@@ -46,7 +46,7 @@ import com.dvnnfrr.saku.ui.theme.SakuPreview
 import com.dvnnfrr.saku.ui.theme.SakuPreviewSurface
 import com.dvnnfrr.saku.ui.theme.SakuTheme
 import com.dvnnfrr.saku.ui.theme.forSlot
-import com.dvnnfrr.saku.ui.theme.formatIdr
+import com.dvnnfrr.saku.ui.shared.MoneyText
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
@@ -216,7 +216,7 @@ private fun Placeholder(
             Text(
                 text = label,
                 style = SakuTheme.typography.body,
-                color = SakuTheme.colors.ink3,
+                color = SakuTheme.colors.ink2,
                 modifier = Modifier.align(align),
             )
         }
@@ -260,13 +260,13 @@ private fun AmountField(label: String, value: Money, onChange: (Money) -> Unit) 
                 .padding(vertical = spacing.sm)
                 .semantics { contentDescription = label },
         )
-        Text(
-            text = formatIdr(value),
-            style = SakuTheme.typography.caption,
-            color = SakuTheme.colors.ink3,
-            modifier = Modifier.fillMaxWidth(),
-            textAlign = TextAlign.End,
-        )
+        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
+            MoneyText(
+                money = value,
+                style = SakuTheme.typography.caption,
+                color = SakuTheme.colors.ink2,
+            )
+        }
     }
 }
 

@@ -60,7 +60,7 @@ data class Transaction(
     val importBatchId: Long? = null,
 )
 
-/** One donut slice plus its ranked-list row. */
+/** One category's total for a period, as a ranked row. */
 data class CategoryTotal(
     val categoryId: Long,
     val name: String,
@@ -80,10 +80,8 @@ data class CategoryTotal(
      * slices round to 17% each and the column reads 102%. Use [wholePercents] for a
      * whole list; this is for a figure shown on its own.
      */
-    val wholePercent: Int get() = (shareBasisPoints + 50) / 100
-
-    /** For the donut's arc lengths, where a fraction is what the geometry needs. */
-    val shareFraction: Float get() = shareBasisPoints / 10_000f
+    val wholePercent: Int
+        get() = sharePercent(Money(shareBasisPoints.toLong()), Money(BASIS_POINTS_WHOLE)) ?: 0
 }
 
 /**
@@ -113,6 +111,36 @@ fun wholePercents(totals: List<CategoryTotal>): List<Int> {
     val result = floors.toMutableList()
     order.take(remaining).forEach { result[it]++ }
     return result
+}
+
+private const val BASIS_POINTS_WHOLE = 10_000L
+
+/**
+ * [part] as a whole percent of [whole], for one figure shown on its own: the filter
+ * sheet's rings, a single category's share.
+ *
+ * Rounded half-up, so 0.5% reads as 1% rather than vanishing. Null when [whole] is zero,
+ * because "0%" and "there is nothing to take a share of" are different statements.
+ * Integer arithmetic only. For a column that must sum to 100, use [wholePercents].
+ */
+fun sharePercent(part: Money, whole: Money): Int? {
+    if (whole.isZero) return null
+    return ((part.rupiah * 100L + whole.rupiah / 2) / whole.rupiah).toInt()
+}
+
+const val PERMILLE_WHOLE = 1_000
+
+/**
+ * [part] as thousandths of [max], for a bar drawn against the largest bar on its scale.
+ *
+ * Integer arithmetic, rounded half-up, clamped to 0..1000. Zero when [max] is not
+ * positive, so an empty chart draws nothing instead of dividing by nothing. Only the
+ * drawing turns the result into a fraction, for geometry.
+ */
+fun barPermille(part: Money, max: Money): Int {
+    if (!max.isPositive || !part.isPositive) return 0
+    val scaled = (part.rupiah * PERMILLE_WHOLE + max.rupiah / 2) / max.rupiah
+    return scaled.coerceIn(0L, PERMILLE_WHOLE.toLong()).toInt()
 }
 
 data class PeriodTotals(

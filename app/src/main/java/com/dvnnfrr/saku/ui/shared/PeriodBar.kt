@@ -44,6 +44,19 @@ fun periodLabel(range: DateRange): String = when (range.mode) {
     PeriodMode.WEEKLY, PeriodMode.CUSTOM -> spanLabel(range.start, range.endInclusive)
 }
 
+/**
+ * Names a range inside a sentence, where the header above already names the year:
+ * `Spent in October`, `21% less than September`. A month keeps its year only when it
+ * differs from [reference]'s, so December against January reads `December 2025`.
+ * Other modes have no shorter honest name and read as [periodLabel].
+ */
+fun periodName(range: DateRange, reference: DateRange = range): String =
+    if (range.mode == PeriodMode.MONTHLY && range.start.year == reference.start.year) {
+        monthName(range.start)
+    } else {
+        periodLabel(range)
+    }
+
 private fun monthName(date: LocalDate): String = MONTH_NAMES[date.monthNumber - 1]
 
 private fun shortMonth(date: LocalDate): String = monthName(date).take(3)

@@ -26,19 +26,7 @@ class RoomCategoryRepository(
     override fun observeActiveByKind(kind: CategoryKind): Flow<List<Category>> =
         categoryDao.observeActiveByKind(kind.name).map { rows -> rows.map { it.toDomain() } }
 
-    override fun observeSubcategories(categoryId: Long): Flow<List<Subcategory>> =
-        subcategoryDao.observeActiveForCategory(categoryId).map { rows -> rows.map { it.toDomain() } }
-
-    override fun observeAllSubcategories(categoryId: Long): Flow<List<Subcategory>> =
-        subcategoryDao.observeAllForCategory(categoryId).map { rows -> rows.map { it.toDomain() } }
-
-    override fun observeAllSubcategories(): Flow<List<Subcategory>> =
-        subcategoryDao.observeAll().map { rows -> rows.map { it.toDomain() } }
-
     override suspend fun byId(id: Long): Category? = categoryDao.byId(id)?.toDomain()
-
-    override suspend fun subcategoryById(id: Long): Subcategory? =
-        subcategoryDao.byId(id)?.toDomain()
 
     override suspend fun createCategory(name: String, kind: CategoryKind): Long =
         db.withTransaction {
@@ -60,23 +48,6 @@ class RoomCategoryRepository(
             )
         }
 
-    override suspend fun createSubcategory(categoryId: Long, name: String): Long =
-        db.withTransaction {
-            val clean = name.trim()
-            require(clean.isNotEmpty()) { "A subcategory needs a name" }
-            // The same name under a different category is fine; a clash within one is not.
-            subcategoryDao.findActiveByName(categoryId, clean)?.let {
-                throw DuplicateNameException(it.id, it.name)
-            }
-            subcategoryDao.insert(
-                SubcategoryEntity(
-                    categoryId = categoryId,
-                    name = clean,
-                    sortOrder = subcategoryDao.nextSortOrder(categoryId),
-                ),
-            )
-        }
-
     override suspend fun renameCategory(id: Long, name: String) {
         db.withTransaction {
             val clean = name.trim()
@@ -86,18 +57,6 @@ class RoomCategoryRepository(
                 ?.takeIf { it.id != id }
                 ?.let { throw DuplicateNameException(it.id, it.name) }
             categoryDao.update(existing.copy(name = clean))
-        }
-    }
-
-    override suspend fun renameSubcategory(id: Long, name: String) {
-        db.withTransaction {
-            val clean = name.trim()
-            require(clean.isNotEmpty()) { "A subcategory needs a name" }
-            val existing = subcategoryDao.byId(id) ?: return@withTransaction
-            subcategoryDao.findActiveByName(existing.categoryId, clean)
-                ?.takeIf { it.id != id }
-                ?.let { throw DuplicateNameException(it.id, it.name) }
-            subcategoryDao.update(existing.copy(name = clean))
         }
     }
 
@@ -115,40 +74,17 @@ class RoomCategoryRepository(
         }
     }
 
-    override suspend fun reorderSubcategories(categoryId: Long, orderedIds: List<Long>) {
-        db.withTransaction {
-            val byId = subcategoryDao.forCategory(categoryId).associateBy { it.id }
-            val updated = orderedIds.mapIndexedNotNull { index, id ->
-                byId[id]?.copy(sortOrder = index)
-            }
-            if (updated.isNotEmpty()) subcategoryDao.updateAll(updated)
-        }
-    }
-
     override suspend fun setCategoryArchived(id: Long, archived: Boolean) =
         categoryDao.setArchived(id, archived)
 
-    override suspend fun setSubcategoryArchived(id: Long, archived: Boolean) =
-        subcategoryDao.setArchived(id, archived)
-
     override suspend fun isCategoryDeletable(id: Long): Boolean =
         txnDao.countForCategory(id) == 0
-
-    override suspend fun isSubcategoryDeletable(id: Long): Boolean =
-        txnDao.countForSubcategory(id) == 0
 
     override suspend fun deleteCategory(id: Long) {
         check(isCategoryDeletable(id)) {
             "Category $id holds transactions; archive it instead so history stays intact"
         }
         categoryDao.deleteUnused(id)
-    }
-
-    override suspend fun deleteSubcategory(id: Long) {
-        check(isSubcategoryDeletable(id)) {
-            "Subcategory $id holds transactions; archive it instead so history stays intact"
-        }
-        subcategoryDao.deleteUnused(id)
     }
 
     override suspend fun transactionCount(categoryId: Long): Int =
@@ -162,9 +98,6 @@ class RoomCategoryRepository(
 
     override suspend fun transactionCountsByCategory(): Map<Long, Int> =
         txnDao.countsByCategory().associate { it.id to it.count }
-
-    override suspend fun transactionCountsBySubcategory(): Map<Long, Int> =
-        txnDao.countsBySubcategory().associate { it.id to it.count }
 
     override suspend fun allCategories(): List<Category> = categoryDao.all().map { it.toDomain() }
 

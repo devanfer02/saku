@@ -2,11 +2,14 @@ package com.dvnnfrr.saku.ui.stats
 
 import com.dvnnfrr.saku.domain.CategoryTotal
 import com.dvnnfrr.saku.domain.ColorSlot
+import com.dvnnfrr.saku.domain.DailyTotals
 import com.dvnnfrr.saku.domain.DateRange
 import com.dvnnfrr.saku.domain.Money
 import com.dvnnfrr.saku.domain.PeriodMode
-import com.dvnnfrr.saku.domain.Subcategory
+import com.dvnnfrr.saku.domain.PeriodTotals
+import com.dvnnfrr.saku.ui.theme.formatIdrCompact
 import com.dvnnfrr.saku.domain.Transaction
+import com.dvnnfrr.saku.domain.TransactionFilter
 import com.dvnnfrr.saku.domain.TxnType
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
@@ -200,93 +203,51 @@ class StatsAssemblyTest {
         assertEquals(Money.ZERO, composition.total)
     }
 
+    // buku-kas: ranked rows carry a bar scaled to the largest row.
+
     @Test
-    fun `donut segments carry the Other label supplied by the screen`() {
+    fun `October expenses rank with bars scaled to Pemberian`() {
         val composition = rankComposition(
             totals(
-                "A" to 9, "B" to 8, "C" to 7, "D" to 6, "E" to 5,
-                "F" to 4, "G" to 3, "H" to 2, "I" to 1,
+                "Gym" to 2_244_000,
+                "Pemberian" to 4_770_000,
+                "Makan & Minum" to 1_263_400,
+                "Gadget" to 2_805_000,
+                "Jajan & Hiburan" to 2_244_000,
+                "Kebutuhan Kos" to 700_000,
             ),
         )
 
-        val segments = donutSegments(composition.rows, otherLabel = "Other")
-
-        assertEquals(9, segments.size)
-        assertEquals("Other", segments.last().label)
-        assertNull(segments.last().slot)
+        assertEquals(
+            listOf("Pemberian", "Gadget", "Gym", "Jajan & Hiburan", "Makan & Minum", "Kebutuhan Kos"),
+            composition.rows.map { it.name },
+        )
+        assertEquals(listOf(34, 20, 16, 16, 9, 5), composition.rows.map { it.percent })
+        assertEquals(1_000, composition.rows.first().barPermille)
+        assertEquals(588, composition.rows[1].barPermille)
+        assertEquals(147, composition.rows.last().barPermille)
     }
 
-    // Subcategory drill-down.
-
-    private fun txn(id: Long, amount: Long, subcategoryId: Long?) = Transaction(
-        id = id,
-        occurredAt = Instant.fromEpochSeconds(1_760_000_000 + id),
-        type = TxnType.EXPENSE,
-        amount = Money(amount),
-        accountId = 1,
-        categoryId = 7,
-        subcategoryId = subcategoryId,
-        createdAt = Instant.fromEpochSeconds(1_760_000_000),
-    )
-
-    private val subcategories = listOf(
-        Subcategory(1, 7, "Rutin keluarga", 0, archived = false),
-        Subcategory(2, 7, "Sekali jalan", 1, archived = false),
-    )
-
     @Test
-    fun `subcategories rank by amount with shares summing to one hundred`() {
-        val slices = foldSubcategories(
-            transactions = listOf(
-                txn(1, 300_000, subcategoryId = 2),
-                txn(2, 800_000, subcategoryId = 1),
-                txn(3, 200_000, subcategoryId = 1),
+    fun `an Other row larger than the top category sets the scale`() {
+        val composition = rankComposition(
+            totals(
+                "A" to 100, "B" to 90, "C" to 90, "D" to 90, "E" to 90,
+                "F" to 90, "G" to 90, "H" to 90, "I" to 90, "J" to 90,
             ),
-            subcategories = subcategories,
-            slot = ColorSlot(2),
+            cap = 8,
         )
 
-        assertEquals(listOf("Rutin keluarga", "Sekali jalan"), slices.map { it.name })
-        assertEquals(listOf(1_000_000L, 300_000L), slices.map { it.total.rupiah })
-        assertEquals(100, slices.sumOf { it.percent })
-        assertEquals(77, slices[0].percent)
+        assertEquals(1_000, composition.other?.barPermille)
+        assertEquals(556, composition.rows.first().barPermille)
+        // The drill into Other draws its members on their own scale.
+        assertEquals(listOf(1_000, 1_000), composition.otherMembers.map { it.barPermille })
     }
 
     @Test
-    fun `untagged rows collect into a visible unassigned bucket`() {
-        // The finding this screen exists for: the export left subcategory blank on all
-        // 1,200 rows, so a fold that dropped them would report a category as fully split.
-        val slices = foldSubcategories(
-            transactions = listOf(
-                txn(1, 800_000, subcategoryId = null),
-                txn(2, 200_000, subcategoryId = 1),
-            ),
-            subcategories = subcategories,
-            slot = ColorSlot(2),
-        )
-
-        assertEquals(2, slices.size)
-        assertTrue(slices[0].isUnassigned)
-        assertNull(slices[0].name)
-        assertEquals(Money(800_000), slices[0].total)
-        assertEquals(80, slices[0].percent)
-        assertEquals(100, slices.sumOf { it.percent })
-    }
-
-    @Test
-    fun `an archived subcategory keeps its name on the history that references it`() {
-        val slices = foldSubcategories(
-            transactions = listOf(txn(1, 100_000, subcategoryId = 3)),
-            subcategories = subcategories + Subcategory(3, 7, "Lama", 2, archived = true),
-            slot = ColorSlot(2),
-        )
-
-        assertEquals("Lama", slices.single().name)
-    }
-
-    @Test
-    fun `a category with no transactions folds to no slices`() {
-        assertTrue(foldSubcategories(emptyList(), subcategories, ColorSlot(2)).isEmpty())
+    fun `an all-zero period draws no bars`() {
+        val composition = rankComposition(totals("A" to 0, "B" to 0))
+        assertEquals(listOf(0, 0), composition.rows.map { it.barPermille })
     }
 
     // Comparison against the previous equivalent period.
@@ -374,10 +335,282 @@ class StatsAssemblyTest {
         )
     }
 
+    // buku-kas: the comparison line under the period total.
+
+    private val october = DateRange.ofMonth(LocalDate(2026, 10, 1))
+    private val september = DateRange.ofMonth(LocalDate(2026, 9, 1))
+
     @Test
-    fun `a change always carries its sign`() {
-        assertEquals("+12%", formatPercentChange(12))
-        assertEquals("-4%", formatPercentChange(-4))
-        assertEquals("0%", formatPercentChange(0))
+    fun `October expenses read 21 percent less than September`() {
+        val comparison = PeriodComparison(
+            previousRange = september,
+            previous = PeriodTotals(Money(19_155_000), Money(17_755_000)),
+            current = PeriodTotals(Money(16_500_000), Money(14_026_400)),
+        )
+
+        assertEquals(ComparisonLine.Less(21, september), comparisonLine(comparison, StatsSide.EXPENSES))
+    }
+
+    @Test
+    fun `a rise reads as more and no movement as the same`() {
+        val up = PeriodComparison(september, PeriodTotals(Money(1_000_000), Money(1_000_000)), PeriodTotals(Money(1_120_000), Money(1_000_000)))
+
+        assertEquals(ComparisonLine.More(12, september), comparisonLine(up, StatsSide.INCOME))
+        assertEquals(ComparisonLine.Same(september), comparisonLine(up, StatsSide.EXPENSES))
+    }
+
+    @Test
+    fun `an empty previous period has nothing to compare with`() {
+        val comparison = PeriodComparison(september, PeriodTotals.EMPTY, PeriodTotals(Money(16_500_000), Money(14_026_400)))
+
+        assertEquals(ComparisonLine.NothingToCompare(september), comparisonLine(comparison, StatsSide.EXPENSES))
+        assertEquals(ComparisonLine.NothingToCompare(september), comparisonLine(comparison, StatsSide.INCOME))
+    }
+
+    @Test
+    fun `a previous period with nothing on this side also has nothing to compare with`() {
+        val comparison = PeriodComparison(september, PeriodTotals(Money(9_000_000), Money.ZERO), PeriodTotals(Money(0), Money(500_000)))
+
+        assertEquals(ComparisonLine.NothingToCompare(september), comparisonLine(comparison, StatsSide.EXPENSES))
+    }
+
+    @Test
+    fun `no previous range gives no line at all`() {
+        assertNull(comparisonLine(PeriodComparison.EMPTY, StatsSide.EXPENSES))
+    }
+
+    // buku-kas: the strip over all history, in weeks, months or years.
+
+    /** One day a month carrying the month's totals, May to October 2026. */
+    private val mayToOctober = listOf(
+        9_000_000L to 8_200_000L,
+        16_000_000L to 8_900_000L,
+        8_000_000L to 8_300_000L,
+        8_000_000L to 9_383_600L,
+        19_155_000L to 17_755_000L,
+        16_500_000L to 14_026_400L,
+    ).mapIndexed { index, (income, expense) ->
+        DailyTotals(LocalDate(2026, 5 + index, 3), Money(income), Money(expense))
+    }
+
+    private fun day(year: Int, month: Int, day: Int, income: Long = 0, expense: Long = 0) =
+        DailyTotals(LocalDate(year, month, day), Money(income), Money(expense))
+
+    @Test
+    fun `the strip reads from the start of history to the end of the selected period`() {
+        val history = stripHistory(october)
+        assertEquals(LocalDate(2026, 10, 31), history.endInclusive)
+        assertTrue(history.start < LocalDate(2000, 1, 1))
+    }
+
+    @Test
+    fun `October 2026 reads from the first month with a flow, October selected and last`() {
+        val strip = foldStrip(mayToOctober, october)
+
+        assertEquals((5..10).map { DateRange.ofMonth(LocalDate(2026, it, 1)) }, strip.map { it.range })
+        assertEquals(listOf(false, false, false, false, false, true), strip.map { it.selected })
+        assertEquals(
+            listOf("+0,8 jt", "+7,1 jt", "−0,3 jt", "−1,4 jt", "+1,4 jt", "+2,5 jt"),
+            strip.map { formatIdrCompact(it.net) },
+        )
+        assertTrue(strip.none { it.empty })
+    }
+
+    @Test
+    fun `history from July 2025 holds every month through October 2026`() {
+        val days = listOf(day(2025, 7, 20, expense = 50_000)) + mayToOctober
+
+        val strip = foldStrip(days, october)
+
+        assertEquals(16, strip.size)
+        assertEquals(DateRange.ofMonth(LocalDate(2025, 7, 1)), strip.first().range)
+        assertEquals(october, strip.last().range)
+        // August 2025 to April 2026 are quiet months after history began: real zeros.
+        assertEquals(Money.ZERO, strip[1].expense)
+        assertTrue(strip.none { it.empty })
+    }
+
+    @Test
+    fun `bars share one scale across the whole history`() {
+        val strip = foldStrip(mayToOctober, october)
+
+        // September's 19.155.000 income is the tallest bar; the axis rounds it up to 20 jt,
+        // and every bar is a share of that top so the axis labels read true.
+        assertEquals(StripAxis(step = Money(5_000_000), top = Money(20_000_000)), stripAxis(strip))
+        assertEquals(958, strip[4].incomePermille)
+        assertEquals(888, strip[4].expensePermille)
+        assertEquals(701, strip[5].expensePermille)
+        assertEquals(825, strip[5].incomePermille)
+    }
+
+    @Test
+    fun `the axis takes the smallest round step that covers the tallest bar in four`() {
+        assertEquals(StripAxis(Money(5_000_000), Money(20_000_000)), stripAxis(Money(19_155_000)))
+        assertEquals(StripAxis(Money(2_000_000), Money(8_000_000)), stripAxis(Money(7_100_000)))
+        assertEquals(StripAxis(Money(2_500_000), Money(10_000_000)), stripAxis(Money(9_400_000)))
+        assertEquals(StripAxis(Money(100_000), Money(300_000)), stripAxis(Money(261_000)))
+        assertEquals(StripAxis(Money(10_000_000), Money(40_000_000)), stripAxis(Money(40_000_000)))
+        assertEquals(
+            listOf(0L, 2_500_000L, 5_000_000L, 7_500_000L, 10_000_000L),
+            stripAxis(Money(9_400_000)).ticks.map { it.rupiah },
+        )
+    }
+
+    @Test
+    fun `an empty history still gets an axis with one step`() {
+        assertEquals(StripAxis(Money(1_000), Money(1_000)), stripAxis(Money.ZERO))
+    }
+
+    @Test
+    fun `an earlier selected month ends the strip there`() {
+        val january = DateRange.ofMonth(LocalDate(2026, 1, 1))
+        val days = listOf(day(2025, 7, 20, expense = 50_000)) + mayToOctober
+
+        val strip = foldStrip(days, january)
+
+        assertEquals(january, strip.last().range)
+        assertTrue(strip.last().selected)
+        assertEquals(7, strip.size)
+    }
+
+    @Test
+    fun `days after the selected month do not start history`() {
+        val april = DateRange.ofMonth(LocalDate(2026, 4, 1))
+
+        val strip = foldStrip(mayToOctober, april)
+
+        assertEquals(listOf(april), strip.map { it.range })
+        assertTrue(strip.single().empty)
+    }
+
+    @Test
+    fun `no history at all is the selected month alone as an empty slot`() {
+        val strip = foldStrip(emptyList(), october)
+
+        assertEquals(1, strip.size)
+        assertTrue(strip.single().empty)
+        assertTrue(strip.single().selected)
+    }
+
+    @Test
+    fun `Weekly buckets days into Monday to Sunday weeks`() {
+        val week = DateRange.ofWeek(LocalDate(2026, 10, 26))
+        val days = listOf(
+            day(2026, 10, 11, expense = 100_000), // Sunday, week of 5 Oct
+            day(2026, 10, 12, expense = 200_000), // Monday, week of 12 Oct
+            day(2026, 10, 18, expense = 300_000), // Sunday, week of 12 Oct
+            day(2026, 10, 27, income = 400_000),
+        )
+
+        val strip = foldStrip(days, week)
+
+        assertEquals(
+            listOf(5, 12, 19, 26).map { DateRange.ofWeek(LocalDate(2026, 10, it)) },
+            strip.map { it.range },
+        )
+        assertEquals(listOf(100_000L, 500_000L, 0L, 0L), strip.map { it.expense.rupiah })
+        assertEquals(Money(400_000), strip.last().income)
+        assertTrue(strip.last().selected)
+    }
+
+    @Test
+    fun `Annually reads 2025 and 2026`() {
+        val days = listOf(day(2025, 7, 20, expense = 50_000)) + mayToOctober
+
+        val strip = foldStrip(days, DateRange.ofYear(2026))
+
+        assertEquals(listOf(DateRange.ofYear(2025), DateRange.ofYear(2026)), strip.map { it.range })
+        assertEquals(Money(50_000), strip.first().expense)
+        assertEquals(Money(76_655_000), strip.last().income)
+    }
+
+    @Test
+    fun `Period mode has no strip`() {
+        val custom = DateRange.custom(LocalDate(2026, 10, 3), LocalDate(2026, 10, 20))
+        assertTrue(foldStrip(mayToOctober, custom).isEmpty())
+        assertTrue(!hasStrip(PeriodMode.CUSTOM))
+    }
+
+    // buku-kas: the pie and the category detail.
+
+    private val octoberExpenses = totals(
+        "Pemberian" to 4_821_600,
+        "Gadget" to 2_805_000,
+        "Gym" to 2_244_000,
+        "Jajan & Hiburan" to 2_244_000,
+        "Makan & Minum" to 1_211_800,
+        "Kebutuhan Kos" to 700_000,
+    )
+
+    @Test
+    fun `pie sweeps add up to exactly one turn`() {
+        val composition = rankComposition(octoberExpenses)
+
+        assertEquals(PIE_WHOLE, composition.rows.sumOf { it.sweepTenths })
+        assertEquals(34, composition.rows.first().percent)
+        // 4.821.600 of 14.026.400 is 123.75 degrees, carried in tenths.
+        assertEquals(1_237, composition.rows.first().sweepTenths)
+    }
+
+    @Test
+    fun `awkward thirds still close the circle`() {
+        val sweeps = pieSweeps(listOf(Money(1), Money(1), Money(1)))
+        assertEquals(listOf(1_200, 1_200, 1_200), sweeps)
+        assertEquals(PIE_WHOLE, pieSweeps(listOf(Money(7), Money(11), Money(13))).sum())
+    }
+
+    @Test
+    fun `nothing positive draws no slices`() {
+        assertEquals(listOf(0, 0), pieSweeps(listOf(Money.ZERO, Money(-5))))
+        assertEquals(listOf(0, PIE_WHOLE), pieSweeps(listOf(Money(-5), Money(10))))
+    }
+
+    @Test
+    fun `the pie keeps the eight-slot cap with Other as one slice`() {
+        val composition = rankComposition(
+            totals("A" to 100, "B" to 90, "C" to 90, "D" to 90, "E" to 90, "F" to 90, "G" to 90, "H" to 90, "I" to 90, "J" to 90),
+        )
+
+        assertEquals(9, composition.rows.size)
+        assertEquals(PIE_WHOLE, composition.rows.sumOf { it.sweepTenths })
+        assertTrue(composition.rows.last().isOther)
+    }
+
+    @Test
+    fun `Pemberian reads 34 percent of October spending, as its ranked row does`() {
+        val composition = rankComposition(octoberExpenses)
+        assertEquals(34, shareOf(composition, composition.rows.first { it.name == "Pemberian" }.categoryId!!))
+        assertEquals(0, shareOf(composition, 999))
+    }
+
+    @Test
+    fun `a member of Other keeps the share it had in the ranked list`() {
+        val composition = rankComposition(
+            totals("A" to 100, "B" to 90, "C" to 90, "D" to 90, "E" to 90, "F" to 90, "G" to 90, "H" to 90, "I" to 90, "J" to 90),
+        )
+        val member = composition.otherMembers.first()
+        assertEquals(member.percent, shareOf(composition, member.categoryId!!))
+    }
+
+    @Test
+    fun `the average rounds half up to the rupiah`() {
+        assertEquals(Money(1_607_200), averagePerTransaction(Money(4_821_600), 3))
+        assertEquals(Money(250_001), averagePerTransaction(Money(500_001), 2))
+        assertEquals(Money(250_000), averagePerTransaction(Money(500_000), 2))
+        assertEquals(Money.ZERO, averagePerTransaction(Money(100), 0))
+    }
+
+    @Test
+    fun `the category filter narrows one side and keeps the accounts`() {
+        val filter = TransactionFilter(accountIds = setOf(3L))
+
+        val expense = categoryFilter(filter, StatsSide.EXPENSES, 7)
+        assertEquals(setOf(7L), expense.expenseCategoryIds)
+        assertEquals(emptySet<Long>(), expense.incomeCategoryIds)
+        assertEquals(setOf(3L), expense.accountIds)
+
+        val income = categoryFilter(TransactionFilter.ALL, StatsSide.INCOME, 2)
+        assertEquals(setOf(2L), income.incomeCategoryIds)
+        assertEquals(emptySet<Long>(), income.expenseCategoryIds)
     }
 }

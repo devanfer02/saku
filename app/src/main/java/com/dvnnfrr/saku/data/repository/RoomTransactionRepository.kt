@@ -3,13 +3,16 @@ package com.dvnnfrr.saku.data.repository
 import androidx.room.withTransaction
 import com.dvnnfrr.saku.data.local.SakuDatabase
 import com.dvnnfrr.saku.data.local.TxnEntity
+import com.dvnnfrr.saku.domain.AccountFlows
 import com.dvnnfrr.saku.domain.CategoryTotal
 import com.dvnnfrr.saku.domain.DailyTotals
 import com.dvnnfrr.saku.domain.DateRange
 import com.dvnnfrr.saku.domain.DedupHash
 import com.dvnnfrr.saku.domain.Money
+import com.dvnnfrr.saku.domain.NoteUsage
 import com.dvnnfrr.saku.domain.PeriodTotals
 import com.dvnnfrr.saku.domain.Transaction
+import com.dvnnfrr.saku.domain.TransactionFilter
 import com.dvnnfrr.saku.domain.TxnType
 import com.dvnnfrr.saku.domain.truncatedToSeconds
 import kotlinx.coroutines.flow.Flow
@@ -30,70 +33,114 @@ class RoomTransactionRepository(
     private val subcategoryDao = db.subcategoryDao()
     private val accountDao = db.accountDao()
 
-    override fun observeInRange(range: DateRange, zone: TimeZone): Flow<List<Transaction>> =
-        txnDao.observeInRange(range.startSec(zone), range.endSec(zone))
-            .map { rows -> rows.map { it.toDomain() } }
+    override fun observeInRange(
+        range: DateRange,
+        zone: TimeZone,
+        filter: TransactionFilter,
+    ): Flow<List<Transaction>> {
+        val f = filter.toArgs()
+        return txnDao.observeInRange(
+            range.startSec(zone), range.endSec(zone),
+            f.allAccounts, f.accountIds, f.allIncome, f.incomeIds, f.allExpense, f.expenseIds,
+        ).map { rows -> rows.map { it.toDomain() } }
+    }
 
     override fun observeForCategory(
         range: DateRange,
         zone: TimeZone,
         categoryId: Long,
         type: TxnType,
-    ): Flow<List<Transaction>> =
-        txnDao.observeInRangeForCategory(
-            range.startSec(zone),
-            range.endSec(zone),
-            categoryId,
-            type.name,
+        filter: TransactionFilter,
+    ): Flow<List<Transaction>> {
+        val f = filter.toArgs()
+        return txnDao.observeInRangeForCategory(
+            range.startSec(zone), range.endSec(zone), categoryId, type.name,
+            f.allAccounts, f.accountIds, f.allIncome, f.incomeIds, f.allExpense, f.expenseIds,
         ).map { rows -> rows.map { it.toDomain() } }
+    }
 
     override fun observeForCategories(
         range: DateRange,
         zone: TimeZone,
         categoryIds: List<Long>,
         type: TxnType,
-    ): Flow<List<Transaction>> =
-        txnDao.observeInRangeForCategories(
-            range.startSec(zone),
-            range.endSec(zone),
-            categoryIds,
-            type.name,
+        filter: TransactionFilter,
+    ): Flow<List<Transaction>> {
+        val f = filter.toArgs()
+        return txnDao.observeInRangeForCategories(
+            range.startSec(zone), range.endSec(zone), categoryIds, type.name,
+            f.allAccounts, f.accountIds, f.allIncome, f.incomeIds, f.allExpense, f.expenseIds,
         ).map { rows -> rows.map { it.toDomain() } }
+    }
 
-    override fun observePeriodTotals(range: DateRange, zone: TimeZone): Flow<PeriodTotals> =
-        txnDao.observePeriodTotals(range.startSec(zone), range.endSec(zone))
-            .map { PeriodTotals(Money(it.income), Money(it.expense)) }
+    override fun observePeriodTotals(
+        range: DateRange,
+        zone: TimeZone,
+        filter: TransactionFilter,
+    ): Flow<PeriodTotals> {
+        val f = filter.toArgs()
+        return txnDao.observePeriodTotals(
+            range.startSec(zone), range.endSec(zone),
+            f.allAccounts, f.accountIds, f.allIncome, f.incomeIds, f.allExpense, f.expenseIds,
+        ).map { PeriodTotals(Money(it.income), Money(it.expense)) }
+    }
 
-    override fun observeDailyTotals(range: DateRange, zone: TimeZone): Flow<List<DailyTotals>> {
+    override fun observeDailyTotals(
+        range: DateRange,
+        zone: TimeZone,
+        filter: TransactionFilter,
+    ): Flow<List<DailyTotals>> {
         // One offset for the whole range. Correct for WIB, which has no DST; a zone
         // that does would bucket the hour after a transition a day off.
         val offset = zone.offsetAt(range.startInstant(zone)).totalSeconds
-        return txnDao.observeDailyTotals(range.startSec(zone), range.endSec(zone), offset)
-            .map { rows ->
-                rows.map { row ->
-                    DailyTotals(
-                        date = Instant.fromEpochSeconds(row.dayEpochSec).toLocalDateTime(zone).date,
-                        income = Money(row.income),
-                        expense = Money(row.expense),
-                    )
-                }
+        val f = filter.toArgs()
+        return txnDao.observeDailyTotals(
+            range.startSec(zone), range.endSec(zone), offset,
+            f.allAccounts, f.accountIds, f.allIncome, f.incomeIds, f.allExpense, f.expenseIds,
+        ).map { rows ->
+            rows.map { row ->
+                DailyTotals(
+                    date = Instant.fromEpochSeconds(row.dayEpochSec).toLocalDateTime(zone).date,
+                    income = Money(row.income),
+                    expense = Money(row.expense),
+                )
             }
+        }
     }
 
     override fun observeCategoryTotals(
         range: DateRange,
         zone: TimeZone,
         type: TxnType,
-    ): Flow<List<CategoryTotal>> =
-        txnDao.observeCategoryTotals(range.startSec(zone), range.endSec(zone), type.name)
-            .map { it.toDomain() }
+        filter: TransactionFilter,
+    ): Flow<List<CategoryTotal>> {
+        val f = filter.toArgs()
+        return txnDao.observeCategoryTotals(
+            range.startSec(zone), range.endSec(zone), type.name,
+            f.allAccounts, f.accountIds, f.allIncome, f.incomeIds, f.allExpense, f.expenseIds,
+        ).map { it.toDomain() }
+    }
+
+    override fun observeAccountFlows(range: DateRange, zone: TimeZone): Flow<List<AccountFlows>> =
+        txnDao.observeAccountFlows(range.startSec(zone), range.endSec(zone))
+            .map { rows -> rows.map { it.toDomain() } }
+
+    override fun observeAll(filter: TransactionFilter): Flow<List<Transaction>> {
+        val f = filter.toArgs()
+        return txnDao.observeAll(
+            f.allAccounts, f.accountIds, f.allIncome, f.incomeIds, f.allExpense, f.expenseIds,
+        ).map { rows -> rows.map { it.toDomain() } }
+    }
+
+    override fun observeNoteUsage(type: TxnType): Flow<List<NoteUsage>> =
+        txnDao.observeNoteUses(type.name).map(::foldNoteUsage)
 
     override suspend fun byId(id: Long): Transaction? = txnDao.byId(id)?.toDomain()
 
     override suspend fun all(): List<Transaction> = txnDao.all().map { it.toDomain() }
 
-    override suspend fun lastSubcategoryFor(categoryId: Long): Long? =
-        txnDao.lastSubcategoryFor(categoryId)
+    override suspend fun lastEnteredAt(): Instant? =
+        txnDao.lastEnteredAtEpochSec()?.let(Instant::fromEpochSeconds)
 
     override suspend fun record(
         occurredAt: Instant,
