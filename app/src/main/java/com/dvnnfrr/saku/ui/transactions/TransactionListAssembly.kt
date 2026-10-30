@@ -6,6 +6,7 @@ import com.dvnnfrr.saku.domain.ColorSlot
 import com.dvnnfrr.saku.domain.DateRange
 import com.dvnnfrr.saku.domain.Money
 import com.dvnnfrr.saku.domain.PeriodTotals
+import com.dvnnfrr.saku.domain.Tag
 import com.dvnnfrr.saku.domain.Transaction
 import com.dvnnfrr.saku.domain.TxnType
 import kotlinx.datetime.DateTimeUnit
@@ -33,7 +34,11 @@ import kotlinx.datetime.toLocalDateTime
 class DisplayIndex(
     accounts: List<Account>,
     categories: List<Category>,
+    tags: List<Tag> = emptyList(),
 ) {
+    /** Archived tags included: a row keeps showing a tag after it is archived. */
+    private val tagOrder = tags.sortedWith(compareBy<Tag> { it.sortOrder }.thenBy { it.id })
+
     private val accountsById = accounts.associateBy { it.id }
     private val categoryNames = categories.associate { it.id to it.name }
     private val categorySlots = categories.associate { it.id to it.colorSlot }
@@ -51,7 +56,15 @@ class DisplayIndex(
     fun categoryName(id: Long?): String? = id?.let { categoryNames[it] }
 
     fun categorySlot(id: Long?): ColorSlot? = id?.let { categorySlots[it] }
+
+    /** [ids] as names in the user's tag order; an unknown id is dropped rather than thrown. */
+    fun tagNames(ids: Set<Long>): List<String> =
+        if (ids.isEmpty()) emptyList() else tagOrder.filter { it.id in ids }.map { it.name }
 }
+
+/** The tags a row names before `+n`, and how many it leaves to the count. */
+fun TransactionRowUi.spokenTagParts(limit: Int): Pair<String, Int>? =
+    tags.takeIf { it.isNotEmpty() }?.let { it.take(limit).joinToString(", ") to (it.size - limit).coerceAtLeast(0) }
 
 private val UNKNOWN_ACCOUNT = AccountRef(id = -1L, name = "Unknown account", colorSlot = ColorSlot.FIRST)
 
@@ -64,6 +77,7 @@ fun Transaction.toRowUi(index: DisplayIndex): TransactionRowUi = TransactionRowU
     account = index.account(accountId) ?: UNKNOWN_ACCOUNT,
     toAccount = index.account(toAccountId),
     categorySlot = index.categorySlot(categoryId),
+    tags = index.tagNames(tagIds),
 )
 
 /**

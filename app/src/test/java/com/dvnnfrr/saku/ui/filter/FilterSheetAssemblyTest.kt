@@ -230,4 +230,42 @@ class FilterSheetAssemblyTest {
         assertEquals("no income", filterSummary(TransactionFilter(incomeCategoryIds = emptySet())))
         assertEquals("no accounts", filterSummary(TransactionFilter(accountIds = emptySet())))
     }
+
+    // -- Tags ---------------------------------------------------------------------
+
+    @Test
+    fun `the first tag tick narrows to it and unticking the last returns to All`() {
+        assertEquals(setOf(1L), toggledTag(null, 1))
+        assertEquals(setOf(1L, 2L), toggledTag(setOf(1L), 2))
+        assertEquals(setOf(2L), toggledTag(setOf(1L, 2L), 1))
+        assertNull(toggledTag(setOf(2L), 2))
+    }
+
+    @Test
+    fun `ticking every tag is not All, and the All row clears the selection`() {
+        val every = com.dvnnfrr.saku.domain.TransactionFilter(tagIds = setOf(1L, 2L))
+        assertEquals(setOf(1L, 2L), every.toggled(FilterTab.TAGS, 2, listOf(1L, 2L)).toggled(FilterTab.TAGS, 2, listOf(1L, 2L)).tagIds)
+        assertNull(every.toggledAll(FilterTab.TAGS).tagIds)
+        assertNull(com.dvnnfrr.saku.domain.TransactionFilter.ALL.toggledAll(FilterTab.TAGS).tagIds)
+    }
+
+    @Test
+    fun `the Tags tab lists archived tags, unticked under All`() {
+        val tags = listOf(
+            com.dvnnfrr.saku.domain.Tag(1, "Monthly grocery", 0, archived = false),
+            com.dvnnfrr.saku.domain.Tag(2, "Trip Bali", 1, archived = true),
+        )
+        val range = com.dvnnfrr.saku.domain.DateRange.ofMonth(kotlinx.datetime.LocalDate(2026, 10, 1))
+        fun sheet(filter: com.dvnnfrr.saku.domain.TransactionFilter) = assembleFilterSheet(
+            range, FilterTab.TAGS, filter,
+            com.dvnnfrr.saku.domain.PeriodTotals.EMPTY, com.dvnnfrr.saku.domain.PeriodTotals.EMPTY,
+            emptyList(), emptyList(), emptyList(), emptyList(), tags,
+        )
+        val all = sheet(com.dvnnfrr.saku.domain.TransactionFilter.ALL)
+        assertTrue(all.allTags)
+        assertEquals(listOf(false, false), all.tagRows.map { it.ticked })
+        val chosen = sheet(com.dvnnfrr.saku.domain.TransactionFilter(tagIds = setOf(2L)))
+        assertEquals(listOf(false, true), chosen.tagRows.map { it.ticked })
+        assertEquals("1 tag", filterSummary(com.dvnnfrr.saku.domain.TransactionFilter(tagIds = setOf(2L))))
+    }
 }

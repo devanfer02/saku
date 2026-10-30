@@ -5,6 +5,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.dvnnfrr.saku.data.local.SakuDatabase
 import com.dvnnfrr.saku.data.repository.RoomAccountRepository
 import com.dvnnfrr.saku.data.repository.RoomCategoryRepository
+import com.dvnnfrr.saku.data.repository.RoomTagRepository
 import com.dvnnfrr.saku.data.repository.RoomTransactionRepository
 import com.dvnnfrr.saku.domain.AccountType
 import com.dvnnfrr.saku.domain.CategoryKind
@@ -84,7 +85,7 @@ class SearchViewModelTest {
             note = note,
         )
 
-    private fun viewModel() = SearchViewModel(transactions, accounts, categories, shared, zone)
+    private fun viewModel() = SearchViewModel(transactions, accounts, categories, RoomTagRepository(db), shared, zone)
 
     @Test
     fun `search opens empty and matches after the query settles`() = runTest(dispatcher) {

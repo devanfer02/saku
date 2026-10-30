@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.dvnnfrr.saku.data.ChartStyleStore
 import com.dvnnfrr.saku.data.repository.AccountRepository
 import com.dvnnfrr.saku.data.repository.CategoryRepository
+import com.dvnnfrr.saku.data.repository.TagRepository
 import com.dvnnfrr.saku.data.repository.TransactionRepository
 import com.dvnnfrr.saku.domain.ChartStyle
 import com.dvnnfrr.saku.domain.ColorSlot
@@ -46,6 +47,7 @@ class StatsViewModel(
     private val transactionRepository: TransactionRepository,
     private val accountRepository: AccountRepository,
     private val categoryRepository: CategoryRepository,
+    private val tagRepository: TagRepository,
     private val sharedFilter: SharedFilter,
     private val chartStyleStore: ChartStyleStore,
     private val zone: TimeZone = TimeZone.currentSystemDefault(),
@@ -166,10 +168,11 @@ class StatsViewModel(
         categoryRepository.observeAll(),
         accountRepository.observeAll(),
         categoryStrip(key, categoryId),
-    ) { transactions, categories, accounts, strip ->
+        tagRepository.observeAll(),
+    ) { transactions, categories, accounts, strip, tags ->
         val category = categories.firstOrNull { it.id == categoryId }
         val slot = category?.colorSlot ?: ColorSlot.FIRST
-        val index = DisplayIndex(accounts = accounts, categories = categories)
+        val index = DisplayIndex(accounts = accounts, categories = categories, tags = tags)
         // Summed from the rows the list is rendering anyway. Bounded to one category in
         // one period, so this is not the memory fold the screen avoids elsewhere, and it
         // cannot disagree with the list beneath it.
@@ -322,7 +325,7 @@ class StatsViewModel(
 
     companion object {
         val Factory = sakuViewModelFactory {
-            StatsViewModel(transactions, accounts, categories, filter, chartStyle)
+            StatsViewModel(transactions, accounts, categories, tags, filter, chartStyle)
         }
     }
 }

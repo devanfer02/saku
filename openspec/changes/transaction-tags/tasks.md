@@ -7,13 +7,13 @@
 
 ## 2. Entry sheet and list
 
-- [ ] 2.1 Tags row and Add tag picker in `EntrySheet`; ViewModel events; assembly tests for name normalizing and matching
-- [ ] 2.2 `#tag` and `+n` on list rows (`TransactionListAssembly`); tests
-- [ ] 2.3 Tags section in the filter sheet; Trans and Stats follow it; tests for All and for chosen tags
+- [x] 2.1 Tags row and Add tag picker in `EntrySheet`; ViewModel events; assembly tests for name normalizing and matching
+- [x] 2.2 `#tag` and `+n` on list rows (`TransactionListAssembly`); tests
+- [x] 2.3 Tags section in the filter sheet; Trans and Stats follow it; tests for All and for chosen tags
 
 ## 3. Tags screen
 
-- [ ] 3.1 More > Tags: list with row counts, rename (refuses a used name), archive and unarchive; stateless overload with a preview
+- [x] 3.1 More > Tags: list with row counts, rename (refuses a used name), archive and unarchive; stateless overload with a preview
 
 ## 4. Interchange
 
