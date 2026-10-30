@@ -106,6 +106,17 @@ private fun isName(text: String): Boolean = LETTERS.containsMatchIn(text) && !DI
 
 private fun isDiscount(tail: Tail): Boolean = tail.negative || DISCOUNT_LABEL.matches(tail.name)
 
+/**
+ * How well a row reads as an item, to choose between two photos' copies of one row:
+ * 2 when it ends in a price, 3 when its quantity times unit price is also exact.
+ */
+internal fun rowQuality(text: String): Int {
+    val tail = readTail(text) ?: return 0
+    val quantity = tail.quantity ?: return 2
+    val unit = tail.unit ?: return 2
+    return if (quantity * unit == tail.price) 3 else 2
+}
+
 /** Quantity and price of an item, kept only when quantity times unit price checks out. */
 private fun priced(tail: Tail, leadQuantity: Int?): Pair<Int, Long> {
     val quantity = tail.quantity ?: leadQuantity

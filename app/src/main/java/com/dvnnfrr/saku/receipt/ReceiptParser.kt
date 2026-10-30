@@ -6,9 +6,13 @@ object ReceiptParser {
 
     private const val MAX_UNPLACED = 40
 
-    fun read(lines: List<OcrLine>, today: LocalDate): ReceiptReading {
-        val rows = receiptRows(lines)
-        if (rows.isEmpty()) return ReceiptReading.EMPTY
+    fun read(lines: List<OcrLine>, today: LocalDate): ReceiptReading = readParts(listOf(lines), today)
+
+    /** Reads one receipt from several photos, in the order taken, top to bottom. */
+    fun readParts(parts: List<List<OcrLine>>, today: LocalDate): ReceiptReading {
+        val joined = joinPhotos(parts.map(::receiptRows))
+        val rows = joined.rows
+        if (rows.isEmpty()) return ReceiptReading.EMPTY.copy(gapsAfterPhoto = joined.gapsAfterPhoto)
 
         val total = pickTotal(rows)
         val date = pickDate(rows, today)
@@ -33,6 +37,7 @@ object ReceiptParser {
             items = items.items,
             receiptDiscounts = items.receiptDiscounts,
             additions = items.additions,
+            gapsAfterPhoto = joined.gapsAfterPhoto,
         )
     }
 }
