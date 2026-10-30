@@ -115,9 +115,9 @@ conflicts with Saku; the note wins over the skill body. Sources and licences are
 
 ## Test data
 
-`data/mock-money-manager.xlsx` is a generated mock Money Manager export, built by
-`tools/mockdata/make_mock_export.py` and used by tests and Maestro. It keeps the real export's
-quirks, which the importer must handle:
+`data/mock-money-manager.xlsx` is a mock Money Manager export with invented rows (Jul to Oct
+2026), used by tests and Maestro. Tests pin its counts, so changing it means updating them. It keeps
+a real export's quirks, which the importer must handle:
 
 - Two columns are both literally named `Account` (positions 2 and 11); position 11 duplicates the IDR amount
 - `Subcategory` and `Description` are entirely empty
