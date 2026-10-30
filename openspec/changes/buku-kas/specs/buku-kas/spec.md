@@ -96,3 +96,49 @@ All text SHALL meet a contrast ratio of at least 4.5:1 against its background in
 #### Scenario: Secondary text in dark theme
 - **WHEN** secondary text renders on the dark surface
 - **THEN** its measured contrast is at least 4.5:1
+
+### Requirement: The month strip scrolls through all history
+The Stats month strip (Monthly mode) SHALL hold every calendar month from the month of the first income or expense that passes the active filter through the selected month, scroll horizontally, and open scrolled so the selected month is the rightmost visible column. Columns SHALL keep a fixed width so six fit on a 412 dp screen. All bars SHALL share one scale across the whole history.
+
+#### Scenario: Opening October 2026
+- **WHEN** the first transaction is in July 2025 and the user opens Stats on October 2026, Monthly
+- **THEN** the strip holds Jul 2025 to Oct 2026, shows May to Oct 2026 without scrolling, and scrolling right-to-left reveals the earlier months
+
+#### Scenario: Tapping an earlier month
+- **WHEN** the user scrolls back and taps Jan 2026
+- **THEN** January 2026 becomes the selected month and the strip ends at January 2026, scrolled so it is the rightmost visible column
+
+### Requirement: Chart style choice on Stats
+The Stats overview SHALL offer a chart style choice between ranked bars and a pie chart, defaulting to ranked bars. The choice SHALL persist across restarts. The pie SHALL use the category colour slots, cap at eight slices with the rest as "Other" exactly as the ranked rows do, and show the side total in its centre without clipping. The ranked rows SHALL stay below the pie as its legend.
+
+#### Scenario: Switching to pie
+- **WHEN** the user picks the pie style on October 2026 expenses
+- **THEN** a pie with Pemberian at 34% and the other slices appears above the ranked rows, and Stats opens in pie style after a restart
+
+### Requirement: Tappable rows look tappable
+Every category row on Stats that opens a detail SHALL show a trailing chevron and a pressed state, and its accessibility label SHALL say it opens the category.
+
+#### Scenario: Reading the overview
+- **WHEN** the user looks at the ranked rows
+- **THEN** each row ends with a chevron, and "Other" shows one too because it opens its members
+
+### Requirement: Category detail shows trend and subcategories
+Tapping a category SHALL open its detail for the selected period, showing in order: the category's total, its share of the side total, its transaction count and average per transaction; that category's own month strip across all history (Monthly mode only); its subcategories in the current chart style, with "No subcategory" as a row for unassigned transactions; then its transactions. The filter SHALL apply as on the overview.
+
+#### Scenario: Pemberian in October 2026
+- **WHEN** the user taps Pemberian on October 2026 expenses
+- **THEN** the detail shows Rp 4.821.600, 34% of spending, its count and average, Pemberian's month strip, its subcategory split, then its October transactions
+
+### Requirement: Spendable and Invested are told apart by colour
+The net worth split bar SHALL draw Spendable and Invested in two colours of clearly different hue, each at least 3:1 against the surface in both themes, and the legend dots SHALL use the same colours. Liabilities, when present, SHALL use a third distinct colour.
+
+#### Scenario: Dark theme
+- **WHEN** the Accounts tab renders in dark theme
+- **THEN** the two segments differ in hue, not only in lightness, and both meet 3:1 against the surface
+
+### Requirement: Net worth label size
+The "Net worth" label above the figure SHALL be set 20% larger than the caption style it used at first.
+
+#### Scenario: Reading Accounts
+- **WHEN** the user opens Accounts
+- **THEN** the "Net worth" label is visibly larger than the legend text under the bar

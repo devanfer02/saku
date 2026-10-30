@@ -103,6 +103,10 @@ On 30 Oct 2026 the owner reviewed three UI directions on a private "Saku UI Dire
 
 **`ink3` stays for icons and control outlines.** It measures 3.0:1 and 3.8:1, which passes the 3:1 floor for non-text UI, so empty-state icons, the search icon and unchecked checkbox outlines keep it. `TextContrastTest` asserts every text token at 4.5:1 on `background` and `surface` in both themes, and scans `ui/` for `ink3` reaching a `color =` argument.
 
+**Owner review on device, 30 Oct 2026.** After using the build, the owner removed pay-cycle months entirely (calendar months only; a custom span uses Period mode) and asked for: the strip to scroll through all history; a chart style choice between ranked bars and a pie, remembered; a visible cue that category rows open a detail; a category detail with trend and subcategories; Spendable and Invested in distinct hues; and a larger "Net worth" label.
+- The pie comes back as an option, not the default, so the earlier "ranked bars replace the donut" decision still holds for the default view. The deleted `Donut` is not restored as is: a new pie lives in `ui/stats/` with the centre-fit rule the old donut fix found (measure, shrink, never wrap).
+- Rejected for the category detail: subcategories only, or trend only. The owner chose both.
+
 ## Risks / Trade-offs
 
 - [Transaction rows lose the account colour swatch] → The account colour still appears on Accounts and in the filter; rows keep the category colour dot, which is the more useful one when scanning.
