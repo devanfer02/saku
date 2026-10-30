@@ -1,7 +1,7 @@
 package com.dvnnfrr.saku.ui.stats
 
 import com.dvnnfrr.saku.domain.DateRange
-import kotlinx.datetime.LocalDate
+import com.dvnnfrr.saku.ui.transactions.dateLabel
 
 /*
  * Date and percentage wording that is the screen's own, kept pure so the strings can be
@@ -12,14 +12,7 @@ import kotlinx.datetime.LocalDate
  * the rest of it stayed in English.
  */
 
-private val SHORT_MONTHS = listOf(
-    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-)
-
 private const val EN_DASH = "–"
-
-private fun shortMonth(date: LocalDate): String = SHORT_MONTHS[date.monthNumber - 1]
 
 /**
  * The range as explicit start and end dates — `1 Aug 2026 – 31 Aug 2026`.
@@ -29,17 +22,7 @@ private fun shortMonth(date: LocalDate): String = SHORT_MONTHS[date.monthNumber 
  * weeks otherwise has to work out which seven days "Weekly" currently means.
  */
 fun explicitRangeLabel(range: DateRange): String {
-    val start = "${range.start.dayOfMonth} ${shortMonth(range.start)} ${range.start.year}"
+    val start = range.start.dateLabel()
     if (range.start == range.endInclusive) return start
-    val end = "${range.endInclusive.dayOfMonth} ${shortMonth(range.endInclusive)} " +
-        "${range.endInclusive.year}"
-    return "$start $EN_DASH $end"
+    return "$start $EN_DASH ${range.endInclusive.dateLabel()}"
 }
-
-/**
- * A movement against the previous period — `+12%`, `-4%`, `0%`.
- *
- * The sign is always written, including on an increase, because the figure beside it is
- * an expense: "12%" alone next to a spending total reads as a share of something.
- */
-fun formatPercentChange(percent: Int): String = if (percent > 0) "+$percent%" else "$percent%"

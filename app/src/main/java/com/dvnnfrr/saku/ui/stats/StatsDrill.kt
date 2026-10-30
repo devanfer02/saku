@@ -198,6 +198,7 @@ private fun CategoryBody(drill: DrillUiState.Category, side: StatsSide) {
                     name = slice.name ?: unassigned,
                     value = slice.total,
                     sharePercent = slice.percent,
+                    barPermille = slice.barPermille,
                 )
             }
             item(key = "sub-divider") {
@@ -214,12 +215,11 @@ private fun CategoryBody(drill: DrillUiState.Category, side: StatsSide) {
                 amount = row.amount,
                 type = row.type,
                 accountName = row.account.name,
-                accountSlot = row.account.colorSlot,
+                categorySlot = row.categorySlot,
                 category = row.categoryName,
                 subcategory = row.subcategoryName,
                 note = row.note,
                 toAccountName = row.toAccount?.name,
-                toAccountSlot = row.toAccount?.colorSlot,
             )
         }
     }

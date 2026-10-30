@@ -515,4 +515,66 @@ class StatsViewModelTest {
         val drill = vm.state.first { it.filter.isActive && it.drill != null }.drill
         assertEquals(Money.ZERO, drill?.total)
     }
+
+    // buku-kas: the six-month strip.
+
+    @Test
+    fun `the strip ends on the selected month and agrees with the header`() = runTest(dispatcher) {
+        seed()
+        spend(day = 5, amount = 300_000)
+        record(LocalDateTime(2026, 6, 10, 12, 0), 500_000)
+        record(LocalDateTime(2026, 8, 1, 9, 0), 2_000_000, type = TxnType.INCOME, categoryId = gaji)
+
+        val state = viewModel().state.first { !it.loading && it.strip.isNotEmpty() }
+
+        assertEquals((3..8).map { DateRange.ofMonth(LocalDate(2026, it, 1)) }, state.strip.map { it.range })
+        val august = state.strip.last()
+        assertTrue(august.selected)
+        assertEquals(state.totals.expense, august.expense)
+        assertEquals(state.totals.income, august.income)
+        // March to May precede the first transaction; July is a quiet month after it.
+        assertEquals(listOf(true, true, true, false, false, false), state.strip.map { it.empty })
+        assertEquals(Money.ZERO, state.strip[4].expense)
+    }
+
+    @Test
+    fun `the strip respects the filter and leaves transfers out`() = runTest(dispatcher) {
+        seed()
+        spend(day = 5, amount = 300_000)
+        spend(day = 6, amount = 900_000, categoryId = pemberian)
+        record(LocalDateTime(2026, 8, 7, 12, 0), 1_000_000, type = TxnType.TRANSFER, categoryId = null, toAccountId = rdpu)
+
+        shared.set(TransactionFilter(expenseCategoryIds = setOf(makan)))
+        val state = viewModel().state.first { it.filter.isActive && it.strip.isNotEmpty() }
+
+        assertEquals(Money(300_000), state.strip.last().expense)
+        assertEquals(Money.ZERO, state.strip.last().income)
+    }
+
+    @Test
+    fun `tapping a month in the strip selects it`() = runTest(dispatcher) {
+        seed()
+        spend(day = 5, amount = 300_000)
+        val vm = viewModel()
+        vm.state.first { it.strip.isNotEmpty() }
+
+        vm.selectMonth(DateRange.ofMonth(LocalDate(2026, 6, 1)))
+
+        val state = vm.state.first { it.range.start == LocalDate(2026, 6, 1) && it.strip.lastOrNull()?.range == it.range }
+        assertTrue(state.strip.last().selected)
+        assertEquals(PeriodMode.MONTHLY, state.range.mode)
+    }
+
+    @Test
+    fun `the strip is not shown outside Monthly mode`() = runTest(dispatcher) {
+        seed()
+        spend(day = 5, amount = 300_000)
+        val vm = viewModel()
+        vm.state.first { it.strip.isNotEmpty() }
+
+        vm.selectMode(PeriodMode.WEEKLY)
+
+        val state = vm.state.first { it.range.mode == PeriodMode.WEEKLY }
+        assertTrue(state.strip.isEmpty())
+    }
 }

@@ -9,7 +9,7 @@ import com.dvnnfrr.saku.domain.TxnType
 import com.dvnnfrr.saku.ui.transactions.TransactionRowUi
 
 /**
- * Which side of the ledger the donut and the ranked list are reporting on.
+ * Which side of the ledger the headline and the ranked bars are reporting on.
  *
  * Expenses is first, and therefore the default, because that is the side the owner
  * looks at — a year of reference data holds one income category and sixteen
@@ -30,7 +30,7 @@ fun PeriodTotals.forSide(side: StatsSide): Money = when (side) {
  *
  * [range] is the period the figures are FOR, never the one just tapped. It is carried
  * out of the query rather than out of the user's selection, so the header cannot name
- * September while still showing August's donut.
+ * September while still showing August's bars.
  */
 data class StatsUiState(
     val range: DateRange,
@@ -38,14 +38,18 @@ data class StatsUiState(
     val totals: PeriodTotals = PeriodTotals.EMPTY,
     val comparison: PeriodComparison = PeriodComparison.EMPTY,
     val composition: RankedComposition = RankedComposition.EMPTY,
+    /** The six months ending with the selected one. Empty outside Monthly mode. */
+    val strip: List<StripMonth> = emptyList(),
     /** Null while the overview is showing; set once the user drills into a slice. */
     val drill: DrillUiState? = null,
     /** The filter the figures were computed under, for the bar and the action. */
     val filter: TransactionFilter = TransactionFilter.ALL,
     val loading: Boolean = true,
 ) {
-    /** The figure the donut carries in its centre and the shares are taken against. */
+    /** The headline figure, and the whole the shares are taken against. */
     val sideTotal: Money get() = totals.forSide(side)
+
+    val comparisonLine: ComparisonLine? get() = comparisonLine(comparison, side)
 }
 
 /** What the user drilled into. Used as a key, so it holds ids rather than rows. */
@@ -95,7 +99,7 @@ sealed interface DrillUiState {
 }
 
 /**
- * One row of the ranked list and one segment of the donut.
+ * One row of the ranked list.
  *
  * [categoryId] and [name] are null on the aggregated "Other" row. Colour is identity
  * and a slot is pinned to a category for life, so "Other" cannot borrow one — it takes
@@ -108,6 +112,8 @@ data class RankedCategory(
     val colorSlot: ColorSlot?,
     val total: Money,
     val percent: Int,
+    /** Bar length in thousandths of the largest row in the same list. */
+    val barPermille: Int = 0,
 ) {
     val isOther: Boolean get() = categoryId == null
 }
@@ -144,8 +150,41 @@ data class SubcategorySlice(
     val name: String?,
     val total: Money,
     val percent: Int,
+    /** Bar length in thousandths of the largest slice. */
+    val barPermille: Int = 0,
 ) {
     val isUnassigned: Boolean get() = subcategoryId == null
+}
+
+/** The line under the period total, resolved; the screen supplies the words. */
+sealed interface ComparisonLine {
+    val previousRange: DateRange
+
+    data class Less(val percent: Int, override val previousRange: DateRange) : ComparisonLine
+
+    data class More(val percent: Int, override val previousRange: DateRange) : ComparisonLine
+
+    data class Same(override val previousRange: DateRange) : ComparisonLine
+
+    data class NothingToCompare(override val previousRange: DateRange) : ComparisonLine
+}
+
+/**
+ * One month of the six-month strip.
+ *
+ * [empty] marks a month before any history, drawn as a slot rather than as two zero
+ * bars. The bar lengths are thousandths of the largest figure in the window.
+ */
+data class StripMonth(
+    val range: DateRange,
+    val income: Money,
+    val expense: Money,
+    val incomePermille: Int,
+    val expensePermille: Int,
+    val selected: Boolean,
+    val empty: Boolean,
+) {
+    val net: Money get() = income - expense
 }
 
 /**

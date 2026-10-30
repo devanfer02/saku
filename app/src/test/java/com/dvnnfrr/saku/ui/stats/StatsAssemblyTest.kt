@@ -5,6 +5,8 @@ import com.dvnnfrr.saku.domain.ColorSlot
 import com.dvnnfrr.saku.domain.DateRange
 import com.dvnnfrr.saku.domain.Money
 import com.dvnnfrr.saku.domain.PeriodMode
+import com.dvnnfrr.saku.domain.PeriodTotals
+import com.dvnnfrr.saku.ui.theme.formatIdrCompact
 import com.dvnnfrr.saku.domain.Subcategory
 import com.dvnnfrr.saku.domain.Transaction
 import com.dvnnfrr.saku.domain.TxnType
@@ -200,20 +202,51 @@ class StatsAssemblyTest {
         assertEquals(Money.ZERO, composition.total)
     }
 
+    // buku-kas: ranked rows carry a bar scaled to the largest row.
+
     @Test
-    fun `donut segments carry the Other label supplied by the screen`() {
+    fun `October expenses rank with bars scaled to Pemberian`() {
         val composition = rankComposition(
             totals(
-                "A" to 9, "B" to 8, "C" to 7, "D" to 6, "E" to 5,
-                "F" to 4, "G" to 3, "H" to 2, "I" to 1,
+                "Gym" to 2_244_000,
+                "Pemberian" to 4_770_000,
+                "Makan & Minum" to 1_263_400,
+                "Gadget" to 2_805_000,
+                "Jajan & Hiburan" to 2_244_000,
+                "Kebutuhan Kos" to 700_000,
             ),
         )
 
-        val segments = donutSegments(composition.rows, otherLabel = "Other")
+        assertEquals(
+            listOf("Pemberian", "Gadget", "Gym", "Jajan & Hiburan", "Makan & Minum", "Kebutuhan Kos"),
+            composition.rows.map { it.name },
+        )
+        assertEquals(listOf(34, 20, 16, 16, 9, 5), composition.rows.map { it.percent })
+        assertEquals(1_000, composition.rows.first().barPermille)
+        assertEquals(588, composition.rows[1].barPermille)
+        assertEquals(147, composition.rows.last().barPermille)
+    }
 
-        assertEquals(9, segments.size)
-        assertEquals("Other", segments.last().label)
-        assertNull(segments.last().slot)
+    @Test
+    fun `an Other row larger than the top category sets the scale`() {
+        val composition = rankComposition(
+            totals(
+                "A" to 100, "B" to 90, "C" to 90, "D" to 90, "E" to 90,
+                "F" to 90, "G" to 90, "H" to 90, "I" to 90, "J" to 90,
+            ),
+            cap = 8,
+        )
+
+        assertEquals(1_000, composition.other?.barPermille)
+        assertEquals(556, composition.rows.first().barPermille)
+        // The drill into Other draws its members on their own scale.
+        assertEquals(listOf(1_000, 1_000), composition.otherMembers.map { it.barPermille })
+    }
+
+    @Test
+    fun `an all-zero period draws no bars`() {
+        val composition = rankComposition(totals("A" to 0, "B" to 0))
+        assertEquals(listOf(0, 0), composition.rows.map { it.barPermille })
     }
 
     // Subcategory drill-down.
@@ -374,10 +407,126 @@ class StatsAssemblyTest {
         )
     }
 
+    // buku-kas: the comparison line under the period total.
+
+    private val october = DateRange.ofMonth(LocalDate(2026, 10, 1))
+    private val september = DateRange.ofMonth(LocalDate(2026, 9, 1))
+
     @Test
-    fun `a change always carries its sign`() {
-        assertEquals("+12%", formatPercentChange(12))
-        assertEquals("-4%", formatPercentChange(-4))
-        assertEquals("0%", formatPercentChange(0))
+    fun `October expenses read 21 percent less than September`() {
+        val comparison = PeriodComparison(
+            previousRange = september,
+            previous = PeriodTotals(Money(19_155_000), Money(17_755_000)),
+            current = PeriodTotals(Money(16_500_000), Money(14_026_400)),
+        )
+
+        assertEquals(ComparisonLine.Less(21, september), comparisonLine(comparison, StatsSide.EXPENSES))
+    }
+
+    @Test
+    fun `a rise reads as more and no movement as the same`() {
+        val up = PeriodComparison(september, PeriodTotals(Money(1_000_000), Money(1_000_000)), PeriodTotals(Money(1_120_000), Money(1_000_000)))
+
+        assertEquals(ComparisonLine.More(12, september), comparisonLine(up, StatsSide.INCOME))
+        assertEquals(ComparisonLine.Same(september), comparisonLine(up, StatsSide.EXPENSES))
+    }
+
+    @Test
+    fun `an empty previous period has nothing to compare with`() {
+        val comparison = PeriodComparison(september, PeriodTotals.EMPTY, PeriodTotals(Money(16_500_000), Money(14_026_400)))
+
+        assertEquals(ComparisonLine.NothingToCompare(september), comparisonLine(comparison, StatsSide.EXPENSES))
+        assertEquals(ComparisonLine.NothingToCompare(september), comparisonLine(comparison, StatsSide.INCOME))
+    }
+
+    @Test
+    fun `a previous period with nothing on this side also has nothing to compare with`() {
+        val comparison = PeriodComparison(september, PeriodTotals(Money(9_000_000), Money.ZERO), PeriodTotals(Money(0), Money(500_000)))
+
+        assertEquals(ComparisonLine.NothingToCompare(september), comparisonLine(comparison, StatsSide.EXPENSES))
+    }
+
+    @Test
+    fun `no previous range gives no line at all`() {
+        assertNull(comparisonLine(PeriodComparison.EMPTY, StatsSide.EXPENSES))
+    }
+
+    // buku-kas: the six-month strip.
+
+    /** May to October 2026, with nets of +0,8, +7,1, −0,3, −1,4, +1,4 and +2,5 jt. */
+    private val mayToOctober = listOf(
+        PeriodTotals(Money(9_000_000), Money(8_200_000)),
+        PeriodTotals(Money(16_000_000), Money(8_900_000)),
+        PeriodTotals(Money(8_000_000), Money(8_300_000)),
+        PeriodTotals(Money(8_000_000), Money(9_383_600)),
+        PeriodTotals(Money(19_155_000), Money(17_755_000)),
+        PeriodTotals(Money(16_500_000), Money(14_026_400)),
+    )
+
+    @Test
+    fun `the window is the six months ending with the selected one`() {
+        assertEquals(
+            (5..10).map { DateRange.ofMonth(LocalDate(2026, it, 1)) },
+            stripWindow(october),
+        )
+        assertEquals(
+            DateRange.ofMonth(LocalDate(2025, 11, 1)),
+            stripWindow(DateRange.ofMonth(LocalDate(2026, 4, 1))).first(),
+        )
+    }
+
+    @Test
+    fun `history before the window ends the day before it starts`() {
+        assertEquals(LocalDate(2026, 4, 30), historyBefore(stripWindow(october)).endInclusive)
+    }
+
+    @Test
+    fun `October 2026 reads May to October with October selected`() {
+        val strip = foldStrip(stripWindow(october), mayToOctober, PeriodTotals(Money(1), Money.ZERO), october)
+
+        assertEquals(listOf(false, false, false, false, false, true), strip.map { it.selected })
+        assertEquals(
+            listOf("+0,8 jt", "+7,1 jt", "−0,3 jt", "−1,4 jt", "+1,4 jt", "+2,5 jt"),
+            strip.map { formatIdrCompact(it.net) },
+        )
+        assertTrue(strip.none { it.empty })
+    }
+
+    @Test
+    fun `bars share one scale, the largest figure in the window`() {
+        val strip = foldStrip(stripWindow(october), mayToOctober, PeriodTotals(Money(1), Money.ZERO), october)
+
+        // September's 19.155.000 income is the tallest bar.
+        assertEquals(1_000, strip[4].incomePermille)
+        assertEquals(927, strip[4].expensePermille)
+        assertEquals(732, strip[5].expensePermille)
+        assertEquals(861, strip[5].incomePermille)
+    }
+
+    @Test
+    fun `months before the first transaction are empty slots`() {
+        val august2025 = DateRange.ofMonth(LocalDate(2025, 8, 1))
+        val totals = List(4) { PeriodTotals.EMPTY } +
+            listOf(PeriodTotals(Money(4_000_000), Money(3_000_000)), PeriodTotals(Money.ZERO, Money(2_000_000)))
+
+        val strip = foldStrip(stripWindow(august2025), totals, PeriodTotals.EMPTY, august2025)
+
+        assertEquals((3..8).map { DateRange.ofMonth(LocalDate(2025, it, 1)) }, strip.map { it.range })
+        assertEquals(listOf(true, true, true, true, false, false), strip.map { it.empty })
+    }
+
+    @Test
+    fun `a quiet month after history began is a zero, not an empty slot`() {
+        val totals = listOf(PeriodTotals(Money(1_000_000), Money.ZERO)) + List(5) { PeriodTotals.EMPTY }
+        val strip = foldStrip(stripWindow(october), totals, PeriodTotals.EMPTY, october)
+
+        assertEquals(listOf(false, false, false, false, false, false), strip.map { it.empty })
+        assertEquals(0, strip[3].incomePermille)
+    }
+
+    @Test
+    fun `history before the window means no month is empty`() {
+        val strip = foldStrip(stripWindow(october), List(6) { PeriodTotals.EMPTY }, PeriodTotals(Money.ZERO, Money(10)), october)
+        assertTrue(strip.none { it.empty })
     }
 }

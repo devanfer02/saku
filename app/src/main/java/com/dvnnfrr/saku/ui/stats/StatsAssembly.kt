@@ -8,8 +8,11 @@ import com.dvnnfrr.saku.domain.PeriodMode
 import com.dvnnfrr.saku.domain.Subcategory
 import com.dvnnfrr.saku.domain.Transaction
 import com.dvnnfrr.saku.domain.wholePercents
-import com.dvnnfrr.saku.ui.shared.DonutSegment
+import com.dvnnfrr.saku.domain.PeriodTotals
+import com.dvnnfrr.saku.domain.barPermille
+import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.minus
 
 /*
  * Pure assembly for the stats screen. No Compose, no Android, no coroutines — the cap,
@@ -42,7 +45,7 @@ const val CHART_SLOT_CAP = ColorSlot.COUNT
  *
  * Rows arrive from SQL ordered by amount, but the order is re-established here with an
  * explicit tie-break so that two categories on the same figure rank identically every
- * time — an unstable order would repaint the donut on a query that changed nothing.
+ * time; an unstable order would reshuffle the bars on a query that changed nothing.
  */
 fun rankComposition(totals: List<CategoryTotal>, cap: Int = CHART_SLOT_CAP): RankedComposition {
     if (totals.isEmpty()) return RankedComposition.EMPTY
@@ -65,7 +68,7 @@ fun rankComposition(totals: List<CategoryTotal>, cap: Int = CHART_SLOT_CAP): Ran
     val sum = Money(ordered.sumOf { it.total.rupiah })
 
     if (ranked.size <= cap) {
-        return RankedComposition(rows = ranked, otherMembers = emptyList(), total = sum)
+        return RankedComposition(rows = ranked.withBars(), otherMembers = emptyList(), total = sum)
     }
 
     val charted = ranked.take(cap)
@@ -77,23 +80,21 @@ fun rankComposition(totals: List<CategoryTotal>, cap: Int = CHART_SLOT_CAP): Ran
         total = Money(members.sumOf { it.total.rupiah }),
         percent = 100 - charted.sumOf { it.percent },
     )
-    return RankedComposition(rows = charted + other, otherMembers = members, total = sum)
+    return RankedComposition(
+        rows = (charted + other).withBars(),
+        otherMembers = members.withBars(),
+        total = sum,
+    )
 }
 
 /**
- * The donut's slices, in ranked order.
- *
- * [otherLabel] arrives as a parameter because this file holds no copy — the same reason
- * `ui/shared` takes its labels from its caller.
+ * Each row's bar against the largest row in the same list. The largest, not the first:
+ * an aggregated "Other" can outweigh the top category it follows.
  */
-fun donutSegments(rows: List<RankedCategory>, otherLabel: String): List<DonutSegment> =
-    rows.map { row ->
-        DonutSegment(
-            slot = row.colorSlot,
-            value = row.total.rupiah,
-            label = row.name ?: otherLabel,
-        )
-    }
+private fun List<RankedCategory>.withBars(): List<RankedCategory> {
+    val max = maxOfOrNull { it.total } ?: return this
+    return map { it.copy(barPermille = barPermille(it.total, max)) }
+}
 
 /**
  * Splits one category's transactions by subcategory, largest first.
@@ -140,6 +141,7 @@ fun foldSubcategories(
         )
     }
     val percents = wholePercents(asTotals)
+    val largest = Money(ordered.maxOf { it.value })
 
     return ordered.mapIndexed { index, (id, amount) ->
         SubcategorySlice(
@@ -147,6 +149,7 @@ fun foldSubcategories(
             name = id?.let { names[it] },
             total = Money(amount),
             percent = percents[index],
+            barPermille = barPermille(Money(amount), largest),
         )
     }
 }
@@ -192,3 +195,81 @@ fun rangeForMode(current: DateRange, mode: PeriodMode, today: LocalDate): DateRa
         PeriodMode.CUSTOM -> DateRange.custom(current.start, current.endInclusive)
     }
 }
+
+/**
+ * The one line under the period total: how the selected side moved against the previous
+ * period of the same length. Null only when there is no previous period at all.
+ *
+ * "Nothing to compare" covers a previous side total of zero as well as an empty previous
+ * period: either way there is no denominator, and "+100%" against nothing is invented.
+ */
+fun comparisonLine(comparison: PeriodComparison, side: StatsSide): ComparisonLine? {
+    val previous = comparison.previousRange ?: return null
+    val change = comparison.changePercentFor(side) ?: return ComparisonLine.NothingToCompare(previous)
+    return when {
+        change < 0 -> ComparisonLine.Less(-change, previous)
+        change > 0 -> ComparisonLine.More(change, previous)
+        else -> ComparisonLine.Same(previous)
+    }
+}
+
+/** How many months the Stats strip shows, ending with the selected one. */
+const val STRIP_MONTHS = 6
+
+/** Far enough back that no imported row predates it. */
+private val HISTORY_START = LocalDate(1900, 1, 1)
+
+/** The six months ending with [selected], oldest first. */
+fun stripWindow(selected: DateRange): List<DateRange> =
+    (STRIP_MONTHS - 1 downTo 0).map { back ->
+        DateRange.ofMonth(selected.start.minus(back, DateTimeUnit.MONTH))
+    }
+
+/**
+ * Everything before the window, which is how a month in the window learns whether any
+ * history precedes it. One aggregate rather than a "first transaction" lookup, so the
+ * strip reads through the same filtered totals path as the period header.
+ */
+fun historyBefore(window: List<DateRange>): DateRange =
+    DateRange.custom(HISTORY_START, window.first().start.minus(1, DateTimeUnit.DAY))
+
+/**
+ * Folds the window's totals into the strip.
+ *
+ * Bars share one scale, the largest income or expense figure in the window, as
+ * thousandths from `Long` arithmetic; only the drawing makes geometry of them.
+ *
+ * A month is an empty slot, not a pair of zero bars, while nothing has happened yet:
+ * no flow before the window and none in this or any earlier month of it. Under a filter
+ * "nothing has happened" means nothing that passes the filter, the same rows the bars
+ * count. A quiet month after history began is a real zero and draws as one.
+ *
+ * [totals] is positional with [window]. Transfers and adjustments are already out, as
+ * they are from every [PeriodTotals].
+ */
+fun foldStrip(
+    window: List<DateRange>,
+    totals: List<PeriodTotals>,
+    before: PeriodTotals,
+    selected: DateRange,
+): List<StripMonth> {
+    require(window.size == totals.size) { "Strip window and totals differ in length" }
+    val max = totals.maxOfOrNull { maxOf(it.income, it.expense) } ?: Money.ZERO
+    var started = !before.isEmpty
+
+    return window.mapIndexed { index, month ->
+        val figures = totals[index]
+        if (!figures.isEmpty) started = true
+        StripMonth(
+            range = month,
+            income = figures.income,
+            expense = figures.expense,
+            incomePermille = barPermille(figures.income, max),
+            expensePermille = barPermille(figures.expense, max),
+            selected = month == selected,
+            empty = !started,
+        )
+    }
+}
+
+private val PeriodTotals.isEmpty: Boolean get() = income.isZero && expense.isZero

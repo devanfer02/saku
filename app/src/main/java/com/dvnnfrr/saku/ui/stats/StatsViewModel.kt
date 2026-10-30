@@ -114,6 +114,29 @@ class StatsViewModel(
                 }
             }
 
+    /**
+     * The six-month strip, keyed on the month and the filter and queried only in Monthly
+     * mode. Each month is the same `observePeriodTotals` the header reads, under the same
+     * filter, so a strip bar and the header above it cannot disagree. Switching side does
+     * not touch it: the strip shows both sides.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val stripData: Flow<List<StripMonth>> =
+        combine(selection, sharedFilter.state) { current, filter ->
+            current.range.takeIf { it.mode == PeriodMode.MONTHLY }?.let { it to filter }
+        }
+            .distinctUntilChanged()
+            .flatMapLatest { key ->
+                if (key == null) return@flatMapLatest flowOf(emptyList())
+                val (range, filter) = key
+                val window = stripWindow(range)
+                val months = window.map { transactionRepository.observePeriodTotals(it, zone, filter) }
+                val before = transactionRepository.observePeriodTotals(historyBefore(window), zone, filter)
+                combine(months + before) { all ->
+                    foldStrip(window, all.take(window.size), all.last(), range)
+                }
+            }
+
     @OptIn(ExperimentalCoroutinesApi::class)
     private val drillData: Flow<DrillData> =
         combine(selection, sharedFilter.state, ::Pair)
@@ -158,7 +181,7 @@ class StatsViewModel(
     }
 
     val state: StateFlow<StatsUiState> =
-        combine(selection, periodData, drillData) { current, period, drill ->
+        combine(selection, periodData, drillData, stripData) { current, period, drill, strip ->
             StatsUiState(
                 // The period the data is for, not the one just selected — otherwise the
                 // header flips before its figures arrive.
@@ -167,6 +190,10 @@ class StatsViewModel(
                 totals = period.totals,
                 comparison = period.comparison,
                 composition = period.composition,
+                // The previous month's strip stays up for the frame it takes the new one
+                // to land, rather than the strip vanishing and the list jumping under it.
+                // Leaving Monthly hides it at once.
+                strip = strip.takeIf { period.key.range.mode == PeriodMode.MONTHLY }.orEmpty(),
                 filter = period.key.filter,
                 drill = resolveDrill(current.drill, period, drill),
                 loading = false,
@@ -201,6 +228,9 @@ class StatsViewModel(
     fun previousPeriod() = selection.update { it.copy(range = it.range.previous()) }
 
     fun nextPeriod() = selection.update { it.copy(range = it.range.next()) }
+
+    /** A strip tap. Behaves as stepping does, so an open category drill stays open. */
+    fun selectMonth(month: DateRange) = selection.update { it.copy(range = DateRange.ofMonth(month.start)) }
 
     /**
      * Switching mode closes an open drill. The category is still there, but the figure

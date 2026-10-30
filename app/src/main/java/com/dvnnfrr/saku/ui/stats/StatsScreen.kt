@@ -1,12 +1,12 @@
 package com.dvnnfrr.saku.ui.stats
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material3.HorizontalDivider
@@ -18,7 +18,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -35,7 +34,6 @@ import com.dvnnfrr.saku.ui.filter.FilterAction
 import com.dvnnfrr.saku.ui.filter.FilterBar
 import com.dvnnfrr.saku.ui.filter.FilterSheet
 import com.dvnnfrr.saku.ui.filter.FilteredEmptyState
-import com.dvnnfrr.saku.ui.shared.Donut
 import com.dvnnfrr.saku.ui.shared.EmptyState
 import com.dvnnfrr.saku.ui.shared.PeriodBar
 import com.dvnnfrr.saku.ui.shared.RankedRow
@@ -74,6 +72,7 @@ fun StatsScreen(
         onCloseDrill = viewModel::closeDrill,
         onOpenFilter = { filtering = true },
         onClearFilter = viewModel::clearFilter,
+        onSelectMonth = viewModel::selectMonth,
         modifier = modifier,
     )
 
@@ -96,6 +95,7 @@ fun StatsScreen(
     modifier: Modifier = Modifier,
     onOpenFilter: () -> Unit = {},
     onClearFilter: () -> Unit = {},
+    onSelectMonth: (DateRange) -> Unit = {},
 ) {
     var pickingRange by remember { mutableStateOf(false) }
 
@@ -124,29 +124,19 @@ fun StatsScreen(
             modifier = Modifier.padding(SakuTheme.spacing.md),
         )
 
-        StatsFigures(totals = state.totals, comparison = state.comparison)
-        HorizontalDivider(thickness = 1.dp, color = SakuTheme.colors.line)
-
-        SegmentedTabs(
-            options = listOf(
-                stringResource(R.string.label_expenses),
-                stringResource(R.string.label_income),
-            ),
-            selectedIndex = state.side.ordinal,
-            onSelect = { onSelectSide(StatsSide.entries[it]) },
-            modifier = Modifier.padding(SakuTheme.spacing.md),
-        )
-
         val drill = state.drill
         if (drill == null) {
-            Composition(
+            Overview(
                 state = state,
+                onSelectSide = onSelectSide,
+                onSelectMonth = onSelectMonth,
                 onOpenCategory = onOpenCategory,
                 onOpenOther = onOpenOther,
                 onClearFilter = onClearFilter,
             )
         } else {
             BackHandler(onBack = onCloseDrill)
+            SideTabs(state.side, onSelectSide)
             DrillPane(
                 drill = drill,
                 range = state.range,
@@ -169,95 +159,112 @@ fun StatsScreen(
     }
 }
 
+@Composable
+private fun SideTabs(side: StatsSide, onSelectSide: (StatsSide) -> Unit) {
+    SegmentedTabs(
+        options = listOf(
+            stringResource(R.string.label_expenses),
+            stringResource(R.string.label_income),
+        ),
+        selectedIndex = side.ordinal,
+        onSelect = { onSelectSide(StatsSide.entries[it]) },
+        modifier = Modifier.padding(SakuTheme.spacing.md),
+    )
+}
+
 /**
- * The donut over its ranked list.
+ * The strip, the side, the headline and the ranked bars, scrolling as one list.
  *
- * The list is the donut's legend, which is what stops the chart conveying identity by
- * colour alone — the shared `Donut` documents that it must never ship without one.
+ * One list rather than a fixed header over a short one: with the strip in Monthly mode
+ * and a font scale of 1.3, a fixed header left the ranked rows a sliver of the screen.
  */
 @Composable
-private fun Composition(
+private fun Overview(
     state: StatsUiState,
+    onSelectSide: (StatsSide) -> Unit,
+    onSelectMonth: (DateRange) -> Unit,
     onOpenCategory: (Long) -> Unit,
     onOpenOther: () -> Unit,
     onClearFilter: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val otherLabel = stringResource(R.string.stats_other)
-    val sideLabel = stringResource(
-        when (state.side) {
-            StatsSide.EXPENSES -> R.string.label_expenses
-            StatsSide.INCOME -> R.string.label_income
-        },
-    )
 
-    if (state.composition.isEmpty && state.filter.isActive) {
+    LazyColumn(modifier = modifier.fillMaxSize()) {
+        if (state.strip.isNotEmpty()) {
+            item(key = "strip") {
+                SixMonthStrip(months = state.strip, onSelectMonth = onSelectMonth)
+                HorizontalDivider(thickness = 1.dp, color = SakuTheme.colors.line)
+            }
+        }
+        item(key = "side") { SideTabs(state.side, onSelectSide) }
+        item(key = "headline") {
+            StatsHeadline(
+                side = state.side,
+                range = state.range,
+                total = state.sideTotal,
+                comparison = state.comparisonLine,
+            )
+        }
+
+        if (state.composition.isEmpty) {
+            item(key = "empty") { EmptyComposition(state, onClearFilter) }
+            return@LazyColumn
+        }
+
+        categoryRows(state.composition.rows, otherLabel, onOpenCategory, onOpenOther)
+    }
+}
+
+@Composable
+private fun EmptyComposition(state: StatsUiState, onClearFilter: () -> Unit) {
+    if (state.filter.isActive) {
         FilteredEmptyState(
             message = stringResource(R.string.filter_empty_period, explicitRangeLabel(state.range)),
             onClear = onClearFilter,
-            modifier = modifier.fillMaxSize(),
         )
         return
     }
+    // Named, not generic. "No data" leaves the user wondering whether the period is
+    // empty or the screen is broken.
+    EmptyState(
+        icon = Icons.AutoMirrored.Filled.ReceiptLong,
+        message = stringResource(
+            when (state.side) {
+                StatsSide.EXPENSES -> R.string.stats_empty_expenses
+                StatsSide.INCOME -> R.string.stats_empty_income
+            },
+            explicitRangeLabel(state.range),
+        ),
+    )
+}
 
-    if (state.composition.isEmpty) {
-        // Named, not generic. "No data" leaves the user wondering whether the period is
-        // empty or the screen is broken.
-        EmptyState(
-            icon = Icons.AutoMirrored.Filled.ReceiptLong,
-            message = stringResource(
-                when (state.side) {
-                    StatsSide.EXPENSES -> R.string.stats_empty_expenses
-                    StatsSide.INCOME -> R.string.stats_empty_income
-                },
-                explicitRangeLabel(state.range),
-            ),
-            modifier = modifier.fillMaxSize(),
+private fun LazyListScope.categoryRows(
+    rows: List<RankedCategory>,
+    otherLabel: String,
+    onOpenCategory: (Long) -> Unit,
+    onOpenOther: () -> Unit,
+) {
+    items(
+        count = rows.size,
+        key = { index -> rows[index].categoryId ?: OTHER_KEY },
+    ) { index ->
+        val row = rows[index]
+        CategoryRow(
+            row = row,
+            otherLabel = otherLabel,
+            onClick = { row.categoryId?.let(onOpenCategory) ?: onOpenOther() },
         )
-        return
-    }
-
-    LazyColumn(modifier = modifier.fillMaxSize()) {
-        item(key = "donut") {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = SakuTheme.spacing.lg),
-                contentAlignment = Alignment.Center,
-            ) {
-                Donut(
-                    segments = donutSegments(state.composition.rows, otherLabel),
-                    centerLabel = sideLabel,
-                    centerValue = state.sideTotal,
-                    // A segment opens the same drill its row does. `donutSegments` maps
-                    // rows one-to-one, so the index the ring reports indexes the rows;
-                    // a miss reports null and is ignored, because there is nothing to
-                    // deselect when the tap navigates instead of selecting.
-                    onSegmentSelect = { index ->
-                        state.composition.rows.getOrNull(index ?: -1)?.let { row ->
-                            row.categoryId?.let(onOpenCategory) ?: onOpenOther()
-                        }
-                    },
-                )
-            }
-        }
-        items(
-            count = state.composition.rows.size,
-            key = { index -> state.composition.rows[index].categoryId ?: OTHER_KEY },
-        ) { index ->
-            val row = state.composition.rows[index]
-            CategoryRow(
-                row = row,
-                otherLabel = otherLabel,
-                onClick = { row.categoryId?.let(onOpenCategory) ?: onOpenOther() },
-            )
-        }
     }
 }
 
 /** No category id can be negative, so this cannot collide with a real key. */
 private const val OTHER_KEY = -1L
 
+/**
+ * One ranked category: colour, name, whole percent, amount and a bar scaled to the
+ * largest row. The bar replaced the donut; the row was already its legend.
+ */
 @Composable
 internal fun CategoryRow(
     row: RankedCategory,
@@ -277,6 +284,7 @@ internal fun CategoryRow(
         name = name,
         value = row.total,
         sharePercent = row.percent,
+        barPermille = row.barPermille,
         onClick = onClick,
         // The swatch carries no name of its own, so without this the row is read out as
         // three loose fragments and the share is heard as a bare number.
@@ -284,7 +292,7 @@ internal fun CategoryRow(
     )
 }
 
-/** Names a block within the drill — the subcategory split, then the transactions. */
+/** Names a block within the drill: the subcategory split, then the transactions. */
 @Composable
 internal fun SectionHeader(text: String, modifier: Modifier = Modifier) {
     Text(
@@ -310,12 +318,12 @@ internal val PeriodMode.labelRes: Int
 
 private fun previewComposition(): RankedComposition = rankComposition(
     listOf(
-        previewTotal(1, "Perawatan Diri", 0, 1_791_900, 3_582),
-        previewTotal(2, "Makan & Minum", 1, 1_257_700, 2_514),
-        previewTotal(3, "Pemberian", 2, 1_050_000, 2_099),
-        previewTotal(4, "Jajan & Hiburan", 3, 843_800, 1_687),
-        previewTotal(5, "Obat", 4, 80_000, 159),
-        previewTotal(6, "Kebutuhan Kos", 5, 38_000, 75),
+        previewTotal(1, "Pemberian", 0, 4_770_000, 3_401),
+        previewTotal(2, "Gadget", 1, 2_805_000, 2_000),
+        previewTotal(3, "Jajan & Hiburan", 2, 2_244_000, 1_600),
+        previewTotal(4, "Gym", 3, 2_244_000, 1_600),
+        previewTotal(5, "Makan & Minum", 4, 1_263_400, 901),
+        previewTotal(6, "Kebutuhan Kos", 5, 700_000, 499),
     ),
 )
 
@@ -325,18 +333,28 @@ private fun previewTotal(id: Long, name: String, slot: Int, amount: Long, basisP
 @SakuPreview
 @Composable
 private fun StatsScreenPreview() {
-    val august = DateRange.ofMonth(LocalDate(2026, 8, 1))
+    val october = DateRange.ofMonth(LocalDate(2026, 10, 1))
+    val window = stripWindow(october)
+    val totals = listOf(
+        PeriodTotals(Money(9_000_000), Money(8_200_000)),
+        PeriodTotals(Money(16_000_000), Money(8_900_000)),
+        PeriodTotals(Money(8_000_000), Money(8_300_000)),
+        PeriodTotals(Money(8_000_000), Money(9_400_000)),
+        PeriodTotals(Money(9_000_000), Money(7_600_000)),
+        PeriodTotals(Money(16_500_000), Money(14_026_400)),
+    )
     SakuPreviewSurface(padded = false) {
         StatsScreen(
             state = StatsUiState(
-                range = august,
-                totals = PeriodTotals(income = Money(8_000_000), expense = Money(5_061_400)),
+                range = october,
+                totals = totals.last(),
                 comparison = PeriodComparison(
-                    previousRange = august.previous(),
-                    previous = PeriodTotals(income = Money(8_000_000), expense = Money(5_270_000)),
-                    current = PeriodTotals(income = Money(8_000_000), expense = Money(5_061_400)),
+                    previousRange = october.previous(),
+                    previous = PeriodTotals(income = Money(9_000_000), expense = Money(17_755_000)),
+                    current = totals.last(),
                 ),
                 composition = previewComposition(),
+                strip = foldStrip(window, totals, PeriodTotals(Money(1), Money.ZERO), october),
                 loading = false,
             ),
             onPrevious = {},
