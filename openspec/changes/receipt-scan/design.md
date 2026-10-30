@@ -13,6 +13,8 @@ The spike on 31 Oct 2026 (`spike/ocr-mlkit`, throwaway) answered the three unkno
 | How fast? | 794 ms median, 2,081 ms max per image on the Pixel 8 API 35 emulator (x86_64, 2 GB) |
 | How accurate is a first total picker? | 68 of 95 labelled CORD v2 test receipts (71%); the true total was read somewhere on 76 (80%) |
 
+A second set of 20 public web photos (5 Indomaret, 5 Alfamart, 3 Solaria, 1 Waroeng Steak & Shake, 2 KFC, 4 DANA or GoPay QRIS screens; local only) first scored 12 of 20. Two fixes, reading `Total Bayar Rp631.000` as a total rather than a payment row and looking past a bare `Total` row (`Total`, `Cash`, `322,000` on KFC), took it to 16 of 20 (80%) with CORD unchanged at 71%. All 4 remaining misses are receipts where the total was never read (cut, shadowed or blurred), so on this set the picker is at the recognition ceiling. The same 20 photos guided those fixes, so 80% is optimistic for unseen receipts. The slowest web photo took 3.1 s at full size, which is why the recognizer downscales.
+
 The gap between 71% and 80% is the picker; the gap above 80% is recognition (blur, angle, faded thermal print, and labels such as `GRANDTOTAL 24.0` cut off mid-number).
 
 ## Goals / Non-Goals
