@@ -6,8 +6,8 @@ Depends on `receipt-items`.
 
 ## 2. UI
 
-- [ ] 2.1 Price card in search when all expense results share one item key and there are at least 2; reuse or add a line chart in `ui/shared/`
-- [ ] 2.2 Price history action on an expense row, opening search on its item key
+- [x] 2.1 Price card in search when all expense results share one item key and there are at least 2; reuse or add a line chart in `ui/shared/`
+- [x] 2.2 Price history action on an expense row, opening search on its item key
 
 ## 3. End-to-end on the emulator (mock data only, run by adb, screenshot per step)
 

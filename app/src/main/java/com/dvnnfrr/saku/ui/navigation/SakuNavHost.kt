@@ -5,7 +5,9 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
+import androidx.navigation.NavType
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
 import com.dvnnfrr.saku.domain.ThemePreference
 import com.dvnnfrr.saku.ui.accounts.AccountsScreen
 import com.dvnnfrr.saku.ui.categories.CategoriesScreen
@@ -43,12 +45,16 @@ fun SakuNavHost(
     ) {
         composable(SakuDestination.TRANSACTIONS.route) {
             TransactionsScreen(
-                onOpenSearch = { navController.navigate(TransRoute.SEARCH.route) },
+                onOpenSearch = { navController.navigate(TransRoute.search()) },
+                onOpenPriceHistory = { item -> navController.navigate(TransRoute.search(item)) },
                 openNewEntry = openEntry,
                 onNewEntryOpened = onEntryOpened,
             )
         }
-        composable(TransRoute.SEARCH.route) { SearchScreen(onBack = back) }
+        composable(
+            TransRoute.SEARCH.route,
+            arguments = listOf(navArgument(SEARCH_QUERY) { type = NavType.StringType; defaultValue = "" }),
+        ) { SearchScreen(onBack = back) }
         composable(SakuDestination.STATS.route) { StatsScreen() }
         composable(SakuDestination.ACCOUNTS.route) { AccountsScreen() }
         composable(SakuDestination.MORE.route) {

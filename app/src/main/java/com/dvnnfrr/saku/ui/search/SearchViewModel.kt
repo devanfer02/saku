@@ -1,14 +1,18 @@
 package com.dvnnfrr.saku.ui.search
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import com.dvnnfrr.saku.container
 import com.dvnnfrr.saku.data.repository.AccountRepository
 import com.dvnnfrr.saku.data.repository.CategoryRepository
 import com.dvnnfrr.saku.data.repository.TagRepository
 import com.dvnnfrr.saku.data.repository.TransactionRepository
 import com.dvnnfrr.saku.domain.TransactionFilter
-import com.dvnnfrr.saku.sakuViewModelFactory
 import com.dvnnfrr.saku.ui.filter.SharedFilter
+import com.dvnnfrr.saku.ui.navigation.SEARCH_QUERY
 import com.dvnnfrr.saku.ui.transactions.DisplayIndex
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -44,9 +48,11 @@ class SearchViewModel(
     tagRepository: TagRepository,
     private val sharedFilter: SharedFilter,
     private val zone: TimeZone = TimeZone.currentSystemDefault(),
+    /** What search opened on: blank from the toolbar, an item's name from Price history. */
+    val initialQuery: String = "",
 ) : ViewModel() {
 
-    private val text = MutableStateFlow("")
+    private val text = MutableStateFlow(initialQuery)
 
     /** What the field shows, as typed. */
     val query: StateFlow<String> = text.asStateFlow()
@@ -102,8 +108,13 @@ class SearchViewModel(
     fun clearFilter() = sharedFilter.clear()
 
     companion object {
-        val Factory = sakuViewModelFactory {
-            SearchViewModel(transactions, accounts, categories, tags, filter)
+        val Factory = viewModelFactory {
+            initializer {
+                val query = createSavedStateHandle().get<String>(SEARCH_QUERY).orEmpty()
+                with(container()) {
+                    SearchViewModel(transactions, accounts, categories, tags, filter, initialQuery = query)
+                }
+            }
         }
     }
 }

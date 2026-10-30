@@ -133,6 +133,21 @@ class SearchViewModelTest {
     }
 
     @Test
+    fun `opened on an item, search starts on it and shows its price card`() = runTest(dispatcher) {
+        seed()
+        spend("MINYAK GORENG 2L", bca, amount = 35_000, day = 1)
+        spend("MINYAK GORENG 2L ×2", bca, amount = 77_800, day = 20)
+        val vm = SearchViewModel(
+            transactions, accounts, categories, RoomTagRepository(db), shared, zone,
+            initialQuery = "MINYAK GORENG 2L",
+        )
+
+        assertEquals("MINYAK GORENG 2L", vm.query.value)
+        val price = vm.state.first { it.searched }.price
+        assertEquals(Money(38_900), price?.latest?.unitPrice)
+    }
+
+    @Test
     fun `a picked tab is kept across queries`() {
         val vm = viewModel()
         assertEquals(null, vm.tab.value)
