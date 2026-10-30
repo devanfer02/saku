@@ -8,6 +8,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.dvnnfrr.saku.data.AppearanceStore
 import com.dvnnfrr.saku.data.FirstRunSeed
+import com.dvnnfrr.saku.data.PeriodStore
 import com.dvnnfrr.saku.data.SharedPreferencesAppearanceStore
 import com.dvnnfrr.saku.data.local.SakuDatabase
 import com.dvnnfrr.saku.data.repository.AccountRepository
@@ -45,6 +46,9 @@ interface AppContainer {
     val imports: ImportRepository
     val appearance: AppearanceStore
 
+    /** The pay cycle and the month view, shared by Trans and Stats and persisted. */
+    val period: PeriodStore
+
     /** The Trans and Stats filter. Process-scoped and never persisted. */
     val filter: SharedFilter
 }
@@ -66,6 +70,9 @@ class RoomAppContainer(context: Context) : AppContainer {
      * construction only moves the same work behind a lock on the main thread.
      */
     override val appearance: AppearanceStore = SharedPreferencesAppearanceStore(context)
+
+    /** Not lazy either: Trans opens on a range built from it. */
+    override val period: PeriodStore = PeriodStore(context)
 
     override val filter: SharedFilter = SharedFilter()
 }
