@@ -3,7 +3,6 @@ package com.dvnnfrr.saku.ui.categories
 import com.dvnnfrr.saku.domain.Category
 import com.dvnnfrr.saku.domain.CategoryKind
 import com.dvnnfrr.saku.domain.ColorSlot
-import com.dvnnfrr.saku.domain.Subcategory
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -21,9 +20,6 @@ class CategoryManagerStateTest {
             sortOrder = order,
             archived = archived,
         )
-
-    private fun subcategory(id: Long, parent: Long, name: String, archived: Boolean = false) =
-        Subcategory(id = id, categoryId = parent, name = name, sortOrder = 0, archived = archived)
 
     @Test
     fun `moving an item down lands it on the target index`() {
@@ -63,9 +59,9 @@ class CategoryManagerStateTest {
     @Test
     fun `a pending order repaints the list before the write lands`() {
         val rows = listOf(
-            CategoryRow(category(1, "Pemberian", 0), 0, emptyList()),
-            CategoryRow(category(2, "Makan", 1), 0, emptyList()),
-            CategoryRow(category(3, "Kos", 2), 0, emptyList()),
+            CategoryRow(category(1, "Pemberian", 0), 0),
+            CategoryRow(category(2, "Makan", 1), 0),
+            CategoryRow(category(3, "Kos", 2), 0),
         )
 
         val painted = rows.applyOrder(listOf(3L, 1L, 2L))
@@ -76,52 +72,22 @@ class CategoryManagerStateTest {
 
     @Test
     fun `a category holding transactions is not deletable`() {
-        val row = CategoryRow(category(1, "Pemberian", 0), transactionCount = 13, subcategories = emptyList())
-        assertFalse(row.deletable)
-    }
-
-    @Test
-    fun `a category is not deletable while a subcategory under it holds transactions`() {
-        // Deleting cascades to the children, so history filed under a child would go
-        // with it — invisible from the parent row, which shows a count of zero.
-        val row = CategoryRow(
-            category = category(1, "Pemberian", 0),
-            transactionCount = 0,
-            subcategories = listOf(SubcategoryRow(subcategory(10, 1, "Arisan"), transactionCount = 4)),
-        )
+        val row = CategoryRow(category(1, "Pemberian", 0), transactionCount = 13)
         assertFalse(row.deletable)
     }
 
     @Test
     fun `a category nothing refers to is deletable`() {
-        val row = CategoryRow(
-            category = category(1, "Asuransi", 0),
-            transactionCount = 0,
-            subcategories = listOf(SubcategoryRow(subcategory(10, 1, "Jiwa"), transactionCount = 0)),
-        )
+        val row = CategoryRow(category = category(1, "Asuransi", 0), transactionCount = 0)
         assertTrue(row.deletable)
-    }
-
-    @Test
-    fun `the subcategory count leaves archived children out`() {
-        val row = CategoryRow(
-            category = category(1, "Pemberian", 0),
-            transactionCount = 0,
-            subcategories = listOf(
-                SubcategoryRow(subcategory(10, 1, "Arisan"), 0),
-                SubcategoryRow(subcategory(11, 1, "Lama", archived = true), 0),
-            ),
-        )
-        assertEquals(1, row.subcategoryCount)
-        assertEquals(2, row.subcategories.size)
     }
 
     @Test
     fun `a category is never offered as a merge target for itself`() {
         val state = CategoryManagerUiState(
             active = listOf(
-                CategoryRow(category(1, "Pemberian", 0), 0, emptyList()),
-                CategoryRow(category(2, "Makan", 1), 0, emptyList()),
+                CategoryRow(category(1, "Pemberian", 0), 0),
+                CategoryRow(category(2, "Makan", 1), 0),
             ),
             loading = false,
         )
@@ -133,14 +99,10 @@ class CategoryManagerStateTest {
     fun `rows carry the counts they were built with`() {
         val rows = buildCategoryRows(
             categories = listOf(category(1, "Pemberian", 0), category(2, "Makan", 1)),
-            subcategories = listOf(subcategory(10, 1, "Arisan"), subcategory(11, 1, "Rumah")),
             categoryCounts = mapOf(1L to 443),
-            subcategoryCounts = mapOf(10L to 12),
         )
 
         assertEquals(443, rows.first().transactionCount)
-        assertEquals(listOf("Arisan", "Rumah"), rows.first().subcategories.map { it.name })
-        assertEquals(12, rows.first().subcategories.first().transactionCount)
         assertEquals(0, rows.last().transactionCount)
     }
 }

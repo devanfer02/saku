@@ -139,21 +139,14 @@
     <string name="categories_tab_income">Income</string>
     <string name="categories_empty">No categories on this tab yet</string>
     <string name="categories_new_category">New category</string>
-    <string name="categories_new_subcategory">New subcategory</string>
-    <string name="categories_add_subcategory">Add subcategory</string>
     <string name="categories_show_archived">Show archived (%1$d)</string>
     <string name="categories_hide_archived">Hide archived</string>
     <string name="categories_archived_header">Archived</string>
     <string name="categories_back">Back</string>
-    <plurals name="categories_subcategory_count">
-        <item quantity="one">%d subcategory</item>
-        <item quantity="other">%d subcategories</item>
-    </plurals>
     <plurals name="categories_transaction_count">
         <item quantity="one">%d transaction</item>
         <item quantity="other">%d transactions</item>
     </plurals>
-    <string name="categories_no_subcategories">No subcategories</string>
 
     <!-- Category actions -->
     <string name="categories_action_rename">Rename</string>
@@ -165,23 +158,19 @@
     <string name="categories_action_move_down">Move down</string>
     <string name="categories_action_merge_label">Merge</string>
     <string name="categories_action_archive_label">Archive</string>
-    <string name="categories_expand">Show subcategories of %1$s</string>
-    <string name="categories_collapse">Hide subcategories of %1$s</string>
     <string name="categories_actions_for">Actions for %1$s</string>
     <string name="categories_reorder">Reorder %1$s</string>
 
     <!-- Category dialogs -->
     <string name="categories_rename_title">Rename %1$s</string>
-    <string name="categories_subcategory_of">Subcategory of %1$s</string>
     <string name="categories_recolour_title">Colour for %1$s</string>
     <string name="categories_colour_slot">Colour %1$d</string>
     <string name="categories_delete_title">Delete %1$s?</string>
-    <string name="categories_delete_body">Nothing refers to it, so it can go. Its subcategories go with it.</string>
-    <string name="categories_delete_subcategory_body">Nothing refers to it, so it can go.</string>
+    <string name="categories_delete_body">Nothing refers to it, so it can go.</string>
     <string name="categories_archive_title">Archive %1$s?</string>
     <string name="categories_merge_choose_title">Merge %1$s into…</string>
     <string name="categories_merge_title">Merge %1$s into %2$s?</string>
-    <string name="categories_merge_body">Every transaction moves to %1$s and the subcategories are carried across. %2$s is archived, not deleted.</string>
+    <string name="categories_merge_body">Every transaction moves to %1$s. %2$s is archived, not deleted.</string>
     <string name="categories_error_blank">Enter a name</string>
     <string name="categories_error_duplicate">"%1$s" is already here. Pick another name.</string>
 

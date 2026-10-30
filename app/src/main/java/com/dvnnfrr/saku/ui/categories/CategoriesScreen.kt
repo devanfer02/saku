@@ -16,14 +16,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DragHandle
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material3.DropdownMenu
@@ -61,7 +58,6 @@ import com.dvnnfrr.saku.R
 import com.dvnnfrr.saku.domain.Category
 import com.dvnnfrr.saku.domain.CategoryKind
 import com.dvnnfrr.saku.domain.ColorSlot
-import com.dvnnfrr.saku.domain.Subcategory
 import com.dvnnfrr.saku.ui.shared.ColorSwatch
 import com.dvnnfrr.saku.ui.shared.EmptyState
 import com.dvnnfrr.saku.ui.shared.SegmentedTabs
@@ -70,11 +66,10 @@ import com.dvnnfrr.saku.ui.theme.SakuPreviewSurface
 import com.dvnnfrr.saku.ui.theme.SakuTheme
 
 /**
- * Managing the list the entry sheet files against.
+ * Managing the list the entry sheet files against: name, colour, order, archive, merge.
  *
- * The screen exists because subcategory went unfilled for a year and 1,200
- * transactions. Pemberian alone is 50% of spend and is one undifferentiated bucket; this
- * is where it gets split, and the entry sheet is where the split gets used.
+ * Categories only. Subcategories were dropped on 30 Oct 2026 in favour of search, so
+ * their stored rows are kept but no longer listed here.
  */
 @Composable
 fun CategoriesScreen(
@@ -180,7 +175,6 @@ private fun LazyListScope.categoryRows(
         item(key = row.id) {
             CategoryRowItem(
                 row = row,
-                expanded = state.expandedId == row.id,
                 menuOpen = state.menuForCategoryId == row.id,
                 canMoveUp = reorderable && index > 0,
                 canMoveDown = reorderable && index < rows.lastIndex,
@@ -193,20 +187,6 @@ private fun LazyListScope.categoryRows(
                 drag = drag,
                 actions = actions,
             )
-        }
-
-        if (state.expandedId == row.id) {
-            items(row.subcategories, key = { "sub-${it.id}" }) { sub ->
-                SubcategoryRowItem(
-                    row = sub,
-                    parentSlot = row.colorSlot,
-                    menuOpen = state.menuForSubcategoryId == sub.id,
-                    actions = actions,
-                )
-            }
-            item(key = "add-sub-${row.id}") {
-                AddSubcategoryRow(onClick = { actions.onCreateSubcategory(row.id) })
-            }
         }
 
         item(key = "divider-${row.id}") {
@@ -254,7 +234,6 @@ private fun Header(onBack: (() -> Unit)?, onCreate: () -> Unit) {
 @Composable
 private fun CategoryRowItem(
     row: CategoryRow,
-    expanded: Boolean,
     menuOpen: Boolean,
     canMoveUp: Boolean,
     canMoveDown: Boolean,
@@ -267,23 +246,10 @@ private fun CategoryRowItem(
 ) {
     val colors = SakuTheme.colors
     val spacing = SakuTheme.spacing
-    val subLabel = if (row.subcategoryCount == 0) {
-        stringResource(R.string.categories_no_subcategories)
-    } else {
-        pluralStringResource(
-            R.plurals.categories_subcategory_count,
-            row.subcategoryCount,
-            row.subcategoryCount,
-        )
-    }
     val countLabel = pluralStringResource(
         R.plurals.categories_transaction_count,
         row.transactionCount,
         row.transactionCount,
-    )
-    val expandLabel = stringResource(
-        if (expanded) R.string.categories_collapse else R.string.categories_expand,
-        row.name,
     )
 
     Row(
@@ -291,7 +257,7 @@ private fun CategoryRowItem(
             .fillMaxWidth()
             .zIndex(if (dragging) 1f else 0f)
             .graphicsLayer { translationY = dragOffset }
-            .clickable(onClick = { actions.onToggleExpanded(row.id) })
+            .clickable(onClick = { actions.onOpenMenu(row.id) })
             .defaultMinSize(minHeight = spacing.rowMinHeight)
             .padding(end = spacing.sm)
             .testTag("category-${row.id}"),
@@ -315,19 +281,11 @@ private fun CategoryRowItem(
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = "$subLabel · $countLabel",
+                text = countLabel,
                 style = SakuTheme.typography.caption,
                 color = colors.ink2,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-            )
-        }
-
-        IconButton(onClick = { actions.onToggleExpanded(row.id) }) {
-            Icon(
-                imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                contentDescription = expandLabel,
-                tint = colors.ink2,
             )
         }
 
@@ -424,7 +382,6 @@ private fun CategoryMenu(
     ) {
         MenuItem(R.string.categories_action_rename) { actions.onRenameCategory(row.id) }
         MenuItem(R.string.categories_action_recolour) { actions.onRecolorCategory(row.id) }
-        MenuItem(R.string.categories_add_subcategory) { actions.onCreateSubcategory(row.id) }
         if (canMoveUp) MenuItem(R.string.categories_action_move_up) { actions.onMoveCategory(row.id, -1) }
         if (canMoveDown) MenuItem(R.string.categories_action_move_down) { actions.onMoveCategory(row.id, 1) }
         if (mergeable) MenuItem(R.string.categories_action_merge) { actions.onMergeCategory(row.id) }
@@ -435,123 +392,13 @@ private fun CategoryMenu(
             MenuItem(R.string.categories_action_archive) { actions.onArchiveCategory(row.id, true) }
         }
 
-        // Delete appears only where nothing refers to the category or to anything under
-        // it. Everywhere else archive is the offer, so history cannot be thrown away by
+        // Delete appears only where nothing refers to the category. Everywhere else archive is the offer, so history cannot be thrown away by
         // reaching for the wrong item in a menu.
         if (row.deletable) {
             MenuItem(R.string.action_delete, destructive = true) {
                 actions.onDeleteCategory(row.id)
             }
         }
-    }
-}
-
-@Composable
-private fun SubcategoryRowItem(
-    row: SubcategoryRow,
-    parentSlot: ColorSlot,
-    menuOpen: Boolean,
-    actions: CategoryListActions,
-) {
-    val colors = SakuTheme.colors
-    val spacing = SakuTheme.spacing
-    val countLabel = pluralStringResource(
-        R.plurals.categories_transaction_count,
-        row.transactionCount,
-        row.transactionCount,
-    )
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .defaultMinSize(minHeight = spacing.touchTarget)
-            .padding(start = spacing.xxl + spacing.md, end = spacing.sm),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(spacing.sm),
-    ) {
-        // The parent's slot, not one of its own. A subcategory carries no colour, so this
-        // repaints itself the moment the category above it is recoloured.
-        ColorSwatch(parentSlot)
-
-        Column(modifier = Modifier.weight(1f).padding(vertical = spacing.xs)) {
-            Text(
-                text = row.name,
-                style = SakuTheme.typography.body,
-                color = if (row.archived) colors.ink2 else colors.ink,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = if (row.archived) {
-                    "${stringResource(R.string.categories_archived_header)} · $countLabel"
-                } else {
-                    countLabel
-                },
-                style = SakuTheme.typography.caption,
-                color = colors.ink2,
-                maxLines = 1,
-            )
-        }
-
-        Box {
-            IconButton(onClick = { actions.onOpenSubcategoryMenu(row.id) }) {
-                Icon(
-                    imageVector = Icons.Filled.MoreVert,
-                    contentDescription = stringResource(
-                        R.string.categories_actions_for,
-                        row.name,
-                    ),
-                    tint = colors.ink2,
-                )
-            }
-            DropdownMenu(
-                expanded = menuOpen,
-                onDismissRequest = actions.onCloseMenus,
-                containerColor = colors.surface,
-            ) {
-                MenuItem(R.string.categories_action_rename) { actions.onRenameSubcategory(row.id) }
-                if (row.archived) {
-                    MenuItem(R.string.categories_action_unarchive) {
-                        actions.onArchiveSubcategory(row.id, false)
-                    }
-                } else {
-                    MenuItem(R.string.categories_action_archive) {
-                        actions.onArchiveSubcategory(row.id, true)
-                    }
-                }
-                if (row.deletable) {
-                    MenuItem(R.string.action_delete, destructive = true) {
-                        actions.onDeleteSubcategory(row.id)
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun AddSubcategoryRow(onClick: () -> Unit) {
-    val spacing = SakuTheme.spacing
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .defaultMinSize(minHeight = spacing.touchTarget)
-            .padding(start = spacing.xxl + spacing.md, end = spacing.sm),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(spacing.sm),
-    ) {
-        Icon(
-            imageVector = Icons.Filled.Add,
-            contentDescription = null,
-            tint = SakuTheme.colors.accent,
-            modifier = Modifier.size(20.dp),
-        )
-        Text(
-            text = stringResource(R.string.categories_add_subcategory),
-            style = SakuTheme.typography.bodyStrong,
-            color = SakuTheme.colors.accent,
-        )
     }
 }
 
@@ -656,21 +503,15 @@ private fun rememberCategoryDrag(
 @Immutable
 data class CategoryListActions(
     val onSelectKind: (CategoryKind) -> Unit,
-    val onToggleExpanded: (Long) -> Unit,
     val onSetShowArchived: (Boolean) -> Unit,
     val onOpenMenu: (Long) -> Unit,
-    val onOpenSubcategoryMenu: (Long) -> Unit,
     val onCloseMenus: () -> Unit,
     val onCreateCategory: () -> Unit,
-    val onCreateSubcategory: (Long) -> Unit,
     val onRenameCategory: (Long) -> Unit,
-    val onRenameSubcategory: (Long) -> Unit,
     val onRecolorCategory: (Long) -> Unit,
     val onMergeCategory: (Long) -> Unit,
     val onArchiveCategory: (Long, Boolean) -> Unit,
-    val onArchiveSubcategory: (Long, Boolean) -> Unit,
     val onDeleteCategory: (Long) -> Unit,
-    val onDeleteSubcategory: (Long) -> Unit,
     val onMoveCategory: (Long, Int) -> Unit,
     val onStartReorder: () -> Unit,
     val onDragOver: (Long, Long) -> Unit,
@@ -689,21 +530,15 @@ private fun rememberCategoryListActions(
 ): CategoryListActions = remember(viewModel) {
     CategoryListActions(
         onSelectKind = viewModel::selectKind,
-        onToggleExpanded = viewModel::toggleExpanded,
         onSetShowArchived = viewModel::setShowArchived,
         onOpenMenu = viewModel::openMenu,
-        onOpenSubcategoryMenu = viewModel::openSubcategoryMenu,
         onCloseMenus = viewModel::closeMenus,
         onCreateCategory = viewModel::promptCreateCategory,
-        onCreateSubcategory = viewModel::promptCreateSubcategory,
         onRenameCategory = viewModel::promptRenameCategory,
-        onRenameSubcategory = viewModel::promptRenameSubcategory,
         onRecolorCategory = viewModel::promptRecolor,
         onMergeCategory = viewModel::promptMerge,
         onArchiveCategory = viewModel::setCategoryArchived,
-        onArchiveSubcategory = viewModel::setSubcategoryArchived,
         onDeleteCategory = viewModel::promptDeleteCategory,
-        onDeleteSubcategory = viewModel::promptDeleteSubcategory,
         onMoveCategory = viewModel::moveCategory,
         onStartReorder = viewModel::startReorder,
         onDragOver = viewModel::moveCategoryOver,
@@ -723,7 +558,6 @@ private fun previewRow(
     slot: Int,
     order: Int,
     transactions: Int,
-    subcategories: List<String> = emptyList(),
 ) = CategoryRow(
     category = Category(
         id = id,
@@ -734,37 +568,19 @@ private fun previewRow(
         archived = false,
     ),
     transactionCount = transactions,
-    subcategories = subcategories.mapIndexed { index, sub ->
-        SubcategoryRow(
-            subcategory = Subcategory(
-                id = id * 100 + index,
-                categoryId = id,
-                name = sub,
-                sortOrder = index,
-                archived = false,
-            ),
-            transactionCount = index * 7,
-        )
-    },
 )
 
 private fun noActions() = CategoryListActions(
     onSelectKind = {},
-    onToggleExpanded = {},
     onSetShowArchived = {},
     onOpenMenu = {},
-    onOpenSubcategoryMenu = {},
     onCloseMenus = {},
     onCreateCategory = {},
-    onCreateSubcategory = {},
     onRenameCategory = {},
-    onRenameSubcategory = {},
     onRecolorCategory = {},
     onMergeCategory = {},
     onArchiveCategory = { _, _ -> },
-    onArchiveSubcategory = { _, _ -> },
     onDeleteCategory = {},
-    onDeleteSubcategory = {},
     onMoveCategory = { _, _ -> },
     onStartReorder = {},
     onDragOver = { _, _ -> },
@@ -784,11 +600,10 @@ private fun CategoriesScreenPreview() {
         CategoriesScreen(
             state = CategoryManagerUiState(
                 active = listOf(
-                    previewRow(1, "Pemberian", 0, 0, 443, listOf("Arisan", "Rumah", "Gereja")),
-                    previewRow(2, "Makan & Minum", 1, 1, 512, listOf("Warung")),
+                    previewRow(1, "Pemberian", 0, 0, 443),
+                    previewRow(2, "Makan & Minum", 1, 1, 512),
                     previewRow(3, "Kebutuhan Kos", 2, 2, 39),
                 ),
-                expandedId = 1,
                 loading = false,
             ),
             actions = noActions(),

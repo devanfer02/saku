@@ -32,9 +32,7 @@ class CategoryManagerViewModel(
     private data class Local(
         val kind: CategoryKind = CategoryKind.EXPENSE,
         val showArchived: Boolean = false,
-        val expandedId: Long? = null,
         val menuForCategoryId: Long? = null,
-        val menuForSubcategoryId: Long? = null,
         val dialog: CategoryDialog? = null,
         /** The order a drag is painting, before it is written down. */
         val pendingOrder: List<Long>? = null,
@@ -43,26 +41,20 @@ class CategoryManagerViewModel(
     private val local = MutableStateFlow(Local())
 
     /**
-     * Bumped after a write the category and subcategory tables cannot report on their own.
+     * Bumped after a write the category table cannot report on its own.
      *
-     * The per-row transaction counts come from two grouped one-shot reads, not from a
+     * The per-row transaction counts come from a grouped one-shot read, not from a
      * Flow. A merge moves transactions between categories without changing either table's
      * shape, so without this the counts on screen would still describe the old split.
      */
     private val recount = MutableStateFlow(0)
 
     private val rows: Flow<List<CategoryRow>> =
-        combine(
-            repository.observeAll(),
-            repository.observeAllSubcategories(),
-            recount,
-        ) { categories, subcategories, _ -> categories to subcategories }
-            .map { (categories, subcategories) ->
+        combine(repository.observeAll(), recount) { categories, _ -> categories }
+            .map { categories ->
                 buildCategoryRows(
                     categories = categories,
-                    subcategories = subcategories,
                     categoryCounts = repository.transactionCountsByCategory(),
-                    subcategoryCounts = repository.transactionCountsBySubcategory(),
                 )
             }
             .onEach { emitted ->
@@ -84,9 +76,7 @@ class CategoryManagerViewModel(
                 active = ofKind.filterNot { it.archived }.applyOrder(current.pendingOrder),
                 archived = ofKind.filter { it.archived },
                 showArchived = current.showArchived,
-                expandedId = current.expandedId,
                 menuForCategoryId = current.menuForCategoryId,
-                menuForSubcategoryId = current.menuForSubcategoryId,
                 dialog = current.dialog,
                 loading = false,
             )
@@ -99,27 +89,19 @@ class CategoryManagerViewModel(
     fun selectKind(kind: CategoryKind) = local.update {
         // The pending order belongs to the tab it was dragged on; carrying it across
         // would reorder the other tab by ids it does not contain.
-        it.copy(kind = kind, expandedId = null, pendingOrder = null, dialog = null)
-    }
-
-    fun toggleExpanded(categoryId: Long) = local.update {
-        it.copy(expandedId = if (it.expandedId == categoryId) null else categoryId)
+        it.copy(kind = kind, pendingOrder = null, dialog = null)
     }
 
     fun setShowArchived(show: Boolean) = local.update { it.copy(showArchived = show) }
 
     fun openMenu(categoryId: Long) = local.update { it.copy(menuForCategoryId = categoryId) }
 
-    fun openSubcategoryMenu(id: Long) = local.update { it.copy(menuForSubcategoryId = id) }
-
-    fun closeMenus() = local.update {
-        it.copy(menuForCategoryId = null, menuForSubcategoryId = null)
-    }
+    fun closeMenus() = local.update { it.copy(menuForCategoryId = null) }
 
     fun dismissDialog() = local.update { it.copy(dialog = null) }
 
     private fun show(dialog: CategoryDialog) = local.update {
-        it.copy(dialog = dialog, menuForCategoryId = null, menuForSubcategoryId = null)
+        it.copy(dialog = dialog, menuForCategoryId = null)
     }
 
     /*
@@ -131,19 +113,9 @@ class CategoryManagerViewModel(
 
     fun promptCreateCategory() = show(CreateCategoryPrompt(local.value.kind))
 
-    fun promptCreateSubcategory(categoryId: Long) {
-        val row = state.value.rowFor(categoryId) ?: return
-        show(CreateSubcategoryPrompt(parentId = row.id, parentName = row.name))
-    }
-
     fun promptRenameCategory(categoryId: Long) {
         val row = state.value.rowFor(categoryId) ?: return
         show(RenameCategoryPrompt(id = row.id, currentName = row.name))
-    }
-
-    fun promptRenameSubcategory(id: Long) {
-        val row = state.value.subcategoryFor(id) ?: return
-        show(RenameSubcategoryPrompt(id = row.id, currentName = row.name))
     }
 
     fun promptRecolor(categoryId: Long) {
@@ -153,12 +125,7 @@ class CategoryManagerViewModel(
 
     fun promptDeleteCategory(categoryId: Long) {
         val row = state.value.rowFor(categoryId)?.takeIf { it.deletable } ?: return
-        show(ConfirmDeletePrompt(id = row.id, name = row.name, isSubcategory = false))
-    }
-
-    fun promptDeleteSubcategory(id: Long) {
-        val row = state.value.subcategoryFor(id)?.takeIf { it.deletable } ?: return
-        show(ConfirmDeletePrompt(id = row.id, name = row.name, isSubcategory = true))
+        show(ConfirmDeletePrompt(id = row.id, name = row.name))
     }
 
     fun promptMerge(categoryId: Long) {
@@ -183,14 +150,7 @@ class CategoryManagerViewModel(
             try {
                 when (prompt) {
                     is CreateCategoryPrompt -> repository.createCategory(name, prompt.kind)
-                    is CreateSubcategoryPrompt -> {
-                        repository.createSubcategory(prompt.parentId, name)
-                        // Open the parent so the new child is visible where it landed.
-                        local.update { it.copy(expandedId = prompt.parentId) }
-                    }
-
                     is RenameCategoryPrompt -> repository.renameCategory(prompt.id, name)
-                    is RenameSubcategoryPrompt -> repository.renameSubcategory(prompt.id, name)
                 }
                 local.update { it.copy(dialog = null) }
             } catch (clash: DuplicateNameException) {
@@ -214,19 +174,7 @@ class CategoryManagerViewModel(
     fun setCategoryArchived(categoryId: Long, archived: Boolean) {
         viewModelScope.launch {
             repository.setCategoryArchived(categoryId, archived)
-            local.update {
-                it.copy(
-                    menuForCategoryId = null,
-                    expandedId = it.expandedId.takeIf { id -> id != categoryId || !archived },
-                )
-            }
-        }
-    }
-
-    fun setSubcategoryArchived(id: Long, archived: Boolean) {
-        viewModelScope.launch {
-            repository.setSubcategoryArchived(id, archived)
-            local.update { it.copy(menuForSubcategoryId = null) }
+            local.update { it.copy(menuForCategoryId = null) }
         }
     }
 
@@ -236,18 +184,7 @@ class CategoryManagerViewModel(
             // Re-checked against the database, not against the row the menu was built
             // from. The repository throws on a used record, and a transaction could have
             // been filed under it while the dialog was open.
-            val allowed = if (prompt.isSubcategory) {
-                repository.isSubcategoryDeletable(prompt.id)
-            } else {
-                repository.isCategoryDeletable(prompt.id)
-            }
-            if (allowed) {
-                if (prompt.isSubcategory) {
-                    repository.deleteSubcategory(prompt.id)
-                } else {
-                    repository.deleteCategory(prompt.id)
-                }
-            }
+            if (repository.isCategoryDeletable(prompt.id)) repository.deleteCategory(prompt.id)
             local.update { it.copy(dialog = null) }
             recount.update { it + 1 }
         }
@@ -276,7 +213,7 @@ class CategoryManagerViewModel(
         val prompt = local.value.dialog as? ConfirmMergePrompt ?: return
         viewModelScope.launch {
             repository.mergeCategory(prompt.fromId, prompt.toId)
-            local.update { it.copy(dialog = null, expandedId = null) }
+            local.update { it.copy(dialog = null) }
             recount.update { it + 1 }
         }
     }
@@ -285,7 +222,6 @@ class CategoryManagerViewModel(
     fun startReorder() = local.update {
         it.copy(
             pendingOrder = state.value.active.map { row -> row.id },
-            expandedId = null,
             menuForCategoryId = null,
         )
     }

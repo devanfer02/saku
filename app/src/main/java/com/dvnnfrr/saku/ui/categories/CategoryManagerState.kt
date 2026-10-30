@@ -4,37 +4,16 @@ import androidx.compose.runtime.Immutable
 import com.dvnnfrr.saku.domain.Category
 import com.dvnnfrr.saku.domain.CategoryKind
 import com.dvnnfrr.saku.domain.ColorSlot
-import com.dvnnfrr.saku.domain.Subcategory
 
 /*
  * The screen's shape, and the rules that are worth testing without a database or a
  * composition: ordering, deletability and which merge targets are legal.
  */
 
-/**
- * One subcategory as the manage screen shows it.
- *
- * It carries no colour. A subcategory reads its parent's slot, so recolouring a category
- * cannot leave its children painted in the old hue.
- */
-@Immutable
-data class SubcategoryRow(
-    val subcategory: Subcategory,
-    val transactionCount: Int,
-) {
-    val id: Long get() = subcategory.id
-    val name: String get() = subcategory.name
-    val archived: Boolean get() = subcategory.archived
-
-    val deletable: Boolean get() = transactionCount == 0
-}
-
 @Immutable
 data class CategoryRow(
     val category: Category,
     val transactionCount: Int,
-    /** Archived children included, so the row can offer to restore one. */
-    val subcategories: List<SubcategoryRow>,
 ) {
     val id: Long get() = category.id
     val name: String get() = category.name
@@ -42,14 +21,12 @@ data class CategoryRow(
     val colorSlot: ColorSlot get() = category.colorSlot
     val archived: Boolean get() = category.archived
 
-    /** Archived children are left out of the count, the way they are left out of pickers. */
-    val subcategoryCount: Int get() = subcategories.count { !it.archived }
-
     /**
-     * Deleting a category cascades to its subcategories. A child holding transactions has
-     * to block the parent too, or the cascade would strand history the user never saw.
+     * Only a category nothing refers to can be deleted. Its stored subcategories, which
+     * the app no longer shows, cascade with it; a subcategorised transaction always
+     * carries its parent category, so none of them can be in use either.
      */
-    val deletable: Boolean get() = transactionCount == 0 && subcategories.all { it.deletable }
+    val deletable: Boolean get() = transactionCount == 0
 }
 
 /** Why a name was refused. Both are shown inline, under the field. */
@@ -62,7 +39,7 @@ sealed interface NameError {
 sealed interface CategoryDialog
 
 /**
- * The four dialogs that ask for a name. They share a submit path and therefore share an
+ * The dialogs that ask for a name. They share a submit path and therefore share an
  * error slot, so a clash reported by one cannot be rendered differently by another.
  */
 sealed interface NamePrompt : CategoryDialog {
@@ -78,23 +55,7 @@ data class CreateCategoryPrompt(
     override fun withError(error: NameError?) = copy(error = error)
 }
 
-data class CreateSubcategoryPrompt(
-    val parentId: Long,
-    val parentName: String,
-    override val error: NameError? = null,
-) : NamePrompt {
-    override fun withError(error: NameError?) = copy(error = error)
-}
-
 data class RenameCategoryPrompt(
-    val id: Long,
-    val currentName: String,
-    override val error: NameError? = null,
-) : NamePrompt {
-    override fun withError(error: NameError?) = copy(error = error)
-}
-
-data class RenameSubcategoryPrompt(
     val id: Long,
     val currentName: String,
     override val error: NameError? = null,
@@ -111,7 +72,6 @@ data class RecolorPrompt(
 data class ConfirmDeletePrompt(
     val id: Long,
     val name: String,
-    val isSubcategory: Boolean,
 ) : CategoryDialog
 
 data class ChooseMergeTargetPrompt(
@@ -139,9 +99,7 @@ data class CategoryManagerUiState(
     val active: List<CategoryRow> = emptyList(),
     val archived: List<CategoryRow> = emptyList(),
     val showArchived: Boolean = false,
-    val expandedId: Long? = null,
     val menuForCategoryId: Long? = null,
-    val menuForSubcategoryId: Long? = null,
     val dialog: CategoryDialog? = null,
     /** True while the first read is in flight, so an empty list is not mistaken for none. */
     val loading: Boolean = true,
@@ -150,11 +108,6 @@ data class CategoryManagerUiState(
 
     fun rowFor(id: Long): CategoryRow? =
         active.firstOrNull { it.id == id } ?: archived.firstOrNull { it.id == id }
-
-    fun subcategoryFor(id: Long): SubcategoryRow? =
-        (active + archived).firstNotNullOfOrNull { row ->
-            row.subcategories.firstOrNull { it.id == id }
-        }
 
     /**
      * Merge targets: same kind, still active, and not the source itself.
@@ -167,20 +120,9 @@ data class CategoryManagerUiState(
 
 fun buildCategoryRows(
     categories: List<Category>,
-    subcategories: List<Subcategory>,
     categoryCounts: Map<Long, Int>,
-    subcategoryCounts: Map<Long, Int>,
-): List<CategoryRow> {
-    val byParent = subcategories.groupBy { it.categoryId }
-    return categories.map { category ->
-        CategoryRow(
-            category = category,
-            transactionCount = categoryCounts[category.id] ?: 0,
-            subcategories = byParent[category.id].orEmpty()
-                .sortedWith(compareBy({ it.sortOrder }, { it.id }))
-                .map { SubcategoryRow(it, subcategoryCounts[it.id] ?: 0) },
-        )
-    }
+): List<CategoryRow> = categories.map { category ->
+    CategoryRow(category = category, transactionCount = categoryCounts[category.id] ?: 0)
 }
 
 /** Moves one element. Clamped rather than throwing, because a drag can outrun the list. */
