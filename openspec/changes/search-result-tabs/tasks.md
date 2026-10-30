@@ -1,0 +1,4 @@
+- [x] 1.1 `SearchTab`, `SearchPeriod`, years, `dailyScrollIndex`, `monthlyScrollIndex`, `defaultTab`; tests
+- [x] 1.2 Picked tab in `SearchViewModel`, kept across queries; test
+- [x] 1.3 Tabs, jumps, summary spacing and size in `SearchScreen`
+- [ ] 1.4 Emulator check: the "mama"-style search on mock data, each tab, both jumps, dark theme, font 200%
