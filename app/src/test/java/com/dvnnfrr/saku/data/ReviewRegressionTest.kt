@@ -271,7 +271,7 @@ class ReviewRegressionTest {
     fun `a subcategory from a different category is refused`() = runTest {
         val bca = accounts.create("BCA", AccountType.BANK, Money.ZERO, cutover)
         val giving = categories.createCategory("Pemberian", CategoryKind.EXPENSE)
-        val arisan = categories.createSubcategory(giving, "Arisan")
+        val arisan = categories.findOrCreateSubcategory(giving, "Arisan")
         val kuliah = categories.createCategory("Kuliah", CategoryKind.EXPENSE)
 
         val error = runCatching {

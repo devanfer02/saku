@@ -135,9 +135,6 @@ class RoomTransactionRepository(
 
     override suspend fun all(): List<Transaction> = txnDao.all().map { it.toDomain() }
 
-    override suspend fun lastSubcategoryFor(categoryId: Long): Long? =
-        txnDao.lastSubcategoryFor(categoryId)
-
     override suspend fun record(
         occurredAt: Instant,
         type: TxnType,

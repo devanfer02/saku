@@ -104,9 +104,6 @@ interface TransactionRepository {
     /** Every transaction, oldest first. For export, which cannot be range-scoped. */
     suspend fun all(): List<Transaction>
 
-    /** Pre-fill for the entry sheet, so subcategory stays optional without staying empty. */
-    suspend fun lastSubcategoryFor(categoryId: Long): Long?
-
     suspend fun record(
         occurredAt: Instant,
         type: TxnType,
@@ -185,57 +182,28 @@ interface CategoryRepository {
 
     fun observeActiveByKind(kind: CategoryKind): Flow<List<Category>>
 
-    fun observeSubcategories(categoryId: Long): Flow<List<Subcategory>>
-
-    /** Includes archived, so the manage screen can offer unarchive. */
-    fun observeAllSubcategories(categoryId: Long): Flow<List<Subcategory>>
-
-    /**
-     * Every subcategory across every category, archived included.
-     *
-     * The transaction list needs a name for whatever subcategory a row points at, and
-     * asking per category is an N+1. Archived rows stay in: archiving does not rewrite
-     * the transactions already referencing the subcategory, so excluding them blanks
-     * the label on real history.
-     */
-    fun observeAllSubcategories(): Flow<List<Subcategory>>
-
     suspend fun byId(id: Long): Category?
-
-    suspend fun subcategoryById(id: Long): Subcategory?
 
     /** Throws [DuplicateNameException] on a case- and whitespace-insensitive clash. */
     suspend fun createCategory(name: String, kind: CategoryKind): Long
 
-    suspend fun createSubcategory(categoryId: Long, name: String): Long
-
     suspend fun renameCategory(id: Long, name: String)
-
-    suspend fun renameSubcategory(id: Long, name: String)
 
     suspend fun recolorCategory(id: Long, slot: ColorSlot)
 
     suspend fun reorderCategories(orderedIds: List<Long>)
 
-    suspend fun reorderSubcategories(categoryId: Long, orderedIds: List<Long>)
-
     suspend fun setCategoryArchived(id: Long, archived: Boolean)
-
-    suspend fun setSubcategoryArchived(id: Long, archived: Boolean)
 
     suspend fun isCategoryDeletable(id: Long): Boolean
 
-    suspend fun isSubcategoryDeletable(id: Long): Boolean
-
     suspend fun deleteCategory(id: Long)
-
-    suspend fun deleteSubcategory(id: Long)
 
     /** How many transactions a merge would move. Shown before the merge runs. */
     suspend fun transactionCount(categoryId: Long): Int
 
     /**
-     * Transaction counts for every category and every subcategory in one query each.
+     * Transaction counts for every category in one query.
      *
      * The category screen shows a count on every row and disables delete on any row
      * that has one. Asking per row is nineteen-plus suspend calls to paint one list —
@@ -243,11 +211,13 @@ interface CategoryRepository {
      */
     suspend fun transactionCountsByCategory(): Map<Long, Int>
 
-    suspend fun transactionCountsBySubcategory(): Map<Long, Int>
-
     /** One-shot reads for export, which cannot be range-scoped or Flow-driven. */
     suspend fun allCategories(): List<Category>
 
+    /**
+     * Every stored subcategory, archived included. The UI no longer shows subcategories
+     * (dropped for search, 30 Oct 2026); export, backup and restore still carry them.
+     */
     suspend fun allSubcategories(): List<Subcategory>
 
     /**

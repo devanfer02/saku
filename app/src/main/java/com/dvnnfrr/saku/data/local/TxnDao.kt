@@ -256,9 +256,6 @@ interface TxnDao {
     @Query("SELECT COUNT(*) FROM txn WHERE categoryId = :categoryId")
     suspend fun countForCategory(categoryId: Long): Int
 
-    @Query("SELECT COUNT(*) FROM txn WHERE subcategoryId = :subcategoryId")
-    suspend fun countForSubcategory(subcategoryId: Long): Int
-
     /*
      * Grouped counts. The category screen puts a count on every row and disables
      * delete wherever there is one; asking per row is an N+1 over ~19 categories.
@@ -269,26 +266,6 @@ interface TxnDao {
             "WHERE categoryId IS NOT NULL GROUP BY categoryId",
     )
     suspend fun countsByCategory(): List<IdCount>
-
-    @Query(
-        "SELECT subcategoryId AS id, COUNT(*) AS count FROM txn " +
-            "WHERE subcategoryId IS NOT NULL GROUP BY subcategoryId",
-    )
-    suspend fun countsBySubcategory(): List<IdCount>
-
-    /**
-     * The subcategory last used for a category, so the entry sheet can pre-fill it.
-     * Recall is the reason subcategory can stay optional without staying empty.
-     */
-    @Query(
-        """
-        SELECT subcategoryId FROM txn
-        WHERE categoryId = :categoryId AND subcategoryId IS NOT NULL
-        ORDER BY occurredAtEpochSec DESC, id DESC
-        LIMIT 1
-        """,
-    )
-    suspend fun lastSubcategoryFor(categoryId: Long): Long?
 
     @Insert
     suspend fun insert(txn: TxnEntity): Long

@@ -164,7 +164,7 @@ class ExportRoundTripTest {
         val rdpu = accounts.create("RDPU SucorInvest", AccountType.INVESTMENT, Money.ZERO, opening)
 
         val makan = categories.createCategory("Makan & Minum", CategoryKind.EXPENSE)
-        val warung = categories.createSubcategory(makan, "Warung")
+        val warung = categories.findOrCreateSubcategory(makan, "Warung")
         val gaji = categories.createCategory("Gaji", CategoryKind.INCOME)
         val saham = categories.createCategory("Saham", CategoryKind.EXPENSE)
 

@@ -386,10 +386,10 @@ class BackupRestoreTest {
         val wallet = accounts.create("Old wallet", AccountType.CASH, Money(10_000), opening)
 
         val makan = categories.createCategory("Makan & Minum", CategoryKind.EXPENSE)
-        val warung = categories.createSubcategory(makan, "Warung")
-        val restoran = categories.createSubcategory(makan, "Restoran")
+        val warung = categories.findOrCreateSubcategory(makan, "Warung")
+        val restoran = categories.findOrCreateSubcategory(makan, "Restoran")
         val pemberian = categories.createCategory("Pemberian", CategoryKind.EXPENSE)
-        categories.createSubcategory(pemberian, "Arisan")
+        categories.findOrCreateSubcategory(pemberian, "Arisan")
         val gaji = categories.createCategory("Gaji", CategoryKind.INCOME)
         val kos = categories.createCategory("Kos lama", CategoryKind.EXPENSE)
 
@@ -435,7 +435,7 @@ class BackupRestoreTest {
         // Writes an ADJUSTMENT and stamps the reconcile date.
         checkNotNull(accounts.reconcile(cash, Money(50_000), Instant.parse("2026-09-30T12:00:00Z")))
 
-        categories.setSubcategoryArchived(restoran, true)
+        db.subcategoryDao().setArchived(restoran, true)
         categories.setCategoryArchived(kos, true)
         accounts.setArchived(wallet, true)
     }
