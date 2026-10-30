@@ -112,6 +112,10 @@ Settled — reopen only with a reason, not by drift:
 
 - First-run setup (group 13): real opening balances are set by hand on the accounts screen today.
 - Budget caps — gap 5 in the analysis below, and the one gap nothing yet addresses.
+- The owner's own data import (decided 30 Oct 2026, features first): a prepared database built from
+  the Money Manager export that also infers subcategories from notes ("Uang Arisan" → Pemberian /
+  Arisan). Until then every imported row is "No subcategory", so Stats' category detail shows one
+  subcategory row at 100%; that is expected, not a UI bug.
 - Reassigning a subcategory to a different parent: `SubcategoryDao.moveToCategory` exists but no
   repository method reaches it.
 
