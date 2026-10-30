@@ -10,7 +10,7 @@
 
 ## 3. ViewModel
 
-- [ ] 3.1 Add `noteSuggestionsOpen` to `EntryUiState`, the `suggestions` flow scoped by type, `pickSuggestion` and `dismissSuggestions`; ViewModel tests for type scoping, Transfer, edit-open, pick and dismiss
+- [x] 3.1 Add `noteSuggestionsOpen` to `EntryUiState`, the `suggestions` flow scoped by type, `pickSuggestion` and `dismissSuggestions`; ViewModel tests for type scoping, Transfer, edit-open, pick and dismiss
 
 ## 4. Sheet
 

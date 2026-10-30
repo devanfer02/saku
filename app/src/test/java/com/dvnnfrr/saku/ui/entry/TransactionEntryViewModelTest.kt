@@ -17,6 +17,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asExecutor
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -454,5 +455,158 @@ class TransactionEntryViewModelTest {
 
         assertNull(transactions.byId(drop))
         assertNotNull(transactions.byId(keep))
+    }
+
+    // --- Note autocomplete (specs/note-autocomplete/spec.md) -------------------
+
+    private suspend fun recordNoted(
+        note: String,
+        amount: Long,
+        type: TxnType = TxnType.EXPENSE,
+        day: Int = 10,
+    ) = transactions.record(
+        occurredAt = LocalDateTime(2026, 8, day, 12, 0).toInstant(zone),
+        type = type,
+        amount = Money(amount),
+        accountId = bca,
+        categoryId = if (type == TxnType.INCOME) gaji else makan,
+        note = note,
+    )
+
+    private fun kotlinx.coroutines.test.TestScope.collectSuggestions(vm: TransactionEntryViewModel) {
+        backgroundScope.launch(dispatcher) { vm.suggestions.collect {} }
+    }
+
+    @Test
+    fun `typing suggests expense notes and picking fills category and last amount`() =
+        runTest(dispatcher) {
+            seed()
+            recordNoted("bensin motor", 25_000, day = 3)
+            recordNoted("bensin motor", 30_000, day = 9)
+            val vm = viewModel()
+            collectSuggestions(vm)
+            vm.open()
+            advanceUntilIdle()
+            vm.setAccount(rdpu)
+
+            vm.setNote("be")
+            advanceUntilIdle()
+            val suggestion = vm.suggestions.value.single()
+            assertEquals("bensin motor", suggestion.note)
+            assertEquals(makan, suggestion.category?.id)
+            assertEquals(Money(30_000), suggestion.lastAmount)
+
+            vm.pickSuggestion(suggestion)
+            advanceUntilIdle()
+            val form = vm.state.value.form
+            assertEquals("bensin motor", form.note)
+            assertEquals(makan, form.categoryId)
+            assertEquals(Money(30_000), form.amount.value)
+            assertEquals(rdpu, form.accountId)
+            assertTrue(vm.suggestions.value.isEmpty())
+        }
+
+    @Test
+    fun `suggestions follow the type and transfers get none`() = runTest(dispatcher) {
+        seed()
+        recordNoted("uang arisan", 500_000)
+        recordNoted("uang saku", 1_000_000, type = TxnType.INCOME)
+        val vm = viewModel()
+        collectSuggestions(vm)
+        vm.open()
+        advanceUntilIdle()
+
+        vm.setNote("ua")
+        advanceUntilIdle()
+        assertEquals(listOf("uang arisan"), vm.suggestions.value.map { it.note })
+
+        vm.setType(TxnType.INCOME)
+        vm.setNote("uan")
+        advanceUntilIdle()
+        assertEquals(listOf("uang saku"), vm.suggestions.value.map { it.note })
+
+        vm.setType(TxnType.TRANSFER)
+        vm.setNote("uang")
+        advanceUntilIdle()
+        assertTrue(vm.suggestions.value.isEmpty())
+    }
+
+    @Test
+    fun `opening an edit with a note shows nothing until the note changes`() = runTest(dispatcher) {
+        seed()
+        val id = recordNoted("bensin motor", 30_000)
+        val vm = viewModel()
+        collectSuggestions(vm)
+
+        vm.open(id)
+        advanceUntilIdle()
+        assertEquals("bensin motor", vm.state.value.form.note)
+        assertTrue(vm.suggestions.value.isEmpty())
+
+        vm.setNote("bensin moto")
+        advanceUntilIdle()
+        assertEquals(listOf("bensin motor"), vm.suggestions.value.map { it.note })
+    }
+
+    @Test
+    fun `dismissing closes the list and typing reopens it`() = runTest(dispatcher) {
+        seed()
+        recordNoted("laundry", 35_000)
+        val vm = viewModel()
+        collectSuggestions(vm)
+        vm.open()
+        advanceUntilIdle()
+
+        vm.setNote("la")
+        advanceUntilIdle()
+        assertEquals(1, vm.suggestions.value.size)
+
+        vm.dismissSuggestions()
+        advanceUntilIdle()
+        assertTrue(vm.suggestions.value.isEmpty())
+        assertEquals("la", vm.state.value.form.note)
+
+        vm.setNote("lau")
+        advanceUntilIdle()
+        assertEquals(1, vm.suggestions.value.size)
+    }
+
+    @Test
+    fun `a typed amount survives a pick`() = runTest(dispatcher) {
+        seed()
+        recordNoted("bensin motor", 30_000)
+        val vm = viewModel()
+        collectSuggestions(vm)
+        vm.open()
+        advanceUntilIdle()
+
+        type(vm, "50000")
+        vm.setNote("bensin")
+        advanceUntilIdle()
+        vm.pickSuggestion(vm.suggestions.value.single())
+
+        assertEquals(Money(50_000), vm.state.value.form.amount.value)
+        assertEquals(makan, vm.state.value.form.categoryId)
+    }
+
+    @Test
+    fun `a saved note is suggested on the next sheet`() = runTest(dispatcher) {
+        seed()
+        val vm = viewModel()
+        collectSuggestions(vm)
+        vm.open()
+        advanceUntilIdle()
+        type(vm, "15000")
+        vm.selectCategory(makan)
+        vm.setNote("es teh")
+        vm.save()
+        advanceUntilIdle()
+
+        vm.open()
+        advanceUntilIdle()
+        vm.setNote("es")
+        advanceUntilIdle()
+
+        assertEquals(listOf("es teh"), vm.suggestions.value.map { it.note })
     }
 }
