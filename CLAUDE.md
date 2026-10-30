@@ -146,6 +146,11 @@ Settled. Reopen only with a reason, not by drift:
 - **Generic first run.** First run seeds two accounts, `Cash` and `Card`, and no categories or
   subcategories. Categories come from the entry sheet's "New category" or from an import; a user's
   history arrives by import.
+- **Receipt scan, one download.** On-device OCR with ML Kit's bundled recognizer, in the same APK
+  as everything else (a separate no-OCR build was tried and dropped, 31 Oct 2026). The release is
+  arm64-v8a only with compressed native libraries, about 21 MB; 32-bit phones are not supported.
+  The parser must keep at least 80% exact totals on every test source; see
+  `openspec/changes/receipt-scan/design.md`.
 - Seeded accounts open at the epoch, because every row worth importing predates any install.
 - **No subcategories in the product.** Tagging them was a chore; search answers the same question
   with a count, totals and day-grouped rows. The UI neither shows nor asks for them. The
