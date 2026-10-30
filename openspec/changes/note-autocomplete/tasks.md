@@ -1,8 +1,8 @@
 ## 1. Data
 
-- [ ] 1.1 Add `NoteUsage` to `domain/`, `NoteUseRow` and `TxnDao.observeNoteUses(type)`
-- [ ] 1.2 Add the pure `foldNoteUsage` in `data/repository/NoteUsageFold.kt` with unit tests (grouping by fold, most recent spelling, count, last amount, most-used category with tie to most recent, null category)
-- [ ] 1.3 Add `TransactionRepository.observeNoteUsage(type)` and its Room implementation; a Robolectric test that it scopes by type and skips blank notes
+- [x] 1.1 Add `NoteUsage` to `domain/`, `NoteUseRow` and `TxnDao.observeNoteUses(type)`
+- [x] 1.2 Add the pure `foldNoteUsage` in `data/repository/NoteUsageFold.kt` with unit tests (grouping by fold, most recent spelling, count, last amount, most-used category with tie to most recent, null category)
+- [x] 1.3 Add `TransactionRepository.observeNoteUsage(type)` and its Room implementation; a Robolectric test that it scopes by type and skips blank notes
 
 ## 2. Assembly
 

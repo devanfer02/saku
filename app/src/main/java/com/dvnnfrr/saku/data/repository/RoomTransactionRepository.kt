@@ -9,6 +9,7 @@ import com.dvnnfrr.saku.domain.DailyTotals
 import com.dvnnfrr.saku.domain.DateRange
 import com.dvnnfrr.saku.domain.DedupHash
 import com.dvnnfrr.saku.domain.Money
+import com.dvnnfrr.saku.domain.NoteUsage
 import com.dvnnfrr.saku.domain.PeriodTotals
 import com.dvnnfrr.saku.domain.Transaction
 import com.dvnnfrr.saku.domain.TransactionFilter
@@ -130,6 +131,9 @@ class RoomTransactionRepository(
             f.allAccounts, f.accountIds, f.allIncome, f.incomeIds, f.allExpense, f.expenseIds,
         ).map { rows -> rows.map { it.toDomain() } }
     }
+
+    override fun observeNoteUsage(type: TxnType): Flow<List<NoteUsage>> =
+        txnDao.observeNoteUses(type.name).map(::foldNoteUsage)
 
     override suspend fun byId(id: Long): Transaction? = txnDao.byId(id)?.toDomain()
 

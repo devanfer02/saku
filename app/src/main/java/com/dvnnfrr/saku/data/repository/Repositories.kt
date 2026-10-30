@@ -12,6 +12,7 @@ import com.dvnnfrr.saku.domain.DailyTotals
 import com.dvnnfrr.saku.domain.DateRange
 import com.dvnnfrr.saku.domain.ImportBatch
 import com.dvnnfrr.saku.domain.Money
+import com.dvnnfrr.saku.domain.NoteUsage
 import com.dvnnfrr.saku.domain.PeriodTotals
 import com.dvnnfrr.saku.domain.Subcategory
 import com.dvnnfrr.saku.domain.Transaction
@@ -98,6 +99,13 @@ interface TransactionRepository {
 
     /** Every transaction passing [filter], newest first, across all history. For search. */
     fun observeAll(filter: TransactionFilter): Flow<List<Transaction>>
+
+    /**
+     * Distinct non-blank notes of [type], each with its use count, last use, last amount
+     * and most-used category, unordered. For the entry sheet's note autocomplete, which
+     * caches this and filters it in memory per keystroke.
+     */
+    fun observeNoteUsage(type: TxnType): Flow<List<NoteUsage>>
 
     suspend fun byId(id: Long): Transaction?
 

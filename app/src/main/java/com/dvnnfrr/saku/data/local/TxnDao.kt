@@ -243,6 +243,20 @@ interface TxnDao {
         expenseIds: List<Long>,
     ): Flow<List<TxnEntity>>
 
+    /**
+     * Every noted transaction of one type, newest first, as five columns. Note
+     * autocomplete folds this in Kotlin: "most-used category, ties to the most recent"
+     * needs a window function, and SQLite on API 26 to 29 has none.
+     */
+    @Query(
+        """
+        SELECT id, note, categoryId, amountIdr, occurredAtEpochSec FROM txn
+        WHERE type = :type AND note IS NOT NULL AND TRIM(note) <> ''
+        ORDER BY occurredAtEpochSec DESC, id DESC
+        """,
+    )
+    fun observeNoteUses(type: String): Flow<List<NoteUseRow>>
+
     /** Unbounded read for export. Range-scoped queries cannot serve a full dump. */
     @Query("SELECT * FROM txn ORDER BY occurredAtEpochSec ASC, id ASC")
     suspend fun all(): List<TxnEntity>
