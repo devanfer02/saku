@@ -34,5 +34,5 @@
 ## 6. Verification
 
 - [x] 6.1 Update Maestro flows for renamed labels (Check balance, Left over)
-- [ ] 6.2 Emulator pass in light and dark at font scale 1.0 and 1.3 on all four tabs; compare against the directions page
+- [x] 6.2 Emulator pass in light and dark at font scale 1.0 and 1.3 on all four tabs; compare against the directions page
 - [x] 6.3 `ANDROID_HOME=/home/dvnnfrr/Android/Sdk ./gradlew :app:testDebugUnitTest :app:assembleDebug` green

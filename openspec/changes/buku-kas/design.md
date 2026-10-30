@@ -1,6 +1,6 @@
 ## Context
 
-On 30 Oct 2026 the owner reviewed three UI directions on the "Saku UI Directions" page (https://claude.ai/artifact/Q2gfayXyaTfURPaWdokgsF) and chose A, Buku Kas. The page holds the critique (24/40 Nielsen), the contrast measurements and the mockups this change implements. Theme tokens live in `ui/theme/SakuColors.kt`; money formatting has one implementation behind `MoneyText`; percentages go through `wholePercents`.
+On 30 Oct 2026 the owner reviewed three UI directions on a private "Saku UI Directions" page (deleted after the build, at the owner's request) and chose A, Buku Kas. The page compared A (refine, cashbook), B "Amplop" (budget envelopes, needs caps) and C "Arus" (six-month trend on every tab), each as light and dark mockups of the four tabs. The page holds the critique (24/40 Nielsen), the contrast measurements and the mockups this change implements. Theme tokens live in `ui/theme/SakuColors.kt`; money formatting has one implementation behind `MoneyText`; percentages go through `wholePercents`.
 
 ## Goals / Non-Goals
 

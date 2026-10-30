@@ -19,5 +19,5 @@
 
 ## 4. Verification
 
-- [ ] 4.1 Emulator pass with start day 30 against the imported October 2026 data, both themes
+- [x] 4.1 Emulator pass with start day 30 against the imported October 2026 data, both themes
 - [x] 4.2 `ANDROID_HOME=/home/dvnnfrr/Android/Sdk ./gradlew :app:testDebugUnitTest :app:assembleDebug` green
