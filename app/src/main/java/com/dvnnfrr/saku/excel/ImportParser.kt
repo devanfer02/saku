@@ -314,7 +314,7 @@ object ImportParser {
         }
         if (text.isEmpty()) return null
         // Parsed as BigDecimal, never as a double: "187000.0" and 187000 must compare
-        // equal, and 1_200 doubles is exactly where a rounding error hides.
+        // equal, and a thousand doubles is exactly where a rounding error hides.
         val parsed = runCatching { BigDecimal(text) }.getOrNull()
             ?: return AmountDiscrepancy(idr, text)
         return if (parsed.compareTo(idr) == 0) null else AmountDiscrepancy(idr, text)

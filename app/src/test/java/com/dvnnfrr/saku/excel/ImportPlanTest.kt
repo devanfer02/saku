@@ -9,7 +9,7 @@ import org.junit.Test
 
 /**
  * Covers "Skip duplicates and merge into existing months" from
- * specs/excel-interchange/spec.md. Pure arithmetic over the real export, no database.
+ * specs/excel-interchange/spec.md. Pure arithmetic over the mock export, no database.
  */
 class ImportPlanTest {
 
@@ -17,10 +17,10 @@ class ImportPlanTest {
         (ImportParser.parse(XlsxReader.read(Fixture.file), JAKARTA) as ParseOutcome.Parsed).sheet
     }
 
-    private val accounts = mapOf("Card" to 1L, "Cash" to 2L, "Gopay" to 3L)
-    private val destinations = mapOf<String?, Long>("RDPU SucorInvest" to 4L, "Saham" to 5L)
+    private val accounts = mapOf("Card" to 1L, "Cash" to 2L, "OVO" to 3L)
+    private val destinations = mapOf<String?, Long>("Reksa Dana" to 4L, "Emas" to 5L)
 
-    /** Scenario: Reviewing an import — 1.200 rows of which 54 already exist. */
+    /** Scenario: Reviewing an import — 382 rows of which 54 already exist. */
     @Test
     fun `the tally splits new from already present and never reports a deletion`() {
         val hashes = ImportPlan.previewHashes(sheet.rows, accounts, destinations)
@@ -28,18 +28,18 @@ class ImportPlanTest {
 
         val tally = ImportPlan.tally(sheet, hashes, alreadyThere, excluded = 0)
 
-        assertEquals(1_200, tally.fileRowCount)
+        assertEquals(382, tally.fileRowCount)
         assertEquals(54, tally.alreadyPresent)
-        assertEquals(1_540, tally.insertable)
+        assertEquals(328, tally.insertable)
         assertEquals(0, tally.deleted)
         assertEquals(0, tally.collapsedInFile)
     }
 
-    /** Every one of the 1,200 rows is distinct on the key, so nothing collapses. */
+    /** Every one of the 382 rows is distinct on the key, so nothing collapses. */
     @Test
     fun `the reference export holds no internal duplicates`() {
         val hashes = ImportPlan.previewHashes(sheet.rows, accounts, destinations)
-        assertEquals(1_200, hashes.distinct().size)
+        assertEquals(382, hashes.distinct().size)
     }
 
     /**
@@ -93,12 +93,12 @@ class ImportPlanTest {
      */
     @Test
     fun `a transfer's destination changes its hash`() {
-        val transfer = row(type = TxnType.TRANSFER, category = "Saham")
+        val transfer = row(type = TxnType.TRANSFER, category = "Emas")
         val toShares = ImportPlan.previewHashes(listOf(transfer), accounts, destinations)
         val toOther = ImportPlan.previewHashes(
             listOf(transfer),
             accounts,
-            mapOf<String?, Long>("Saham" to 9L),
+            mapOf<String?, Long>("Emas" to 9L),
         )
         assertNotEquals(toShares.single(), toOther.single())
     }
@@ -119,7 +119,7 @@ class ImportPlanTest {
         val hashes = ImportPlan.previewHashes(sheet.rows.drop(3), accounts, destinations)
         val tally = ImportPlan.tally(sheet, hashes, emptySet(), excluded = 3)
         assertEquals(3, tally.excluded)
-        assertEquals(1_591, tally.insertable)
+        assertEquals(379, tally.insertable)
     }
 
     private fun row(
