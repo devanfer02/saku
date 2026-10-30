@@ -39,6 +39,14 @@ data class SakuColors(
     val chartNeutral: Color,
     /** Attention without destruction. Distinct from `expense`, which means error. */
     val warning: Color,
+    /**
+     * The two shares of net worth on the Accounts split bar. Apart in hue, blue and
+     * red-orange, so they read apart in both themes and for colour-blind eyes; the orange
+     * sits 17 degrees of hue off `warning` so a share never reads as an alarm. Each is at
+     * least 3:1 against `surface` and `background`.
+     */
+    val netSpendable: Color,
+    val netInvested: Color,
     /** Ink for a control that is present but cannot be used. */
     val inkDisabled: Color,
     val chart: List<Color>,
@@ -74,6 +82,8 @@ val LightSakuColors = SakuColors(
     transfer = Color(0xFF59637A),
     chartNeutral = Color(0xFF9AA4B8),
     warning = Color(0xFF9A6207),
+    netSpendable = Color(0xFF1B5AD9),
+    netInvested = Color(0xFFC9541A),
     inkDisabled = Color(0xFFB3BBCB),
     chart = listOf(
         Color(0xFF1B5AD9),
@@ -102,6 +112,8 @@ val DarkSakuColors = SakuColors(
     transfer = Color(0xFF98A3BC),
     chartNeutral = Color(0xFF6E7A94),
     warning = Color(0xFFD79A3C),
+    netSpendable = Color(0xFF6C9BF0),
+    netInvested = Color(0xFFF08A52),
     inkDisabled = Color(0xFF4C566E),
     chart = listOf(
         Color(0xFF5688DD),

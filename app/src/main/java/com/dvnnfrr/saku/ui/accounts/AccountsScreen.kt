@@ -224,7 +224,7 @@ private fun NetWorthHeader(split: NetWorthSplit, modifier: Modifier = Modifier) 
     ) {
         Text(
             text = netWorthLabel,
-            style = SakuTheme.typography.caption,
+            style = SakuTheme.typography.caption.let { it.copy(fontSize = it.fontSize * NET_WORTH_LABEL_SCALE) },
             color = colors.ink2,
         )
         MoneyText(
@@ -256,8 +256,8 @@ private fun NetWorthHeader(split: NetWorthSplit, modifier: Modifier = Modifier) 
             horizontalArrangement = Arrangement.spacedBy(spacing.lg),
             verticalArrangement = Arrangement.spacedBy(spacing.xs),
         ) {
-            SplitFigure(spendableLabel, split.spendable, colors.ink)
-            SplitFigure(investedLabel, split.invested, colors.ink2)
+            SplitFigure(spendableLabel, split.spendable, colors.netSpendable)
+            SplitFigure(investedLabel, split.invested, colors.netInvested)
             // Only once a liability account exists. A figure parked at zero for ever
             // reads as a debt of nothing rather than as no debts.
             split.owed?.let { SplitFigure(stringResource(R.string.accounts_liabilities), it, dot = null) }
@@ -280,10 +280,10 @@ private fun SplitBar(split: NetWorthSplit, description: String) {
     ) {
         // Weights are the permille shares; only the layout turns them into a fraction.
         if (split.spendablePermille > 0) {
-            Box(Modifier.weight(split.spendablePermille.toFloat()).fillMaxHeight().background(colors.ink))
+            Box(Modifier.weight(split.spendablePermille.toFloat()).fillMaxHeight().background(colors.netSpendable))
         }
         if (split.investedPermille > 0) {
-            Box(Modifier.weight(split.investedPermille.toFloat()).fillMaxHeight().background(colors.ink2))
+            Box(Modifier.weight(split.investedPermille.toFloat()).fillMaxHeight().background(colors.netInvested))
         }
     }
 }
@@ -306,6 +306,9 @@ private fun SplitFigure(label: String, value: Money, dot: Color?) {
 }
 
 private val SPLIT_BAR_HEIGHT = 10.dp
+
+/** The owner asked for the label above net worth at 20% over the caption size. */
+private const val NET_WORTH_LABEL_SCALE = 1.2f
 
 /** Room for the floating add button, which is 56dp plus its 16dp margin. */
 private val FAB_CLEARANCE = 88.dp

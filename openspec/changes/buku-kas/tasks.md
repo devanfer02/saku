@@ -43,6 +43,7 @@
 - [ ] 7.2 Chart style choice (ranked bars or pie), persisted beside `AppearanceStore`; pie built in `ui/stats/` with the eight-slot cap and a centre total that never clips; ranked rows stay as its legend
 - [ ] 7.3 Chevron and pressed state on every Stats row that opens a detail, plus an accessibility label
 - [ ] 7.4 Category detail: total, share, count, average; the category's month strip; subcategory split in the current style with "No subcategory"; then its transactions; filter respected; assembly tests against October 2026
-- [ ] 7.5 Split bar colours: two hues apart, 3:1 against the surface in both themes, as theme tokens; legend dots match; extend `TextContrastTest` or a sibling test to assert the 3:1
-- [ ] 7.6 "Net worth" label 20% larger
+- [x] 7.5 Split bar colours: two hues apart, 3:1 against the surface in both themes, as theme tokens; legend dots match; extend `TextContrastTest` or a sibling test to assert the 3:1
+- [x] 7.6 "Net worth" label 20% larger
+- [ ] 7.8 Strip in Weekly and Annually as well as Monthly, not in Period, per "The strip follows the period mode"
 - [ ] 7.7 Full test and assemble green

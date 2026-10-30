@@ -31,6 +31,8 @@ class SakuColorsTest {
         "transfer" to colors.transfer,
         "chartNeutral" to colors.chartNeutral,
         "warning" to colors.warning,
+        "netSpendable" to colors.netSpendable,
+        "netInvested" to colors.netInvested,
         "inkDisabled" to colors.inkDisabled,
     )
 
@@ -49,6 +51,8 @@ class SakuColorsTest {
         "transfer" to Color(0xFF59637A),
         "chartNeutral" to Color(0xFF9AA4B8),
         "warning" to Color(0xFF9A6207),
+        "netSpendable" to Color(0xFF1B5AD9),
+        "netInvested" to Color(0xFFC9541A),
         "inkDisabled" to Color(0xFFB3BBCB),
     )
 
@@ -78,6 +82,8 @@ class SakuColorsTest {
         "transfer" to Color(0xFF98A3BC),
         "chartNeutral" to Color(0xFF6E7A94),
         "warning" to Color(0xFFD79A3C),
+        "netSpendable" to Color(0xFF6C9BF0),
+        "netInvested" to Color(0xFFF08A52),
         "inkDisabled" to Color(0xFF4C566E),
     )
 

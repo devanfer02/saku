@@ -65,6 +65,20 @@ class TextContrastTest {
         assertFloor("dark", DarkSakuColors)
     }
 
+    /** The split bar is a graphic, so its floor is the 3:1 for non-text, in both themes. */
+    @Test
+    fun `the net worth shares reach 3 to 1 on both surfaces in both themes`() {
+        val failures = listOf("light" to LightSakuColors, "dark" to DarkSakuColors).flatMap { (theme, colors) ->
+            listOf("netSpendable" to colors.netSpendable, "netInvested" to colors.netInvested).flatMap { (name, share) ->
+                backgrounds(colors).mapNotNull { (surfaceName, surface) ->
+                    val ratio = contrast(share, surface)
+                    if (ratio >= GRAPHIC_FLOOR) null else "$theme $name on $surfaceName: ${"%.2f".format(ratio)}"
+                }
+            }
+        }
+        assertTrue("Below 3:1: $failures", failures.isEmpty())
+    }
+
     @Test
     fun `ink3 is below the floor, which is why it carries no text`() {
         // If a palette change lifts ink3 over the floor this test is the reminder that
@@ -98,5 +112,6 @@ class TextContrastTest {
 
     private companion object {
         const val FLOOR = 4.5
+        const val GRAPHIC_FLOOR = 3.0
     }
 }

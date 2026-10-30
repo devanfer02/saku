@@ -142,3 +142,18 @@ The "Net worth" label above the figure SHALL be set 20% larger than the caption 
 #### Scenario: Reading Accounts
 - **WHEN** the user opens Accounts
 - **THEN** the "Net worth" label is visibly larger than the legend text under the bar
+
+### Requirement: The strip follows the period mode
+The scrollable strip SHALL show in Weekly, Monthly and Annually modes, with one column per week, month or year respectively, across all history up to the selected period, and SHALL NOT show in Period (custom range) mode. Its header SHALL name the unit ("Weeks", "Months", "Years"). Weeks SHALL be Monday to Sunday, as everywhere else in the app. Column labels SHALL be the week's start date (`26 Oct`), the month's short name, or the year. Tapping a column SHALL select that period.
+
+#### Scenario: Weekly mode
+- **WHEN** the user opens Stats in Weekly mode on the week of 26 Oct 2026
+- **THEN** the strip shows one column per week from the first transaction's week to 26 Oct, scrolled so 26 Oct is rightmost, headed "Weeks"
+
+#### Scenario: Annually mode
+- **WHEN** the user switches to Annually on 2026
+- **THEN** the strip shows 2025 and 2026, headed "Years"
+
+#### Scenario: Period mode
+- **WHEN** the user picks a custom Period
+- **THEN** no strip is shown
