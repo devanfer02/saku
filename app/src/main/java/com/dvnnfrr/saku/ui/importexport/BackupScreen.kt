@@ -26,6 +26,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.dvnnfrr.saku.R
+import com.dvnnfrr.saku.ui.shared.ScreenHeader
 import com.dvnnfrr.saku.ui.theme.SakuPreview
 import com.dvnnfrr.saku.ui.theme.SakuPreviewSurface
 import com.dvnnfrr.saku.ui.theme.SakuTheme
@@ -39,6 +40,7 @@ import com.dvnnfrr.saku.ui.theme.SakuTheme
 @Composable
 fun BackupScreen(
     modifier: Modifier = Modifier,
+    onBack: (() -> Unit)? = null,
     viewModel: BackupViewModel = viewModel(factory = BackupViewModel.Factory),
 ) {
     val state by viewModel.state.collectAsState()
@@ -53,6 +55,7 @@ fun BackupScreen(
     BackupScreen(
         state = state,
         modifier = modifier,
+        onBack = onBack,
         onChooseDestination = { picker.launch(viewModel.suggestedFileName()) },
     )
 }
@@ -61,88 +64,91 @@ fun BackupScreen(
 fun BackupScreen(
     state: BackupUiState,
     modifier: Modifier = Modifier,
+    onBack: (() -> Unit)? = null,
     onChooseDestination: () -> Unit = {},
 ) {
     val colors = SakuTheme.colors
     val spacing = SakuTheme.spacing
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(colors.background)
-            .verticalScroll(rememberScrollState())
-            .padding(spacing.screen),
-        verticalArrangement = Arrangement.spacedBy(spacing.lg),
-    ) {
-        Text(
-            text = stringResource(R.string.backup_intro),
-            style = SakuTheme.typography.body,
-            color = colors.ink2,
-        )
-
-        Button(
-            onClick = onChooseDestination,
-            enabled = state !is BackupUiState.Writing,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = colors.accent,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-                disabledContainerColor = colors.surfaceAlt,
-                disabledContentColor = colors.inkDisabled,
-            ),
-            modifier = Modifier.fillMaxWidth().testTag(BACKUP_ACTION_TAG),
+    Column(modifier = modifier.fillMaxSize().background(colors.background)) {
+        ScreenHeader(title = stringResource(R.string.more_backup), onBack = onBack, backLabel = stringResource(R.string.screen_back))
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(spacing.screen),
+            verticalArrangement = Arrangement.spacedBy(spacing.lg),
         ) {
-            Text(text = stringResource(R.string.backup_action), style = SakuTheme.typography.bodyStrong)
-        }
+            Text(
+                text = stringResource(R.string.backup_intro),
+                style = SakuTheme.typography.body,
+                color = colors.ink2,
+            )
 
-        when (state) {
-            BackupUiState.Idle -> Unit
-
-            is BackupUiState.Writing -> Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
-                CircularProgressIndicator(color = colors.accent)
-                Text(
-                    text = stringResource(R.string.backup_writing, state.fileName),
-                    style = SakuTheme.typography.body,
-                    color = colors.ink2,
-                )
+            Button(
+                onClick = onChooseDestination,
+                enabled = state !is BackupUiState.Writing,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colors.accent,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    disabledContainerColor = colors.surfaceAlt,
+                    disabledContentColor = colors.inkDisabled,
+                ),
+                modifier = Modifier.fillMaxWidth().testTag(BACKUP_ACTION_TAG),
+            ) {
+                Text(text = stringResource(R.string.backup_action), style = SakuTheme.typography.bodyStrong)
             }
 
-            is BackupUiState.Written -> Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
-                Text(
-                    text = stringResource(R.string.backup_done, state.fileName),
-                    style = SakuTheme.typography.bodyStrong,
-                    color = colors.income,
-                )
-                CountCard(
-                    listOf(
-                        stringResource(R.string.backup_count_accounts) to state.counts.accounts,
-                        stringResource(R.string.backup_count_categories) to state.counts.categories,
-                        stringResource(R.string.backup_count_transactions) to state.counts.transactions,
-                    ),
-                )
-            }
+            when (state) {
+                BackupUiState.Idle -> Unit
 
-            is BackupUiState.Failed -> Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
-                Text(
-                    text = stringResource(R.string.backup_failed, state.fileName),
-                    style = SakuTheme.typography.bodyStrong,
-                    color = colors.expense,
-                )
-                state.detail?.let {
-                    Text(text = it, style = SakuTheme.typography.caption, color = colors.ink2)
+                is BackupUiState.Writing -> Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+                    CircularProgressIndicator(color = colors.accent)
+                    Text(
+                        text = stringResource(R.string.backup_writing, state.fileName),
+                        style = SakuTheme.typography.body,
+                        color = colors.ink2,
+                    )
+                }
+
+                is BackupUiState.Written -> Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+                    Text(
+                        text = stringResource(R.string.backup_done, state.fileName),
+                        style = SakuTheme.typography.bodyStrong,
+                        color = colors.income,
+                    )
+                    CountCard(
+                        listOf(
+                            stringResource(R.string.backup_count_accounts) to state.counts.accounts,
+                            stringResource(R.string.backup_count_categories) to state.counts.categories,
+                            stringResource(R.string.backup_count_transactions) to state.counts.transactions,
+                        ),
+                    )
+                }
+
+                is BackupUiState.Failed -> Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
+                    Text(
+                        text = stringResource(R.string.backup_failed, state.fileName),
+                        style = SakuTheme.typography.bodyStrong,
+                        color = colors.expense,
+                    )
+                    state.detail?.let {
+                        Text(text = it, style = SakuTheme.typography.caption, color = colors.ink2)
+                    }
                 }
             }
-        }
 
-        Text(
-            text = stringResource(R.string.backup_not_encrypted),
-            style = SakuTheme.typography.caption,
-            color = colors.ink2,
-        )
-        Text(
-            text = stringResource(R.string.export_local_only),
-            style = SakuTheme.typography.caption,
-            color = colors.ink2,
-        )
+            Text(
+                text = stringResource(R.string.backup_not_encrypted),
+                style = SakuTheme.typography.caption,
+                color = colors.ink2,
+            )
+            Text(
+                text = stringResource(R.string.export_local_only),
+                style = SakuTheme.typography.caption,
+                color = colors.ink2,
+            )
+        }
     }
 }
 

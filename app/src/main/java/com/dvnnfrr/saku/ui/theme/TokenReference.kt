@@ -46,6 +46,7 @@ fun TokenReference(modifier: Modifier = Modifier) {
         Swatch("surface", colors.surface)
         Swatch("surfaceAlt", colors.surfaceAlt)
         Swatch("line", colors.line)
+        Swatch("lineStrong", colors.lineStrong)
 
         Text("Ink", style = SakuTheme.typography.title, color = colors.ink)
         Swatch("ink", colors.ink)

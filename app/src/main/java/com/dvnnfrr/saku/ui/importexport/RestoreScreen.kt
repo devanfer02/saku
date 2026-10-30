@@ -30,6 +30,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.dvnnfrr.saku.R
 import com.dvnnfrr.saku.excel.AccountConflict
 import com.dvnnfrr.saku.excel.AccountSetting
+import com.dvnnfrr.saku.ui.shared.ScreenHeader
 import com.dvnnfrr.saku.ui.theme.SakuPreview
 import com.dvnnfrr.saku.ui.theme.SakuPreviewSurface
 import com.dvnnfrr.saku.ui.theme.SakuTheme
@@ -45,6 +46,7 @@ import kotlinx.datetime.LocalDate
 @Composable
 fun RestoreScreen(
     modifier: Modifier = Modifier,
+    onBack: (() -> Unit)? = null,
     viewModel: RestoreViewModel = viewModel(factory = RestoreViewModel.Factory),
 ) {
     val state by viewModel.state.collectAsState()
@@ -57,6 +59,7 @@ fun RestoreScreen(
     RestoreScreen(
         state = state,
         modifier = modifier,
+        onBack = onBack,
         onPickFile = { picker.launch(SPREADSHEET_MIME_TYPES) },
         onConfirm = viewModel::confirm,
         onDiscard = viewModel::discard,
@@ -67,6 +70,7 @@ fun RestoreScreen(
 fun RestoreScreen(
     state: RestoreUiState,
     modifier: Modifier = Modifier,
+    onBack: (() -> Unit)? = null,
     onPickFile: () -> Unit = {},
     onConfirm: () -> Unit = {},
     onDiscard: () -> Unit = {},
@@ -74,65 +78,67 @@ fun RestoreScreen(
     val colors = SakuTheme.colors
     val spacing = SakuTheme.spacing
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(colors.background)
-            .verticalScroll(rememberScrollState())
-            .padding(spacing.screen),
-        verticalArrangement = Arrangement.spacedBy(spacing.lg),
-    ) {
-        Text(
-            text = stringResource(R.string.restore_intro),
-            style = SakuTheme.typography.body,
-            color = colors.ink2,
-        )
-
-        when (state) {
-            RestoreUiState.Idle -> PrimaryButton(
-                label = stringResource(R.string.restore_choose_file),
-                onClick = onPickFile,
-                modifier = Modifier.testTag(RESTORE_PICK_TAG),
+    Column(modifier = modifier.fillMaxSize().background(colors.background)) {
+        ScreenHeader(title = stringResource(R.string.more_restore), onBack = onBack, backLabel = stringResource(R.string.screen_back))
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(spacing.screen),
+            verticalArrangement = Arrangement.spacedBy(spacing.lg),
+        ) {
+            Text(
+                text = stringResource(R.string.restore_intro),
+                style = SakuTheme.typography.body,
+                color = colors.ink2,
             )
 
-            is RestoreUiState.Reading -> Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
-                CircularProgressIndicator(color = colors.accent)
-                Text(
-                    text = stringResource(R.string.restore_reading, state.fileName),
-                    style = SakuTheme.typography.body,
-                    color = colors.ink2,
+            when (state) {
+                RestoreUiState.Idle -> PrimaryButton(
+                    label = stringResource(R.string.restore_choose_file),
+                    onClick = onPickFile,
+                    modifier = Modifier.testTag(RESTORE_PICK_TAG),
                 )
-            }
 
-            is RestoreUiState.Refused -> {
-                Text(
-                    text = state.refusal.message(state.fileName),
-                    style = SakuTheme.typography.bodyStrong,
-                    color = colors.expense,
-                )
-                ChooseAnother(onPickFile)
-            }
+                is RestoreUiState.Reading -> Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+                    CircularProgressIndicator(color = colors.accent)
+                    Text(
+                        text = stringResource(R.string.restore_reading, state.fileName),
+                        style = SakuTheme.typography.body,
+                        color = colors.ink2,
+                    )
+                }
 
-            is RestoreUiState.Ready -> Preview(state, onConfirm = onConfirm, onDiscard = onDiscard)
+                is RestoreUiState.Refused -> {
+                    Text(
+                        text = state.refusal.message(state.fileName),
+                        style = SakuTheme.typography.bodyStrong,
+                        color = colors.expense,
+                    )
+                    ChooseAnother(onPickFile)
+                }
 
-            is RestoreUiState.Restored -> {
-                Text(
-                    text = stringResource(R.string.restore_done, state.fileName),
-                    style = SakuTheme.typography.bodyStrong,
-                    color = colors.income,
-                )
-                CountCard(
-                    listOf(
-                        stringResource(R.string.restore_new_accounts) to state.result.accountsCreated,
-                        stringResource(R.string.restore_new_categories) to state.result.categoriesCreated,
-                        stringResource(R.string.restore_new_transactions) to state.result.batch.insertedCount,
-                    ),
-                )
-                Text(
-                    text = stringResource(R.string.restore_done_note),
-                    style = SakuTheme.typography.caption,
-                    color = colors.ink2,
-                )
+                is RestoreUiState.Ready -> Preview(state, onConfirm = onConfirm, onDiscard = onDiscard)
+
+                is RestoreUiState.Restored -> {
+                    Text(
+                        text = stringResource(R.string.restore_done, state.fileName),
+                        style = SakuTheme.typography.bodyStrong,
+                        color = colors.income,
+                    )
+                    CountCard(
+                        listOf(
+                            stringResource(R.string.restore_new_accounts) to state.result.accountsCreated,
+                            stringResource(R.string.restore_new_categories) to state.result.categoriesCreated,
+                            stringResource(R.string.restore_new_transactions) to state.result.batch.insertedCount,
+                        ),
+                    )
+                    Text(
+                        text = stringResource(R.string.restore_done_note),
+                        style = SakuTheme.typography.caption,
+                        color = colors.ink2,
+                    )
+                }
             }
         }
     }

@@ -18,7 +18,6 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.MoreVert
@@ -60,6 +59,7 @@ import com.dvnnfrr.saku.domain.CategoryKind
 import com.dvnnfrr.saku.domain.ColorSlot
 import com.dvnnfrr.saku.ui.shared.ColorSwatch
 import com.dvnnfrr.saku.ui.shared.EmptyState
+import com.dvnnfrr.saku.ui.shared.ScreenHeader
 import com.dvnnfrr.saku.ui.shared.SegmentedTabs
 import com.dvnnfrr.saku.ui.theme.SakuPreview
 import com.dvnnfrr.saku.ui.theme.SakuPreviewSurface
@@ -197,30 +197,7 @@ private fun LazyListScope.categoryRows(
 
 @Composable
 private fun Header(onBack: (() -> Unit)?, onCreate: () -> Unit) {
-    val spacing = SakuTheme.spacing
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = spacing.sm, vertical = spacing.sm),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (onBack != null) {
-            IconButton(onClick = onBack) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = stringResource(R.string.categories_back),
-                    tint = SakuTheme.colors.ink,
-                )
-            }
-        }
-        Text(
-            text = stringResource(R.string.categories_title),
-            style = SakuTheme.typography.title,
-            color = SakuTheme.colors.ink,
-            modifier = Modifier
-                .weight(1f)
-                .padding(horizontal = spacing.sm),
-        )
+    ScreenHeader(title = stringResource(R.string.categories_title), onBack = onBack, backLabel = stringResource(R.string.screen_back)) {
         IconButton(onClick = onCreate) {
             Icon(
                 imageVector = Icons.Filled.Add,
