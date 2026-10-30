@@ -28,5 +28,6 @@ A fresh install opens on an empty Trans tab with two accounts, Cash and Card, at
 
 - New: `data/FirstRunStore.kt`, `ui/firstrun/` (assembly, gate and setup ViewModels, welcome, Saku import chooser and setup screens, first-run nav host), `res/values/strings_first_run.xml`, tests.
 - Changed: `TxnDao` and `TransactionRepository` (`hasAny`), `AppContainer` (`firstRun` store), `ui/SakuApp.kt` (shows the first-run flow before the shell), `ui/navigation/` (`FirstRunRoute`).
-- Reused unchanged: `ImportScreen`, `RestoreScreen`, `DatabaseImportScreen` and their ViewModels; `MoreEntry` labels, subtitles and icons; `SegmentedTabs`, `MoneyText`, `ScreenHeader`.
+- Reused: `ImportScreen`, `RestoreScreen`, `DatabaseImportScreen` and their ViewModels; `MoreEntry` labels, subtitles and icons; `SegmentedTabs`, `MoneyText`, `ScreenHeader`.
+- Thumb zone (owner's rule, 30 Oct 2026): new shared `PickCard` and `ThumbZonePane`; the import, restore, database import, backup and export screens show one centred pick card, previews pin confirm and cancel in a bottom bar, and Categories' create button moves to a FAB. No ViewModel changes.
 - No schema change, no migration, no new library.

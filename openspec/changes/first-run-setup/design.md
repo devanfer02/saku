@@ -77,6 +77,22 @@ The owner widened the scope on 30 Oct 2026: the first screen is a choice between
 
 **Accessibility.** Each screen title is a heading (`ScreenHeader` or a `heading()` semantics on the welcome title); group titles in the categories step are headings. Every field carries its label as `contentDescription` and as visible placeholder text, like the account editor. Every tappable row, tick and button is at least `touchTarget` (48dp) tall. Ticks are `Role.Checkbox` with `toggleable`. All colour comes from `SakuTheme`; previews render light and dark through `@SakuPreview`.
 
+**Thumb zone.** The owner holds the phone in one hand, and the thumb reaches only to about the middle of the screen. Three rules follow, set by the owner on 30 Oct 2026 from screenshots, and they cover every first-run screen and every screen More pushes:
+1. A screen that waits on one input (pick a file, choose where to save) shows one card, centred horizontally and vertically in the space under the header: a bold title, one short line, a tinted drop zone with a dashed border holding the icon, and the filled action at the card's foot. This is `PickCard` inside `ThumbZonePane`, both in `ui/shared/PickCard.kt`, with all copy passed in.
+2. Primary actions sit in the lower half. A preview with confirm and cancel pins them in a bottom action bar, as the Money Manager import preview already did. Restore and database import now share that bar (`BottomActionBar`, internal to `importexport`), and the import preview and result use it too, so there is one implementation.
+3. The welcome screen and the Import from Saku chooser sit their choices in the lower middle, not under the top edge.
+
+Decisions:
+- Reading and Refused reuse the same card as Idle. The file being read shows in the drop zone with a spinner, and a refusal replaces the short line with the reason in the error colour and relabels the button "Choose another file". The button never moves between the three states, so a second attempt is the same thumb position. The import refusal keeps its expected and found column lists, inside the card.
+- The drop zone is a second, larger tap target for the same action. It is hidden from accessibility services, apart from its label, because the button already names the action; a screen reader user meets one button, not two.
+- Backup and export keep both privacy notes (not encrypted, goes only where you put it) inside the card under the button, so they are read at the moment of choosing. The written or failed result shows under the card.
+- The intros were long paragraphs; the card holds one short line, so each was rewritten shorter, keeping its promise (nothing deleted, reversible in Import history, preview first). The export line no longer lists the columns; the file shows them.
+- `ThumbZonePane` takes a vertical bias. Pick cards use 0 (centred, as the owner asked); the welcome screen and the chooser use 0.35, which lands the three welcome rows across the midline of a Pixel 8 with Skip under them. The pane still scrolls, so a large font scale never clips. On a wide screen the block keeps to a 480dp column.
+- Welcome rows had uneven heights because Material's `ListItem` switches to its three-line layout (taller minimum, top-aligned content) when a subtitle wraps. The rows are now a plain `Row` with one 80dp minimum, enough for a title and a two-line subtitle, so every row matches at the default font size.
+- Categories moved "New category" from the header's top-right icon to a bottom-end FAB, as Accounts already has; the empty state no longer carries its own copy of the button. The Maestro flow taps it by its label, which is unchanged.
+- Rejected: a bottom action bar for the pick screens. One centred card with the button inside was the owner's reference, and a bar under an empty screen reads as a preview with nothing in it.
+- Left as they are: Import history (a list; Reverse sits on each row), Appearance and the logging reminder (dialogs, already centred), the manual setup steps (Next and Done are already full width at the bottom), and the result screens after a restore or database import, which have no action beyond back.
+
 ## Risks / Trade-offs
 
 - [A user sets up by hand, then imports history with old transfers] The import is refused as a whole, with the existing per-row message naming the account. Nothing is corrupted; the fix is a manual as-of change on Accounts. Recorded above; the welcome screen order reduces how often it happens.

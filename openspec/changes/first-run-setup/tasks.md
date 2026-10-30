@@ -24,8 +24,18 @@
 - [x] 5.1 Add `FirstRunRoute` and `FirstRunNavHost`, mounting the existing import, restore and database-import screens
 - [x] 5.2 `SakuApp` shows the first-run flow before the shell while the gate offers it
 
-## 6. Verify
+## 6. Thumb zone
 
-- [x] 6.1 `openspec validate first-run-setup --strict`
-- [x] 6.2 No em dash in touched files; no colour literal outside `ui/theme/`
-- [ ] 6.3 Unit tests and debug build (main session; this branch did not run Gradle)
+- [x] 6.1 Add `ThumbZonePane` and `PickCard` to `ui/shared/PickCard.kt`, copy as parameters, with light and dark previews
+- [x] 6.2 Import (Money Manager and Excel), Restore, Import database: Idle, Reading and Refused become the centred pick card; existing test tags stay on the pick buttons
+- [x] 6.3 Restore and Import database previews move Cancel and Restore or Import to a bottom action bar shared with the import preview
+- [x] 6.4 Back up and Export: "Choose where to save" becomes the centred card, with the privacy notes inside it
+- [x] 6.5 Welcome and Import from Saku: choices sit in the lower middle; welcome rows have one height
+- [x] 6.6 Categories: "New category" moves from the header to a bottom-end FAB
+- [x] 6.7 Record the rule and decisions in design.md
+
+## 7. Verify
+
+- [x] 7.1 `openspec validate first-run-setup --strict`
+- [x] 7.2 No em dash in touched files; no colour literal outside `ui/theme/`
+- [ ] 7.3 Unit tests and debug build (main session; this branch did not run Gradle)
