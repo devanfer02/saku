@@ -61,3 +61,9 @@ enum class ThemePreference {
     LIGHT,
     DARK,
 }
+
+/** How Stats draws a composition: ranked bars, or a pie above the same ranked rows. */
+enum class ChartStyle {
+    BARS,
+    PIE,
+}

@@ -7,6 +7,7 @@ import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.dvnnfrr.saku.data.AppearanceStore
+import com.dvnnfrr.saku.data.ChartStyleStore
 import com.dvnnfrr.saku.data.FirstRunSeed
 import com.dvnnfrr.saku.data.SharedPreferencesAppearanceStore
 import com.dvnnfrr.saku.data.local.SakuDatabase
@@ -45,6 +46,9 @@ interface AppContainer {
     val imports: ImportRepository
     val appearance: AppearanceStore
 
+    /** The Stats chart style, remembered across restarts. */
+    val chartStyle: ChartStyleStore
+
     /** The Trans and Stats filter. Process-scoped and never persisted. */
     val filter: SharedFilter
 }
@@ -66,6 +70,8 @@ class RoomAppContainer(context: Context) : AppContainer {
      * construction only moves the same work behind a lock on the main thread.
      */
     override val appearance: AppearanceStore = SharedPreferencesAppearanceStore(context)
+
+    override val chartStyle: ChartStyleStore by lazy { ChartStyleStore(context) }
 
     override val filter: SharedFilter = SharedFilter()
 }
