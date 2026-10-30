@@ -26,6 +26,8 @@ data class TransactionListUiState(
     val calendar: CalendarMonth? = null,
     /** Set when the user opens a day from the calendar; cleared once consumed. */
     val pendingScrollTo: LocalDate? = null,
+    /** The Calendar's picked dates, folded. Null when nothing is picked. */
+    val calendarRange: CalendarRangeSummary? = null,
     /** The filter the figures above were computed under, for the bar and the action. */
     val filter: TransactionFilter = TransactionFilter.ALL,
     /** The Monthly year. Null outside the Monthly tab, which is not queried until opened. */

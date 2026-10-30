@@ -8,6 +8,7 @@ import com.dvnnfrr.saku.data.repository.TransactionRepository
 import com.dvnnfrr.saku.domain.DailyTotals
 import com.dvnnfrr.saku.domain.DateRange
 import com.dvnnfrr.saku.domain.PeriodTotals
+import com.dvnnfrr.saku.domain.Transaction
 import com.dvnnfrr.saku.domain.TransactionFilter
 import com.dvnnfrr.saku.sakuViewModelFactory
 import com.dvnnfrr.saku.ui.filter.SharedFilter
@@ -57,6 +58,7 @@ class TransactionListViewModel(
         val tab: TransactionTab,
         val pendingScrollTo: LocalDate?,
         val expandedMonth: Month?,
+        val calendarSelection: CalendarSelection? = null,
     )
 
     private val selection = MutableStateFlow(
@@ -94,6 +96,8 @@ class TransactionListViewModel(
                     MonthData(
                         range = range,
                         filter = filter,
+                        transactions = transactions,
+                        index = index,
                         totals = transactions.periodTotals(),
                         days = transactions.toDaySections(zone, index),
                         calendar = transactions.toCalendarMonth(range, zone),
@@ -104,6 +108,9 @@ class TransactionListViewModel(
     private data class MonthData(
         val range: DateRange,
         val filter: TransactionFilter,
+        /** The month's rows under the filter, kept so a Calendar selection folds without a query. */
+        val transactions: List<Transaction>,
+        val index: DisplayIndex,
         val totals: PeriodTotals,
         val days: List<DaySection>,
         val calendar: CalendarMonth,
@@ -145,6 +152,12 @@ class TransactionListViewModel(
                 days = data.days,
                 calendar = data.calendar,
                 pendingScrollTo = current.pendingScrollTo,
+                // Guarded on the data's month: for one emission after an arrow tap the
+                // selection is already cleared but a stale one must never fold old rows.
+                calendarRange = current.calendarSelection
+                    ?.range
+                    ?.takeIf { it.start in data.range && it.endInclusive in data.range }
+                    ?.let { data.transactions.toCalendarRangeSummary(it, zone, data.index) },
                 filter = data.filter,
                 monthly = year?.let {
                     assembleMonthlyYear(it.year, it.days, today(), current.expandedMonth)
@@ -169,10 +182,16 @@ class TransactionListViewModel(
 
     private fun step(direction: Int) = selection.update {
         if (it.tab != TransactionTab.MONTHLY) {
-            it.copy(range = if (direction < 0) it.range.previous() else it.range.next())
+            // Changing month clears the Calendar selection. The grid shows one month, so a
+            // selection kept across months would list rows from dates no longer on screen,
+            // and one that spanned two months could not be drawn at all.
+            it.copy(
+                range = if (direction < 0) it.range.previous() else it.range.next(),
+                calendarSelection = null,
+            )
         } else {
             val range = DateRange.ofMonth(it.range.start.plus(12 * direction, DateTimeUnit.MONTH))
-            it.copy(range = range, expandedMonth = openingMonthFor(range))
+            it.copy(range = range, expandedMonth = openingMonthFor(range), calendarSelection = null)
         }
     }
 
@@ -200,9 +219,33 @@ class TransactionListViewModel(
      * in its month; a Monthly week tap passes the week's last day inside the month it was
      * listed under, which is how a week crossing a month edge opens the right month.
      */
-    fun openDay(date: LocalDate) = selection.update {
-        it.copy(range = DateRange.ofMonth(date), tab = TransactionTab.DAILY, pendingScrollTo = date)
+    fun openDay(date: LocalDate) = selection.update { current ->
+        val range = DateRange.ofMonth(date)
+        val sameMonth = range == current.range
+        current.copy(
+            range = range,
+            tab = TransactionTab.DAILY,
+            pendingScrollTo = date,
+            // The same rule as the arrows: a different month drops the selection.
+            calendarSelection = current.calendarSelection.takeIf { sameMonth },
+        )
     }
+
+    /**
+     * A tap on a Calendar day: picks it, closes a range on it, starts over on it, or clears
+     * it when it was the only day picked. See [tap] for the sequence. Switching tab keeps
+     * the selection, so Daily and back returns to the same range.
+     */
+    fun tapCalendarDay(date: LocalDate) = selection.update {
+        it.copy(calendarSelection = it.calendarSelection.tap(date))
+    }
+
+    /** A long-press drag across the grid, from the pressed day to where the finger is. */
+    fun sweepCalendarDays(from: LocalDate, to: LocalDate) = selection.update {
+        it.copy(calendarSelection = CalendarSelection.swept(from, to))
+    }
+
+    fun clearCalendarSelection() = selection.update { it.copy(calendarSelection = null) }
 
     /** Called once the list has scrolled, so a recomposition does not scroll again. */
     fun consumeScrollTarget() = selection.update { it.copy(pendingScrollTo = null) }

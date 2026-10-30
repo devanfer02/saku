@@ -218,6 +218,97 @@ class TransactionListViewModelTest {
             assertNull(vm.state.first { it.pendingScrollTo == null }.pendingScrollTo)
         }
 
+    // Calendar date selection.
+
+    @Test
+    fun `the calendar tap sequence picks a day, closes a range, starts over and clears`() =
+        runTest(dispatcher) {
+            seed()
+            record(day = 3, amount = 170_000)
+            record(day = 12, amount = 60_000)
+            record(day = 14, type = TxnType.INCOME, amount = 8_000_000, categoryId = gaji)
+            val vm = viewModel()
+            vm.state.first { !it.loading }
+            vm.selectTab(TransactionTab.CALENDAR)
+
+            vm.tapCalendarDay(LocalDate(2026, 8, 12))
+            val day = requireNotNull(vm.state.first { it.calendarRange != null }.calendarRange)
+            assertEquals(DateRange.custom(LocalDate(2026, 8, 12), LocalDate(2026, 8, 12)), day.range)
+            assertEquals(Money(60_000), day.totals.expense)
+
+            // Backwards: the second tap is earlier than the first.
+            vm.tapCalendarDay(LocalDate(2026, 8, 3))
+            val range = requireNotNull(
+                vm.state.first { it.calendarRange?.range?.start == LocalDate(2026, 8, 3) }.calendarRange,
+            )
+            assertEquals(LocalDate(2026, 8, 12), range.range.endInclusive)
+            assertEquals(Money(230_000), range.totals.expense)
+            assertEquals(listOf(LocalDate(2026, 8, 12), LocalDate(2026, 8, 3)), range.days.map { it.date })
+
+            vm.tapCalendarDay(LocalDate(2026, 8, 14))
+            val fresh = requireNotNull(
+                vm.state.first { it.calendarRange?.range?.start == LocalDate(2026, 8, 14) }.calendarRange,
+            )
+            assertEquals(fresh.range.start, fresh.range.endInclusive)
+            assertEquals(Money(8_000_000), fresh.totals.income)
+
+            vm.tapCalendarDay(LocalDate(2026, 8, 14))
+            assertNull(vm.state.first { it.calendarRange == null }.calendarRange)
+        }
+
+    @Test
+    fun `a sweep selects the dragged range`() = runTest(dispatcher) {
+        seed()
+        record(day = 5, amount = 10_000)
+        record(day = 9, amount = 20_000)
+        val vm = viewModel()
+        vm.state.first { !it.loading }
+
+        vm.sweepCalendarDays(LocalDate(2026, 8, 9), LocalDate(2026, 8, 4))
+
+        val swept = requireNotNull(vm.state.first { it.calendarRange != null }.calendarRange)
+        assertEquals(DateRange.custom(LocalDate(2026, 8, 4), LocalDate(2026, 8, 9)), swept.range)
+        assertEquals(Money(30_000), swept.totals.expense)
+
+        vm.clearCalendarSelection()
+        assertNull(vm.state.first { it.calendarRange == null }.calendarRange)
+    }
+
+    @Test
+    fun `the calendar selection respects the filter`() = runTest(dispatcher) {
+        seed()
+        record(day = 12, amount = 60_000)
+        record(day = 12, type = TxnType.INCOME, amount = 8_000_000, categoryId = gaji)
+        val vm = viewModel()
+        vm.state.first { !it.loading }
+        vm.tapCalendarDay(LocalDate(2026, 8, 12))
+        vm.state.first { it.calendarRange != null }
+
+        shared.set(TransactionFilter(incomeCategoryIds = emptySet()))
+
+        val filtered = requireNotNull(vm.state.first { it.filter.isActive && it.calendarRange != null }.calendarRange)
+        assertEquals(Money.ZERO, filtered.totals.income)
+        assertEquals(Money(60_000), filtered.totals.expense)
+        assertEquals(listOf(TxnType.EXPENSE), filtered.days.flatMap { it.rows }.map { it.type })
+    }
+
+    @Test
+    fun `changing month clears the calendar selection`() = runTest(dispatcher) {
+        seed()
+        val vm = viewModel()
+        vm.state.first { !it.loading }
+        vm.selectTab(TransactionTab.CALENDAR)
+        vm.tapCalendarDay(LocalDate(2026, 8, 12))
+        vm.state.first { it.calendarRange != null }
+
+        vm.previousMonth()
+        val july = vm.state.first { it.range.start == LocalDate(2026, 7, 1) }
+        assertNull(july.calendarRange)
+
+        vm.nextMonth()
+        assertNull(vm.state.first { it.range == august }.calendarRange)
+    }
+
     // transaction-filter: every figure respects the filter, set from either screen.
 
     @Test
