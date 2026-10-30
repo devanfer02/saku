@@ -18,6 +18,7 @@ import com.dvnnfrr.saku.domain.TxnType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -69,7 +70,7 @@ class FirstRunViewModelTest {
     private fun store() = FirstRunStore(ApplicationProvider.getApplicationContext())
 
     @Before
-    fun setUp() = runTest {
+    fun setUp() {
         Dispatchers.setMain(dispatcher)
         db = Room.inMemoryDatabaseBuilder(
             ApplicationProvider.getApplicationContext(),
@@ -79,7 +80,7 @@ class FirstRunViewModelTest {
         categories = RoomCategoryRepository(db)
         transactions = RoomTransactionRepository(db)
         imports = RoomImportRepository(db)
-        FirstRunSeed.applyIfEmpty(db, Instant.fromEpochSeconds(0), zone)
+        runBlocking { FirstRunSeed.applyIfEmpty(db, Instant.fromEpochSeconds(0), zone) }
     }
 
     @After
