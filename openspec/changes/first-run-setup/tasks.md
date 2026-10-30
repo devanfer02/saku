@@ -1,12 +1,12 @@
 ## 1. Data
 
-- [ ] 1.1 Add `TxnDao.hasAny()` (`SELECT EXISTS(SELECT 1 FROM txn)`) and `TransactionRepository.hasAny()`
-- [ ] 1.2 Add `data/FirstRunStore.kt` (SharedPreferences `saku_first_run`: `isComplete()`, `markComplete()`) and wire `firstRun` into `AppContainer`; tests for a fresh store, persistence across instances, and `hasAny` on empty, adjustment-only and normal ledgers
+- [x] 1.1 Add `TxnDao.hasAny()` (`SELECT EXISTS(SELECT 1 FROM txn)`) and `TransactionRepository.hasAny()`
+- [x] 1.2 Add `data/FirstRunStore.kt` (SharedPreferences `saku_first_run`: `isComplete()`, `markComplete()`) and wire `firstRun` into `AppContainer`; tests for a fresh store, persistence across instances, and `hasAny` on empty, adjustment-only and normal ledgers
 
 ## 2. Assembly
 
-- [ ] 2.1 Add `ui/firstrun/FirstRunAssembly.kt`: `shouldOfferFirstRun`, `AccountDraft`, `accountDraftsFrom`, `amountFromDigits`, `openingFor`, `validateAccountDrafts`, `planAccountWrites`, `FIRST_RUN_CATEGORY_SUGGESTIONS`, `planCategoryWrites`, `startOfToday`
-- [ ] 2.2 Test the assembly as plain functions: which accounts are listed, validation (blank, duplicate, archived clash), liability sign, empty amount as zero, what gets written for unchanged, renamed, retyped and added accounts, category de-duplication
+- [x] 2.1 Add `ui/firstrun/FirstRunAssembly.kt`: `shouldOfferFirstRun`, `AccountDraft`, `accountDraftsFrom`, `openingFor`, `amountDigitsFrom`, `validateAccountDrafts`, `planAccountWrites`, `FIRST_RUN_CATEGORY_SUGGESTIONS`, `planCategoryWrites`, `startOfToday`
+- [x] 2.2 Test the assembly as plain functions: which accounts are listed, validation (blank, duplicate, archived clash), liability sign, empty amount as zero, what gets written for unchanged, renamed, retyped and added accounts, category de-duplication
 
 ## 3. ViewModels
 
