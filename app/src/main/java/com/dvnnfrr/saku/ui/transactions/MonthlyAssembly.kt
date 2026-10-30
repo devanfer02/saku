@@ -3,7 +3,6 @@ package com.dvnnfrr.saku.ui.transactions
 import com.dvnnfrr.saku.domain.DailyTotals
 import com.dvnnfrr.saku.domain.DateRange
 import com.dvnnfrr.saku.domain.Money
-import com.dvnnfrr.saku.domain.PeriodMode
 import com.dvnnfrr.saku.domain.PeriodTotals
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
@@ -27,11 +26,6 @@ data class MonthlyYear(
     /** Days inside the year only, unlike the edge weeks. */
     val totals: PeriodTotals,
     val months: List<MonthRow>,
-    /**
-     * The days the year covers, for the header: the calendar year, or with a pay cycle the
-     * first to the last day of the pay months named after its months.
-     */
-    val range: DateRange = DateRange.ofYear(year),
 )
 
 /**
@@ -45,14 +39,7 @@ data class MonthRow(
     val weeks: List<WeekRow>,
     val expanded: Boolean,
 ) {
-    /**
-     * The calendar month the row starts in, which keys expanding it. Unique within a year
-     * even for pay months, where two can share a name with start day 15 or 16.
-     */
     val month: Month get() = range.start.month
-
-    /** The name the row shows: the month holding most of its days. */
-    val labelMonth: Month get() = range.majorityMonth().month
 }
 
 /**
@@ -66,38 +53,11 @@ data class WeekRow(
     val openDate: LocalDate,
 )
 
-/**
- * The months of [year], oldest first: the twelve calendar months, or with a pay cycle the
- * pay months named after a month of [year]. That is usually twelve, though start days 15
- * and 16 can give a year a name twice and another none, and the run is contiguous either
- * way because a later pay month never takes an earlier name.
- */
-fun monthsOfYear(year: Int, payStartDay: Int?): List<DateRange> {
-    var month = DateRange.monthOf(LocalDate(year, 1, 1), payStartDay)
-    if (month.majorityMonth().year < year) month = month.next()
-    val months = mutableListOf<DateRange>()
-    while (month.majorityMonth().year == year) {
-        months += month
-        month = month.next()
-    }
-    return months
-}
-
-/** The days [monthsOfYear] covers, as one range the header can name. */
-fun yearSpan(year: Int, payStartDay: Int?): DateRange {
-    if (payStartDay == null) return DateRange.ofYear(year)
-    val months = monthsOfYear(year, payStartDay)
-    return DateRange(months.first().start, months.last().endInclusive, PeriodMode.ANNUALLY)
-}
-
-/** The days one Monthly query covers: [year]'s span widened to the weeks its edges fall in. */
-fun monthlyQueryRange(year: Int, payStartDay: Int? = null): DateRange {
-    val span = yearSpan(year, payStartDay)
-    return DateRange.custom(
-        DateRange.ofWeek(span.start).start,
-        DateRange.ofWeek(span.endInclusive).endInclusive,
-    )
-}
+/** The days one Monthly query covers: [year] widened to the weeks its edges fall in. */
+fun monthlyQueryRange(year: Int): DateRange = DateRange.custom(
+    DateRange.ofWeek(LocalDate(year, 1, 1)).start,
+    DateRange.ofWeek(LocalDate(year, 12, 31)).endInclusive,
+)
 
 /**
  * Folds [days] into the year. Months that have not started by [today] are left out, and
@@ -108,25 +68,25 @@ fun assembleMonthlyYear(
     days: List<DailyTotals>,
     today: LocalDate,
     expandedMonth: Month?,
-    payStartDay: Int? = null,
 ): MonthlyYear {
-    val months = monthsOfYear(year, payStartDay)
-        .filter { it.start <= today }
-        .reversed()
-        .map { range ->
-            MonthRow(
-                range = range,
-                totals = days.totalsWithin(range),
-                weeks = weeksOf(range, days, today),
-                expanded = range.start.month == expandedMonth,
-            )
-        }
-    val span = yearSpan(year, payStartDay)
+    val lastMonth = when {
+        year < today.year -> 12
+        year == today.year -> today.monthNumber
+        else -> 0
+    }
+    val months = (lastMonth downTo 1).map { number ->
+        val range = DateRange.ofMonth(LocalDate(year, number, 1))
+        MonthRow(
+            range = range,
+            totals = days.totalsWithin(range),
+            weeks = weeksOf(range, days, today),
+            expanded = range.start.month == expandedMonth,
+        )
+    }
     return MonthlyYear(
         year = year,
-        totals = days.totalsWithin(span) ?: PeriodTotals.EMPTY,
+        totals = days.totalsWithin(DateRange.ofYear(year)) ?: PeriodTotals.EMPTY,
         months = months,
-        range = span,
     )
 }
 

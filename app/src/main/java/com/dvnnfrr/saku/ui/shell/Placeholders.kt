@@ -11,7 +11,6 @@ import androidx.compose.material.icons.automirrored.filled.ListAlt
 import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.DarkMode
-import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.Restore
@@ -140,7 +139,6 @@ enum class MoreEntry(
     val group: MoreGroup,
 ) {
     CATEGORIES(R.string.more_categories, R.string.more_categories_subtitle, Icons.Filled.Category, MoreGroup.ORGANISE),
-    PAY_CYCLE(R.string.more_pay_cycle, R.string.more_pay_cycle_subtitle, Icons.Filled.DateRange, MoreGroup.ORGANISE),
     BACKUP(R.string.more_backup, R.string.more_backup_subtitle, Icons.Filled.Backup, MoreGroup.YOUR_DATA),
     RESTORE(R.string.more_restore, R.string.more_restore_subtitle, Icons.Filled.Restore, MoreGroup.YOUR_DATA),
     IMPORT_MONEY_MANAGER(

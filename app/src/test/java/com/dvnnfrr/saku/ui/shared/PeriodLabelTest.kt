@@ -1,7 +1,6 @@
 package com.dvnnfrr.saku.ui.shared
 
 import com.dvnnfrr.saku.domain.DateRange
-import com.dvnnfrr.saku.domain.PeriodMode
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -22,37 +21,6 @@ class PeriodLabelTest {
         assertEquals("August 2026", periodLabel(DateRange.ofMonth(LocalDate(2026, 8, 17))))
         assertEquals("January 2026", periodLabel(DateRange.ofMonth(LocalDate(2026, 1, 1))))
         assertEquals("December 2025", periodLabel(DateRange.ofMonth(LocalDate(2025, 12, 31))))
-    }
-
-    @Test
-    fun `a pay month reads as its majority month with its span beneath`() {
-        val late = DateRange.ofPayMonth(LocalDate(2026, 10, 30), 25)
-        assertEquals("November 2026", periodLabel(late))
-        assertEquals("25 Oct to 24 Nov 2026", paySpanLabel(late))
-
-        val early = DateRange.ofPayMonth(LocalDate(2026, 10, 30), 5)
-        assertEquals("October 2026", periodLabel(early))
-        assertEquals("5 Oct to 4 Nov 2026", paySpanLabel(early))
-    }
-
-    @Test
-    fun `a tied pay month reads as the later month`() {
-        val tied = DateRange.ofPayMonth(LocalDate(2026, 9, 20), 16)
-        assertEquals("October 2026", periodLabel(tied))
-        assertEquals("16 Sep to 15 Oct 2026", paySpanLabel(tied))
-    }
-
-    @Test
-    fun `a pay month across the new year names both years in its span`() {
-        val pay = DateRange.ofPayMonth(LocalDate(2027, 1, 2), 30)
-        assertEquals("January 2027", periodLabel(pay))
-        assertEquals("30 Dec 2026 to 29 Jan 2027", paySpanLabel(pay))
-    }
-
-    @Test
-    fun `a year of pay months reads as the year it mostly falls in`() {
-        val span = DateRange(LocalDate(2025, 12, 30), LocalDate(2026, 12, 29), PeriodMode.ANNUALLY)
-        assertEquals("2026", periodLabel(span))
     }
 
     @Test

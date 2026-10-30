@@ -185,20 +185,12 @@ fun percentChange(current: Money, previous: Money): Int? {
  *
  * [PeriodMode.CUSTOM] keeps the dates it was given — there is no canonical custom range
  * to derive, so the screen opens its date picker instead.
- *
- * Monthly follows [payStartDay] when one is in force, landing on the pay month named
- * after the anchor's calendar month.
  */
-fun rangeForMode(
-    current: DateRange,
-    mode: PeriodMode,
-    today: LocalDate,
-    payStartDay: Int? = null,
-): DateRange {
+fun rangeForMode(current: DateRange, mode: PeriodMode, today: LocalDate): DateRange {
     val anchor = if (today in current) today else current.start
     return when (mode) {
         PeriodMode.WEEKLY -> DateRange.ofWeek(anchor)
-        PeriodMode.MONTHLY -> DateRange.ofMonth(anchor).rebased(payStartDay, today)
+        PeriodMode.MONTHLY -> DateRange.ofMonth(anchor)
         PeriodMode.ANNUALLY -> DateRange.ofYear(anchor.year)
         PeriodMode.CUSTOM -> DateRange.custom(current.start, current.endInclusive)
     }
@@ -227,16 +219,11 @@ const val STRIP_MONTHS = 6
 /** Far enough back that no imported row predates it. */
 private val HISTORY_START = LocalDate(1900, 1, 1)
 
-/**
- * The six months ending with [selected], oldest first. Stepping back from the selected
- * range keeps its month basis, so under a pay cycle these are six pay months.
- */
+/** The six months ending with [selected], oldest first. */
 fun stripWindow(selected: DateRange): List<DateRange> =
-    (STRIP_MONTHS - 1 downTo 0).map { selected.shift(-it) }
-
-/** [stripWindow] in Monthly mode, and empty in every other mode. */
-fun monthWindow(selected: DateRange): List<DateRange> =
-    if (selected.mode == PeriodMode.MONTHLY) stripWindow(selected) else emptyList()
+    (STRIP_MONTHS - 1 downTo 0).map { back ->
+        DateRange.ofMonth(selected.start.minus(back, DateTimeUnit.MONTH))
+    }
 
 /**
  * Everything before the window, which is how a month in the window learns whether any

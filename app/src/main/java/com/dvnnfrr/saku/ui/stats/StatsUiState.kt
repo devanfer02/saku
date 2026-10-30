@@ -3,7 +3,6 @@ package com.dvnnfrr.saku.ui.stats
 import com.dvnnfrr.saku.domain.ColorSlot
 import com.dvnnfrr.saku.domain.DateRange
 import com.dvnnfrr.saku.domain.Money
-import com.dvnnfrr.saku.domain.MonthView
 import com.dvnnfrr.saku.domain.PeriodTotals
 import com.dvnnfrr.saku.domain.TransactionFilter
 import com.dvnnfrr.saku.domain.TxnType
@@ -47,16 +46,6 @@ data class StatsUiState(
     val drill: DrillUiState? = null,
     /** The filter the figures were computed under, for the bar and the action. */
     val filter: TransactionFilter = TransactionFilter.ALL,
-    /**
-     * The Calendar month / Pay month switch. Null hides it: no pay cycle is set, or the
-     * mode is not Monthly, where the month view changes nothing.
-     */
-    val monthView: MonthView? = null,
-    /**
-     * In Monthly mode, the six months ending with [range], oldest first, under the month
-     * view in force; empty in any other mode. What the six-month strip reads.
-     */
-    val monthWindow: List<DateRange> = emptyList(),
     val loading: Boolean = true,
 ) {
     /** The headline figure, and the whole the shares are taken against. */

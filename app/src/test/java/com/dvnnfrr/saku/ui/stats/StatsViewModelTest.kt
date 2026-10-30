@@ -2,7 +2,6 @@ package com.dvnnfrr.saku.ui.stats
 
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
-import com.dvnnfrr.saku.data.PeriodStore
 import com.dvnnfrr.saku.data.local.SakuDatabase
 import com.dvnnfrr.saku.data.repository.RoomAccountRepository
 import com.dvnnfrr.saku.data.repository.RoomCategoryRepository
@@ -120,14 +119,11 @@ class StatsViewModelTest {
     private suspend fun spend(day: Int, amount: Long, categoryId: Long = makan, hour: Int = 12) =
         record(LocalDateTime(2026, 8, day, hour, 0), amount, categoryId = categoryId)
 
-    private val period by lazy { PeriodStore(ApplicationProvider.getApplicationContext()) }
-
     private fun viewModel() = StatsViewModel(
         transactionRepository = transactions,
         accountRepository = accounts,
         categoryRepository = categories,
         sharedFilter = shared,
-        periodStore = period,
         zone = zone,
         clock = clock,
     )

@@ -389,57 +389,7 @@ class StatsAssemblyTest {
         assertEquals(LocalDate(2025, 12, 31), range.endInclusive)
     }
 
-    @Test
-    fun `switching to Monthly under a pay cycle lands on the pay month of that name`() {
-        val range = rangeForMode(
-            DateRange.ofYear(2024),
-            PeriodMode.MONTHLY,
-            LocalDate(2026, 8, 17),
-            payStartDay = 5,
-        )
-
-        // The pay month holding 1 Jan 2024 is called December 2023; January starts the 5th.
-        assertEquals(DateRange.ofPayMonth(LocalDate(2024, 1, 5), 5), range)
-    }
-
-    // The six-month window.
-
-    @Test
-    fun `the month window is six calendar months ending with the selected one`() {
-        val window = monthWindow(DateRange.ofMonth(LocalDate(2026, 10, 1)))
-
-        assertEquals(
-            (5..10).map { DateRange.ofMonth(LocalDate(2026, it, 1)) },
-            window,
-        )
-    }
-
-    @Test
-    fun `the month window under a pay cycle is six pay months`() {
-        val selected = DateRange.ofPayMonth(LocalDate(2026, 10, 30), 30)
-
-        val window = monthWindow(selected)
-
-        assertEquals(6, window.size)
-        assertEquals(selected, window.last())
-        assertEquals(LocalDate(2026, 5, 30), window.first().start)
-        window.forEach { assertEquals(30, it.payStartDay) }
-    }
-
-    @Test
-    fun `there is no month window outside Monthly mode`() {
-        assertEquals(emptyList<DateRange>(), monthWindow(DateRange.ofYear(2026)))
-        assertEquals(emptyList<DateRange>(), monthWindow(DateRange.ofWeek(LocalDate(2026, 10, 30))))
-    }
-
     // Labels.
-
-    @Test
-    fun `a pay month's explicit range reads as its span`() {
-        val pay = DateRange.ofPayMonth(LocalDate(2026, 10, 30), 25)
-
-        assertEquals("25 Oct to 24 Nov 2026", explicitRangeLabel(pay))
-    }
 
     @Test
     fun `a range reads as explicit start and end dates`() {

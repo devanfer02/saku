@@ -163,58 +163,6 @@ class MonthlyAssemblyTest {
     )
 
     @Test
-    fun `with a pay cycle the year holds the pay months named in it`() {
-        val months = monthsOfYear(2026, 30)
-
-        assertEquals(12, months.size)
-        assertEquals(LocalDate(2025, 12, 30), months.first().start)
-        assertEquals(LocalDate(2026, 12, 29), months.last().endInclusive)
-        assertEquals(Month.JANUARY, months.first().majorityMonth().month)
-        months.zipWithNext().forEach { (earlier, later) -> assertEquals(earlier.next(), later) }
-    }
-
-    @Test
-    fun `every start day gives each year a contiguous run of pay months`() {
-        for (startDay in 1..31) {
-            val years = (2025..2027).map { monthsOfYear(it, startDay) }
-            val all = years.flatten()
-            all.zipWithNext().forEach { (earlier, later) -> assertEquals("D=$startDay", earlier.next(), later) }
-            years.forEachIndexed { index, months ->
-                months.forEach { assertEquals("D=$startDay", 2025 + index, it.majorityMonth().year) }
-            }
-        }
-    }
-
-    @Test
-    fun `start day 16 can name two pay months after one month`() {
-        // 16 Apr to 15 May ties and goes to May; 16 May to 15 Jun is mostly May.
-        val names = monthsOfYear(2026, 16).map { it.majorityMonth().month }
-
-        assertEquals(2, names.count { it == Month.MAY })
-        assertEquals(0, names.count { it == Month.APRIL })
-    }
-
-    @Test
-    fun `a pay year is folded and labelled from its pay months`() {
-        val days = listOf(
-            day(2025, 12, 30, income = 8_000_000),
-            day(2026, 10, 29, expense = 50_000),
-            day(2026, 10, 30, income = 8_000_000),
-        )
-
-        val year = assembleMonthlyYear(2026, days, today, Month.OCTOBER, payStartDay = 30)
-
-        assertEquals(LocalDate(2025, 12, 30), year.range.start)
-        assertEquals(PeriodTotals(Money(16_000_000), Money(50_000)), year.totals)
-        val newest = year.months.first()
-        assertEquals(Month.OCTOBER, newest.month)
-        assertEquals(Month.NOVEMBER, newest.labelMonth)
-        assertTrue(newest.expanded)
-        assertEquals(PeriodTotals(Money(8_000_000), Money.ZERO), newest.totals)
-        assertEquals(LocalDate(2025, 12, 29), monthlyQueryRange(2026, 30).start)
-    }
-
-    @Test
     fun `Daily scrolls to the day or to the nearest earlier day with rows`() {
         val days = listOf(section(20, 2), section(16, 1), section(10, 3))
 

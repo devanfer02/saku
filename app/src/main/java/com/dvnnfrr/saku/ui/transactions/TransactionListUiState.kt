@@ -3,7 +3,6 @@ package com.dvnnfrr.saku.ui.transactions
 import com.dvnnfrr.saku.domain.ColorSlot
 import com.dvnnfrr.saku.domain.DateRange
 import com.dvnnfrr.saku.domain.Money
-import com.dvnnfrr.saku.domain.MonthView
 import com.dvnnfrr.saku.domain.PeriodTotals
 import com.dvnnfrr.saku.domain.TransactionFilter
 import com.dvnnfrr.saku.domain.TxnType
@@ -31,13 +30,11 @@ data class TransactionListUiState(
     val filter: TransactionFilter = TransactionFilter.ALL,
     /** The Monthly year. Null outside the Monthly tab, which is not queried until opened. */
     val monthly: MonthlyYear? = null,
-    /** The Calendar month / Pay month switch, or null to hide it while no pay cycle is set. */
-    val monthView: MonthView? = null,
     val loading: Boolean = true,
 ) {
     /** What the header names and the filter sheet opens on: the year in Monthly, else the month. */
     val headerRange: DateRange
-        get() = monthly?.range ?: range
+        get() = monthly?.let { DateRange.ofYear(it.year) } ?: range
 
     val headerTotals: PeriodTotals get() = monthly?.totals ?: totals
 }

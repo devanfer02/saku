@@ -39,10 +39,8 @@ private val MONTH_NAMES = listOf(
  * otherwise relabel the app's own chrome.
  */
 fun periodLabel(range: DateRange): String = when (range.mode) {
-    // A pay month takes the name of the calendar month holding most of its days; a
-    // calendar month is its own majority, so this reads as before for one.
-    PeriodMode.MONTHLY -> range.majorityMonth().let { "${monthName(it)} ${it.year}" }
-    PeriodMode.ANNUALLY -> range.majorityMonth().year.toString()
+    PeriodMode.MONTHLY -> "${monthName(range.start)} ${range.start.year}"
+    PeriodMode.ANNUALLY -> range.start.year.toString()
     PeriodMode.WEEKLY, PeriodMode.CUSTOM -> spanLabel(range.start, range.endInclusive)
 }
 
@@ -52,36 +50,26 @@ fun periodLabel(range: DateRange): String = when (range.mode) {
  * differs from [reference]'s, so December against January reads `December 2025`.
  * Other modes have no shorter honest name and read as [periodLabel].
  */
-fun periodName(range: DateRange, reference: DateRange = range): String {
-    // A pay month is named after its majority month, the same rule [periodLabel] uses.
-    val month = range.majorityMonth()
-    return if (range.mode == PeriodMode.MONTHLY && month.year == reference.majorityMonth().year) {
-        monthName(month)
+fun periodName(range: DateRange, reference: DateRange = range): String =
+    if (range.mode == PeriodMode.MONTHLY && range.start.year == reference.start.year) {
+        monthName(range.start)
     } else {
         periodLabel(range)
     }
-}
-
-/**
- * The exact days of a pay month, `25 Oct to 24 Nov 2026`, shown beneath its name so a pay
- * month is never read as the calendar month it is named after.
- */
-fun paySpanLabel(range: DateRange): String =
-    spanLabel(range.start, range.endInclusive, separator = " to ")
 
 private fun monthName(date: LocalDate): String = MONTH_NAMES[date.monthNumber - 1]
 
 private fun shortMonth(date: LocalDate): String = monthName(date).take(3)
 
-private fun spanLabel(start: LocalDate, end: LocalDate, separator: String = " – "): String = when {
+private fun spanLabel(start: LocalDate, end: LocalDate): String = when {
     start == end -> "${start.dayOfMonth} ${shortMonth(start)} ${start.year}"
     start.year != end.year ->
-        "${start.dayOfMonth} ${shortMonth(start)} ${start.year}$separator" +
+        "${start.dayOfMonth} ${shortMonth(start)} ${start.year} – " +
             "${end.dayOfMonth} ${shortMonth(end)} ${end.year}"
     start.monthNumber != end.monthNumber ->
-        "${start.dayOfMonth} ${shortMonth(start)}$separator" +
+        "${start.dayOfMonth} ${shortMonth(start)} – " +
             "${end.dayOfMonth} ${shortMonth(end)} ${end.year}"
-    else -> "${start.dayOfMonth}$separator${end.dayOfMonth} ${shortMonth(end)} ${end.year}"
+    else -> "${start.dayOfMonth} – ${end.dayOfMonth} ${shortMonth(end)} ${end.year}"
 }
 
 /**

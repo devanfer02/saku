@@ -2,7 +2,6 @@ package com.dvnnfrr.saku.ui.transactions
 
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
-import com.dvnnfrr.saku.data.PeriodStore
 import com.dvnnfrr.saku.data.local.SakuDatabase
 import com.dvnnfrr.saku.data.repository.RoomAccountRepository
 import com.dvnnfrr.saku.data.repository.RoomCategoryRepository
@@ -116,14 +115,11 @@ class TransactionListViewModelTest {
         categoryId = categoryId,
     )
 
-    private val period by lazy { PeriodStore(ApplicationProvider.getApplicationContext()) }
-
     private fun viewModel() = TransactionListViewModel(
         transactionRepository = transactions,
         accountRepository = accounts,
         categoryRepository = categories,
         sharedFilter = shared,
-        periodStore = period,
         zone = zone,
         clock = clock,
     )
