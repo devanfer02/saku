@@ -10,6 +10,7 @@
     <string name="backup_action">Choose where to save</string>
     <string name="backup_writing">Writing %1$s…</string>
     <string name="backup_done">Saved to %1$s</string>
+    <string name="result_save_again">Save another copy</string>
     <string name="backup_failed">%1$s could not be written</string>
     <string name="backup_not_encrypted">The file is not encrypted. Anyone who can open it can read your whole history, so keep it somewhere private.</string>
     <string name="backup_count_accounts">Accounts</string>

@@ -5,10 +5,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.FolderOpen
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -37,6 +35,7 @@ import com.dvnnfrr.saku.ui.theme.SakuTheme
 fun ExportScreen(
     modifier: Modifier = Modifier,
     onBack: (() -> Unit)? = null,
+    onContinue: () -> Unit = {},
     viewModel: ExportViewModel = viewModel(factory = ExportViewModel.Factory),
 ) {
     val state by viewModel.state.collectAsState()
@@ -54,6 +53,7 @@ fun ExportScreen(
         modifier = modifier,
         onBack = onBack,
         onChooseDestination = { picker.launch("$defaultName.xlsx") },
+        onContinue = onContinue,
     )
 }
 
@@ -63,46 +63,46 @@ fun ExportScreenBody(
     modifier: Modifier = Modifier,
     onBack: (() -> Unit)? = null,
     onChooseDestination: () -> Unit = {},
+    /** After a written export: the host decides where the user goes next. */
+    onContinue: () -> Unit = {},
 ) {
     val colors = SakuTheme.colors
 
     Column(modifier = modifier.fillMaxSize().background(colors.background)) {
         ScreenHeader(title = stringResource(R.string.more_export_excel), onBack = onBack, backLabel = stringResource(R.string.screen_back))
-        ThumbZonePane(modifier = Modifier.weight(1f)) {
-            PickCard(
-                title = stringResource(R.string.export_pick_title),
-                message = stringResource(R.string.export_intro),
-                icon = Icons.Outlined.FolderOpen,
-                actionLabel = stringResource(R.string.export_action),
-                onAction = onChooseDestination,
-                zoneLabel = if (state is ExportUiState.Writing) {
-                    stringResource(R.string.export_writing, state.fileName)
-                } else {
-                    stringResource(R.string.export_pick_zone)
-                },
-                busy = state is ExportUiState.Writing,
-                actionModifier = Modifier.testTag(EXPORT_ACTION_TAG),
-                notes = { PrivacyNote(stringResource(R.string.export_local_only)) },
-            )
-
-            when (state) {
-                ExportUiState.Idle, is ExportUiState.Writing -> Unit
-
-                is ExportUiState.Written -> Text(
-                    text = stringResource(
-                        R.string.export_done,
-                        state.transactionCount,
-                        state.fileName,
-                    ),
-                    style = SakuTheme.typography.bodyStrong,
-                    color = colors.income,
-                    modifier = Modifier.fillMaxWidth(),
+        if (state is ExportUiState.Written) {
+            // As on backup: the result replaces the card, with Continue at the bottom.
+            ResultLayout(onContinue = onContinue) {
+                ResultHeadline(
+                    stringResource(R.string.export_done, state.transactionCount, state.fileName),
+                )
+                PrivacyNote(stringResource(R.string.export_local_only))
+                LinkButton(stringResource(R.string.result_save_again), onChooseDestination)
+            }
+        } else {
+            ThumbZonePane(modifier = Modifier.weight(1f)) {
+                PickCard(
+                    title = stringResource(R.string.export_pick_title),
+                    message = stringResource(R.string.export_intro),
+                    icon = Icons.Outlined.FolderOpen,
+                    actionLabel = stringResource(R.string.export_action),
+                    onAction = onChooseDestination,
+                    zoneLabel = if (state is ExportUiState.Writing) {
+                        stringResource(R.string.export_writing, state.fileName)
+                    } else {
+                        stringResource(R.string.export_pick_zone)
+                    },
+                    busy = state is ExportUiState.Writing,
+                    actionModifier = Modifier.testTag(EXPORT_ACTION_TAG),
+                    notes = { PrivacyNote(stringResource(R.string.export_local_only)) },
                 )
 
-                is ExportUiState.Failed -> WriteFailure(
-                    message = stringResource(R.string.export_failed, state.fileName),
-                    detail = state.detail,
-                )
+                if (state is ExportUiState.Failed) {
+                    WriteFailure(
+                        message = stringResource(R.string.export_failed, state.fileName),
+                        detail = state.detail,
+                    )
+                }
             }
         }
     }

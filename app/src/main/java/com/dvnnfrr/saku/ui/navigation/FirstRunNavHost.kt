@@ -21,8 +21,10 @@ import com.dvnnfrr.saku.ui.importexport.RestoreScreen
  * First-run setup's own graph: the welcome screen, its three paths, and the existing
  * import screens mounted as they are.
  *
- * Leaving an import route by any means (its back arrow, system back, or the import's
- * own Done) calls [onImportLeft], which asks the ledger whether that path finished.
+ * Leaving an import route by any means (its back arrow, system back, or a result's
+ * Continue) calls [onImportLeft], which asks the ledger whether that path finished.
+ * Continue pops back to the welcome route on purpose: that is a leave like any other, so
+ * rows in the ledger complete first run and the shell opens on its start tab, Trans.
  * Watching the back stack rather than wiring each callback is what catches system back,
  * which the restore and database-import screens do not report.
  */
@@ -79,21 +81,23 @@ fun FirstRunNavHost(
                 entryPoint = ImportEntryPoint.MONEY_MANAGER,
                 onBack = back,
                 // Each of these follows a committed import; the ledger check decides.
-                onViewTransactions = toWelcome,
                 onOpenHistory = toWelcome,
-                onDone = toWelcome,
+                onContinue = toWelcome,
             )
         }
         composable(FirstRunRoute.IMPORT_EXCEL.route) {
             ImportScreen(
                 entryPoint = ImportEntryPoint.EXCEL,
                 onBack = back,
-                onViewTransactions = toWelcome,
                 onOpenHistory = toWelcome,
-                onDone = toWelcome,
+                onContinue = toWelcome,
             )
         }
-        composable(FirstRunRoute.RESTORE.route) { RestoreScreen(onBack = back) }
-        composable(FirstRunRoute.IMPORT_DATABASE.route) { DatabaseImportScreen(onBack = back) }
+        composable(FirstRunRoute.RESTORE.route) {
+            RestoreScreen(onBack = back, onContinue = toWelcome)
+        }
+        composable(FirstRunRoute.IMPORT_DATABASE.route) {
+            DatabaseImportScreen(onBack = back, onContinue = toWelcome)
+        }
     }
 }

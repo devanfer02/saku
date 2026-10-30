@@ -88,7 +88,7 @@ name: Import from Money Manager
 - assertVisible: "Import finished"
 - assertVisible: "390 added from mock-money-manager.xlsx. 0 were already here."
 - assertVisible: "What was added"
-- assertVisible: "View transactions"
+- assertVisible: "Continue"
 
 # --- the same file again --------------------------------------------------------
 # Every row is now present, so the second pass must add nothing at all.

@@ -42,6 +42,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.dvnnfrr.saku.R
+import com.dvnnfrr.saku.domain.TxnType
 import com.dvnnfrr.saku.ui.shared.AccountPicker
 import com.dvnnfrr.saku.ui.shared.PickCard
 import com.dvnnfrr.saku.ui.shared.ScreenHeader
@@ -50,6 +51,7 @@ import com.dvnnfrr.saku.ui.theme.SakuPreview
 import com.dvnnfrr.saku.ui.theme.SakuPreviewSurface
 import com.dvnnfrr.saku.ui.theme.SakuTheme
 import com.dvnnfrr.saku.ui.theme.formatIdr
+import kotlinx.datetime.LocalDate
 
 /**
  * The import screen: pick a file, check what it will do, confirm.
@@ -64,9 +66,8 @@ fun ImportScreen(
     entryPoint: ImportEntryPoint,
     modifier: Modifier = Modifier,
     onBack: (() -> Unit)? = null,
-    onViewTransactions: () -> Unit = {},
     onOpenHistory: () -> Unit = {},
-    onDone: () -> Unit = {},
+    onContinue: () -> Unit = {},
     viewModel: ImportViewModel = viewModel(factory = ImportViewModel.factory(entryPoint)),
 ) {
     val state by viewModel.state.collectAsState()
@@ -87,9 +88,8 @@ fun ImportScreen(
         onConfirm = viewModel::confirm,
         onDiscard = viewModel::discard,
         onBack = onBack,
-        onViewTransactions = onViewTransactions,
         onOpenHistory = onOpenHistory,
-        onDone = onDone,
+        onContinue = onContinue,
     )
 }
 
@@ -106,9 +106,9 @@ fun ImportScreenBody(
     onDiscard: () -> Unit = {},
     /** Null hides the back arrow, for a host with its own way out. */
     onBack: (() -> Unit)? = null,
-    onViewTransactions: () -> Unit = {},
     onOpenHistory: () -> Unit = {},
-    onDone: () -> Unit = {},
+    /** After a committed import: the host decides where the user goes next. */
+    onContinue: () -> Unit = {},
 ) {
     val colors = SakuTheme.colors
 
@@ -127,10 +127,9 @@ fun ImportScreenBody(
 
             is ImportUiState.Imported -> DoneBody(
                 summary = state.summary,
-                onViewTransactions = onViewTransactions,
                 onOpenHistory = onOpenHistory,
                 onPickFile = onPickFile,
-                onDone = onDone,
+                onContinue = onContinue,
             )
 
             is ImportUiState.Ready -> PreviewBody(
@@ -198,26 +197,19 @@ private fun ColumnScope.RefusedBody(state: ImportUiState.Refused, onPickFile: ()
 /**
  * The result. It says what went in, by type and date and account, because "1300 added"
  * alone gives the user no way to tell whether a mapping landed where they meant, and
- * the obvious next step is to go and look at those transactions.
+ * the obvious next step is to go and look at those transactions, which is where
+ * Continue goes. Import history and another file stay as links inside the result.
  */
 @Composable
 private fun ColumnScope.DoneBody(
     summary: ImportSummary,
-    onViewTransactions: () -> Unit,
     onOpenHistory: () -> Unit,
     onPickFile: () -> Unit,
-    onDone: () -> Unit,
+    onContinue: () -> Unit,
 ) {
     val spacing = SakuTheme.spacing
 
-    Column(
-        modifier = Modifier
-            .weight(1f)
-            .fillMaxWidth()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = spacing.screen, vertical = spacing.md),
-        verticalArrangement = Arrangement.spacedBy(spacing.lg),
-    ) {
+    ResultLayout(onContinue = onContinue) {
         Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
             SectionTitle(stringResource(R.string.import_done_title))
             Body(
@@ -271,40 +263,6 @@ private fun ColumnScope.DoneBody(
             LinkButton(stringResource(R.string.more_import_history), onOpenHistory)
             LinkButton(stringResource(R.string.import_choose_another), onPickFile)
         }
-    }
-
-    BottomActionBar {
-        TextButton(onClick = onDone) {
-            Text(
-                text = stringResource(R.string.action_done),
-                style = SakuTheme.typography.bodyStrong,
-                color = SakuTheme.colors.ink2,
-            )
-        }
-        Button(
-            onClick = onViewTransactions,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = SakuTheme.colors.accent,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-            ),
-            modifier = Modifier.weight(1f),
-        ) {
-            Text(
-                text = stringResource(R.string.import_done_view_transactions),
-                style = SakuTheme.typography.bodyStrong,
-            )
-        }
-    }
-}
-
-@Composable
-private fun LinkButton(text: String, onClick: () -> Unit) {
-    TextButton(onClick = onClick) {
-        Text(
-            text = text,
-            color = SakuTheme.colors.accent,
-            style = SakuTheme.typography.bodyStrong,
-        )
     }
 }
 
@@ -799,6 +757,28 @@ private fun ImportRefusedPreview() {
                 entryPoint = ImportEntryPoint.MONEY_MANAGER,
                 fileName = "notes.xlsx",
                 reason = ReadFailure.Unreadable(detail = null),
+            ),
+            onBack = {},
+        )
+    }
+}
+
+@SakuPreview
+@Composable
+private fun ImportImportedPreview() {
+    SakuPreviewSurface(padded = false) {
+        ImportScreenBody(
+            state = ImportUiState.Imported(
+                entryPoint = ImportEntryPoint.MONEY_MANAGER,
+                summary = ImportSummary(
+                    fileName = "mock-money-manager.xlsx",
+                    added = 390,
+                    alreadyHere = 0,
+                    span = DateSpan(LocalDate(2026, 7, 1), LocalDate(2026, 10, 31)),
+                    byType = mapOf(TxnType.EXPENSE to 352, TxnType.INCOME to 8, TxnType.TRANSFER to 30),
+                    accounts = listOf("Cash", "BCA", "Gopay"),
+                    createdCategories = listOf("Makan & Minum", "Kebutuhan Kos", "Transportasi Umum"),
+                ),
             ),
             onBack = {},
         )

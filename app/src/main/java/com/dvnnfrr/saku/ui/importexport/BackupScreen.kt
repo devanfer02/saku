@@ -39,6 +39,7 @@ import com.dvnnfrr.saku.ui.theme.SakuTheme
 fun BackupScreen(
     modifier: Modifier = Modifier,
     onBack: (() -> Unit)? = null,
+    onContinue: () -> Unit = {},
     viewModel: BackupViewModel = viewModel(factory = BackupViewModel.Factory),
 ) {
     val state by viewModel.state.collectAsState()
@@ -55,6 +56,7 @@ fun BackupScreen(
         modifier = modifier,
         onBack = onBack,
         onChooseDestination = { picker.launch(viewModel.suggestedFileName()) },
+        onContinue = onContinue,
     )
 }
 
@@ -64,57 +66,55 @@ fun BackupScreen(
     modifier: Modifier = Modifier,
     onBack: (() -> Unit)? = null,
     onChooseDestination: () -> Unit = {},
+    /** After a written backup: the host decides where the user goes next. */
+    onContinue: () -> Unit = {},
 ) {
     val colors = SakuTheme.colors
-    val spacing = SakuTheme.spacing
 
     Column(modifier = modifier.fillMaxSize().background(colors.background)) {
         ScreenHeader(title = stringResource(R.string.more_backup), onBack = onBack, backLabel = stringResource(R.string.screen_back))
-        ThumbZonePane(modifier = Modifier.weight(1f)) {
-            PickCard(
-                title = stringResource(R.string.backup_pick_title),
-                message = stringResource(R.string.backup_intro),
-                icon = Icons.Outlined.FolderOpen,
-                actionLabel = stringResource(R.string.backup_action),
-                onAction = onChooseDestination,
-                zoneLabel = if (state is BackupUiState.Writing) {
-                    stringResource(R.string.backup_writing, state.fileName)
-                } else {
-                    stringResource(R.string.backup_pick_zone)
-                },
-                busy = state is BackupUiState.Writing,
-                actionModifier = Modifier.testTag(BACKUP_ACTION_TAG),
-                notes = {
-                    PrivacyNote(stringResource(R.string.backup_not_encrypted))
-                    PrivacyNote(stringResource(R.string.export_local_only))
-                },
-            )
+        if (state is BackupUiState.Written) {
+            // The card's job is done, so the result takes its place; another copy is a
+            // link inside the result, and Continue sits at the bottom.
+            ResultLayout(onContinue = onContinue) {
+                ResultHeadline(stringResource(R.string.backup_done, state.fileName))
+                CountCard(
+                    listOf(
+                        stringResource(R.string.backup_count_accounts) to state.counts.accounts,
+                        stringResource(R.string.backup_count_categories) to state.counts.categories,
+                        stringResource(R.string.backup_count_transactions) to state.counts.transactions,
+                    ),
+                )
+                PrivacyNote(stringResource(R.string.backup_not_encrypted))
+                LinkButton(stringResource(R.string.result_save_again), onChooseDestination)
+            }
+        } else {
+            ThumbZonePane(modifier = Modifier.weight(1f)) {
+                PickCard(
+                    title = stringResource(R.string.backup_pick_title),
+                    message = stringResource(R.string.backup_intro),
+                    icon = Icons.Outlined.FolderOpen,
+                    actionLabel = stringResource(R.string.backup_action),
+                    onAction = onChooseDestination,
+                    zoneLabel = if (state is BackupUiState.Writing) {
+                        stringResource(R.string.backup_writing, state.fileName)
+                    } else {
+                        stringResource(R.string.backup_pick_zone)
+                    },
+                    busy = state is BackupUiState.Writing,
+                    actionModifier = Modifier.testTag(BACKUP_ACTION_TAG),
+                    notes = {
+                        PrivacyNote(stringResource(R.string.backup_not_encrypted))
+                        PrivacyNote(stringResource(R.string.export_local_only))
+                    },
+                )
 
-            when (state) {
-                BackupUiState.Idle, is BackupUiState.Writing -> Unit
-
-                is BackupUiState.Written -> Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(spacing.sm),
-                ) {
-                    Text(
-                        text = stringResource(R.string.backup_done, state.fileName),
-                        style = SakuTheme.typography.bodyStrong,
-                        color = colors.income,
-                    )
-                    CountCard(
-                        listOf(
-                            stringResource(R.string.backup_count_accounts) to state.counts.accounts,
-                            stringResource(R.string.backup_count_categories) to state.counts.categories,
-                            stringResource(R.string.backup_count_transactions) to state.counts.transactions,
-                        ),
+                if (state is BackupUiState.Failed) {
+                    WriteFailure(
+                        message = stringResource(R.string.backup_failed, state.fileName),
+                        detail = state.detail,
                     )
                 }
-
-                is BackupUiState.Failed -> WriteFailure(
-                    message = stringResource(R.string.backup_failed, state.fileName),
-                    detail = state.detail,
-                )
             }
         }
     }

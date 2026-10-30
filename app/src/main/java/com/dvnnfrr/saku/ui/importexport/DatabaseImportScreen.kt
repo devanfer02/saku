@@ -26,6 +26,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.dvnnfrr.saku.R
+import com.dvnnfrr.saku.data.repository.RestoreResult
+import com.dvnnfrr.saku.domain.ImportBatch
 import com.dvnnfrr.saku.excel.AccountConflict
 import com.dvnnfrr.saku.excel.AccountSetting
 import com.dvnnfrr.saku.excel.DatabaseRefusal
@@ -35,6 +37,7 @@ import com.dvnnfrr.saku.ui.shared.ThumbZonePane
 import com.dvnnfrr.saku.ui.theme.SakuPreview
 import com.dvnnfrr.saku.ui.theme.SakuPreviewSurface
 import com.dvnnfrr.saku.ui.theme.SakuTheme
+import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 
 /**
@@ -47,6 +50,7 @@ import kotlinx.datetime.LocalDate
 fun DatabaseImportScreen(
     modifier: Modifier = Modifier,
     onBack: (() -> Unit)? = null,
+    onContinue: () -> Unit = {},
     viewModel: DatabaseImportViewModel = viewModel(factory = DatabaseImportViewModel.Factory),
 ) {
     val state by viewModel.state.collectAsState()
@@ -63,6 +67,7 @@ fun DatabaseImportScreen(
         onPickFile = { picker.launch(DATABASE_MIME_TYPES) },
         onConfirm = viewModel::confirm,
         onDiscard = viewModel::discard,
+        onContinue = onContinue,
     )
 }
 
@@ -74,6 +79,8 @@ fun DatabaseImportScreen(
     onPickFile: () -> Unit = {},
     onConfirm: () -> Unit = {},
     onDiscard: () -> Unit = {},
+    /** After a finished restore: the host decides where the user goes next. */
+    onContinue: () -> Unit = {},
 ) {
     val colors = SakuTheme.colors
     val spacing = SakuTheme.spacing
@@ -121,18 +128,8 @@ fun DatabaseImportScreen(
                 }
             }
 
-            is DatabaseImportUiState.Imported -> Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .verticalScroll(rememberScrollState())
-                    .padding(spacing.screen),
-                verticalArrangement = Arrangement.spacedBy(spacing.lg),
-            ) {
-                Text(
-                    text = stringResource(R.string.database_import_done, state.fileName),
-                    style = SakuTheme.typography.bodyStrong,
-                    color = colors.income,
-                )
+            is DatabaseImportUiState.Imported -> ResultLayout(onContinue = onContinue) {
+                ResultHeadline(stringResource(R.string.database_import_done, state.fileName))
                 CountCard(
                     listOf(
                         stringResource(R.string.restore_new_accounts) to state.result.accountsCreated,
@@ -328,6 +325,31 @@ private fun DatabaseImportRefusedPreview() {
             state = DatabaseImportUiState.Refused(
                 "notes.db",
                 DatabaseImportRefusal.Database(DatabaseRefusal.NotSaku),
+            ),
+        )
+    }
+}
+
+@SakuPreview
+@Composable
+private fun DatabaseImportImportedPreview() {
+    SakuPreviewSurface(padded = false) {
+        DatabaseImportScreen(
+            state = DatabaseImportUiState.Imported(
+                "mock-saku.db",
+                RestoreResult(
+                    accountsCreated = 2,
+                    categoriesCreated = 12,
+                    subcategoriesCreated = 0,
+                    batch = ImportBatch(
+                        id = 1,
+                        fileName = "mock-saku.db",
+                        importedAt = Instant.fromEpochMilliseconds(0),
+                        rowCount = 1_300,
+                        insertedCount = 1_300,
+                        skippedCount = 0,
+                    ),
+                ),
             ),
         )
     }
