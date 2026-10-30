@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -167,7 +168,10 @@ private fun AccountsList(
         return
     }
 
-    LazyColumn(modifier = modifier.fillMaxSize()) {
+    LazyColumn(
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = FAB_CLEARANCE),
+    ) {
         item(key = "net-worth") {
             NetWorthHeader(split = state.split)
             HorizontalDivider(color = SakuTheme.colors.line)
@@ -302,6 +306,9 @@ private fun SplitFigure(label: String, value: Money, dot: Color?) {
 }
 
 private val SPLIT_BAR_HEIGHT = 10.dp
+
+/** Room for the floating add button, which is 56dp plus its 16dp margin. */
+private val FAB_CLEARANCE = 88.dp
 
 @Composable
 private fun SectionHeading(text: String, modifier: Modifier = Modifier) {
