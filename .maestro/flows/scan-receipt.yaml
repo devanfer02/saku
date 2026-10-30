@@ -1,0 +1,69 @@
+appId: com.dvnnfrr.saku
+name: Scan a receipt
+---
+# receipt-scan, task 6.2. A paper receipt and a payment screenshot, both through the
+# photo picker, into the entry sheet, then saved.
+#
+# Prerequisites, outside the app:
+#
+#  1. Both mock images on the device, and indexed so the photo picker lists them:
+#       adb push data/mock-receipt-indomaret.png data/mock-receipt-ewallet.png /sdcard/Pictures/
+#       adb shell content call --method scan_volume --uri content://media --arg external_primary
+#     They are drawn by data/make-mock-receipts.py with invented items and are marked mock.
+#  2. The photo picker is the system's, so the steps between "Choose from gallery" and
+#     landing back in Saku are the one part of this flow that varies by device. The picker
+#     lists the newest image first; the ewallet image is pushed last, so it is first.
+#
+# Saku holds no storage or camera permission: the picker and the system camera hand it a
+# single image each time, which is why neither asks for anything.
+- clearState
+- launchApp
+
+- tapOn: "Add transaction"
+- assertVisible: "New transaction"
+- assertVisible: "Scan receipt"
+
+# --- the paper receipt ----------------------------------------------------------
+- tapOn: "Scan receipt"
+- assertVisible: "Paper receipts and payment screenshots both work."
+- tapOn: "Choose from gallery"
+# --- the system photo picker ----------------------------------------------------
+- tapOn:
+    id: "com.google.android.providers.media.module:id/icon_thumbnail"
+    index: 1
+# --------------------------------------------------------------------------------
+- extendedWaitUntil:
+    visible: "Rp 52.300"
+    timeout: 15000
+- assertVisible: "Indomaret"
+- assertVisible: "Other amounts on the receipt"
+- assertVisible: "Lines Saku could not place"
+
+# A line joins the note after a comma, and leaves the list.
+- tapOn: "AQUA BTL 600ML.*"
+- assertVisible: "Indomaret, AQUA BTL 600ML.*"
+
+# A category, then save, and the row is on the list.
+- tapOn: "Category"
+- tapOn: "New category"
+- inputText: "Belanja"
+- tapOn: "Create"
+- tapOn: "Save"
+- assertVisible: "Belanja"
+- assertVisible: "Indomaret, AQUA BTL 600ML.*"
+
+# --- the payment screenshot, through the same action ----------------------------
+- tapOn: "Add transaction"
+- tapOn: "Scan receipt"
+- tapOn: "Choose from gallery"
+- tapOn:
+    id: "com.google.android.providers.media.module:id/icon_thumbnail"
+    index: 0
+- extendedWaitUntil:
+    visible: "Rp 46.500"
+    timeout: 15000
+- assertVisible: "Warung Kopi Contoh"
+
+# Scanning is for a new expense only.
+- tapOn: "Income"
+- assertNotVisible: "Scan receipt"
