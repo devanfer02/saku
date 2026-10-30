@@ -46,4 +46,4 @@
 - [x] 7.5 Split bar colours: two hues apart, 3:1 against the surface in both themes, as theme tokens; legend dots match; extend `TextContrastTest` or a sibling test to assert the 3:1
 - [x] 7.6 "Net worth" label 20% larger
 - [x] 7.8 Strip in Weekly and Annually as well as Monthly, not in Period, per "The strip follows the period mode"
-- [ ] 7.7 Full test and assemble green
+- [x] 7.7 Full test and assemble green
