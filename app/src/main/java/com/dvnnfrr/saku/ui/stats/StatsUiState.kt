@@ -14,7 +14,7 @@ import kotlinx.datetime.LocalDate
  * Which side of the ledger the headline and the ranked bars are reporting on.
  *
  * Expenses is first, and therefore the default, because that is the side the owner
- * looks at — a year of reference data holds one income category and sixteen
+ * looks at: a year of reference data holds one income category and sixteen
  * expense ones.
  */
 enum class StatsSide(val txnType: TxnType) {
@@ -80,7 +80,7 @@ sealed interface DrillTarget {
  *
  * Two shapes, because the spec asks for two different things. A category opens its
  * summary, strip and transactions; "Other" opens the categories it combines and
- * no transaction list at all — those are separate figures and merging them would show a
+ * no transaction list at all; those are separate figures and merging them would show a
  * total nobody asked for.
  */
 sealed interface DrillUiState {
@@ -115,7 +115,7 @@ sealed interface DrillUiState {
  * One row of the ranked list.
  *
  * [categoryId] and [name] are null on the aggregated "Other" row. Colour is identity
- * and a slot is pinned to a category for life, so "Other" cannot borrow one — it takes
+ * and a slot is pinned to a category for life, so "Other" cannot borrow one; it takes
  * the neutral chart colour, and its copy comes from the screen rather than from here,
  * which is what keeps this file free of Android.
  */
@@ -195,7 +195,7 @@ data class StripAxis(val step: Money, val top: Money) {
 /**
  * This period against the one before it.
  *
- * The percentages are null rather than zero when the previous period held nothing —
+ * The percentages are null rather than zero when the previous period held nothing:
  * "up 0%" and "there is nothing to compare against" are different statements, and
  * dividing by an empty period is where the second becomes the first.
  */

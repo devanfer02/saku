@@ -38,7 +38,7 @@ import kotlinx.datetime.toLocalDateTime
 /**
  * State for the stats screen.
  *
- * Holds only what the user has chosen — the period, the side, what they drilled into.
+ * Holds only what the user has chosen: the period, the side, what they drilled into.
  * Every figure is a SQL aggregate and every fold is in [StatsAssembly], which is pure,
  * so the cap, the ranking and the shares are tested without a ViewModel or a database.
  */
@@ -91,7 +91,7 @@ class StatsViewModel(
 
     /**
      * Drilling in or out must not re-run the period queries, so the drill is keyed
-     * separately — the same reason the transaction list keys its month data on the month
+     * separately, for the same reason the transaction list keys its month data on the month
      * alone. It carries its own [key] so the final combine can tell whether the drill it
      * is holding belongs to the period currently on screen; the two streams settle
      * independently and would otherwise cross for one frame after an arrow tap.
@@ -203,7 +203,7 @@ class StatsViewModel(
     val state: StateFlow<StatsUiState> =
         combine(selection, periodData, drillData, stripData, display) { current, period, drill, strip, (expanded, style) ->
             StatsUiState(
-                // The period the data is for, not the one just selected — otherwise the
+                // The period the data is for, not the one just selected; otherwise the
                 // header flips before its figures arrive.
                 range = period.key.range,
                 side = period.key.side,
@@ -236,8 +236,8 @@ class StatsViewModel(
     /**
      * Shows a drill only once its data is for the period on screen.
      *
-     * Stepping the period with a category open is a legitimate thing to do — it is how
-     * you compare one category across months — so the drill survives the step rather
+     * Stepping the period with a category open is a legitimate thing to do, since it is how
+     * you compare one category across months, so the drill survives the step rather
      * than closing. It just renders nothing until its own query catches up, which is
      * better than briefly attributing last month's rows to this month's header.
      */
@@ -268,7 +268,7 @@ class StatsViewModel(
 
     /**
      * Switching mode closes an open drill. The category is still there, but the figure
-     * behind it is not — a Pemberian total for August means nothing under a header that
+     * behind it is not: a Pemberian total for August means nothing under a header that
      * now reads 2026.
      */
     fun selectMode(mode: PeriodMode) = selection.update {

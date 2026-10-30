@@ -80,7 +80,7 @@ private fun spanLabel(start: LocalDate, end: LocalDate): String = when {
 
 /**
  * The period header: step back, the range in words, step forward, and an optional
- * trailing slot for whatever the host screen wants beside it — a mode selector on stats,
+ * trailing slot for whatever the host screen wants beside it: a mode selector on stats,
  * nothing on the transaction list.
  *
  * With [onLabelClick] set, the label is a button that opens the host's period picker: it

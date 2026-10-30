@@ -349,7 +349,7 @@ class StatsViewModelTest {
     fun `the drill excludes a transfer tagged with the same category`() = runTest(dispatcher) {
         seed()
         spend(day = 3, amount = 170_000, categoryId = makan)
-        // observeCategoryTotals filters by type, so the drill must too — otherwise the
+        // observeCategoryTotals filters by type, so the drill must too; otherwise the
         // list opens with a total that does not match the row that opened it.
         record(
             at = LocalDateTime(2026, 8, 4, 12, 0),
@@ -435,7 +435,7 @@ class StatsViewModelTest {
             seed()
             // 31 Aug 23:59:59 Jakarta. Included.
             record(LocalDateTime(2026, 8, 31, 23, 59, 59), 100_000)
-            // 31 Jul 23:59:59 Jakarta. Excluded — one second before the month opens.
+            // 31 Jul 23:59:59 Jakarta. Excluded: one second before the month opens.
             record(LocalDateTime(2026, 7, 31, 23, 59, 59), 200_000)
             // 1 Sep 00:00:00 Jakarta is 31 Aug 17:00 UTC. Excluded, and the row that
             // proves the bounds are the device's rather than UTC's: a UTC-bounded query

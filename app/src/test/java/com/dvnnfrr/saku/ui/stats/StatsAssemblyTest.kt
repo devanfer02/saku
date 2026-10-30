@@ -102,7 +102,7 @@ class StatsAssemblyTest {
         assertEquals(100, composition.rows.sumOf { it.percent })
     }
 
-    // Requirement: chart category composition — the eight-slot cap.
+    // Requirement: chart category composition, the eight-slot cap.
 
     @Test
     fun `more than eight categories charts the largest eight and combines the rest`() {

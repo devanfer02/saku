@@ -14,7 +14,7 @@ import com.dvnnfrr.saku.domain.barPermille
 import kotlinx.datetime.LocalDate
 
 /*
- * Pure assembly for the stats screen. No Compose, no Android, no coroutines — the cap,
+ * Pure assembly for the stats screen. No Compose, no Android, no coroutines. The cap,
  * the ranking, the shares and the period arithmetic are all decided here and tested on
  * the JVM against plain lists.
  *
@@ -178,7 +178,7 @@ fun percentChange(current: Money, previous: Money): Int? {
  * should land on the current week; doing it while looking at March 2024 should land in
  * March 2024, not jump the user back to now.
  *
- * [PeriodMode.CUSTOM] keeps the dates it was given — there is no canonical custom range
+ * [PeriodMode.CUSTOM] keeps the dates it was given; there is no canonical custom range
  * to derive, so the screen opens its date picker instead.
  */
 fun rangeForMode(current: DateRange, mode: PeriodMode, today: LocalDate): DateRange {
