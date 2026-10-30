@@ -16,14 +16,6 @@ export, so your history comes with you.
 Every screenshot uses the mock data in `data/mock-money-manager.xlsx`, not anyone's real
 money. More in [`docs/screenshots/`](docs/screenshots/).
 
-## Vibe-coded
-
-I built Saku with [Claude Code](https://claude.com/claude-code), and I'm not going to pretend
-otherwise. I decided what it should do, tested it on my phone and pushed back on a lot of changes,
-but Claude wrote most of the code. If you want to see how a feature came together, its plan is in
-`openspec/`. The agent setup is in `CLAUDE.md` and `.claude/`, so you can pick up the work the same
-way I did.
-
 ## What it does
 
 - **Trans**: a day-by-day list, a monthly view and a calendar. On the calendar, tap two dates or drag
@@ -81,13 +73,6 @@ compileSdk 35, minSdk 26.
 - Signing needs keys stored as repository secrets, so a fork builds debug APKs only.
 - [Maestro](https://github.com/mobile-dev-inc/Maestro) flows live in `.maestro/flows/`. They are not in
   CI yet; run them against an emulator with `maestro test .maestro`.
-
-## Not built yet
-
-These were planned and are not in the app:
-
-- budget caps per category
-- a first-run setup screen for opening balances (for now you set them on the Accounts screen)
 
 ## Contributing
 
