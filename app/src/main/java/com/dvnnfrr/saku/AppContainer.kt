@@ -13,6 +13,7 @@ import com.dvnnfrr.saku.data.FirstRunStore
 import com.dvnnfrr.saku.data.ReminderStore
 import com.dvnnfrr.saku.data.SharedPreferencesAppearanceStore
 import com.dvnnfrr.saku.data.local.SakuDatabase
+import com.dvnnfrr.saku.data.receipt.ReceiptRecognizer
 import com.dvnnfrr.saku.data.repository.AccountRepository
 import com.dvnnfrr.saku.data.repository.CategoryRepository
 import com.dvnnfrr.saku.data.repository.ImportRepository
@@ -67,6 +68,8 @@ interface AppContainer {
 
     /** Whether first-run setup was completed or skipped. */
     val firstRun: FirstRunStore
+
+    val receipts: ReceiptRecognizer
 }
 
 class RoomAppContainer(context: Context) : AppContainer {
@@ -98,6 +101,8 @@ class RoomAppContainer(context: Context) : AppContainer {
     override val cacheDir: File = context.cacheDir
 
     override val firstRun: FirstRunStore by lazy { FirstRunStore(context) }
+
+    override val receipts: ReceiptRecognizer by lazy { ReceiptRecognizer(context) }
 }
 
 /**
@@ -139,6 +144,9 @@ class SakuApplication : Application() {
         scope.launch {
             roomContainer.reminderScheduler.sync(roomContainer.reminders.current())
         }
+
+        // A camera photo whose read was cut short (the app was killed mid-scan).
+        scope.launch { roomContainer.receipts.clearCache() }
 
         scope.launch {
             FirstRunSeed.applyIfEmpty(

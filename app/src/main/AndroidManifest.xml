@@ -63,6 +63,20 @@
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
+
+        <!--
+          Lends the system camera one file to write a receipt photo into, under
+          cache/receipts/ only. Not exported; the camera gets a one-off grant per photo.
+        -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.receipts"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/receipt_paths" />
+        </provider>
     </application>
 
 </manifest>
