@@ -98,6 +98,36 @@ Trans tab  [⎙] [+]
 - Local-only set: real web photos of long grocery receipts, in hand and angled, with any multi-photo sets found. Held to the same 80% item bar before release; never committed. The collection run was stopped on 31 Oct 2026; it is restarted or replaced by the owner's own photos before task group 6.
 - CORD receipts are restaurant bills with item rows, so the item reader is also measured on the CORD test fixtures (`menu` labels give names and prices).
 
+## Built: the parser half (31 Oct 2026)
+
+Calls made while building task groups 1 and 2, rejected options included.
+
+### Test data
+- `make-mock-receipts.py` draws three long receipts: `indomaret` (20 one-row items, two item discounts, `TEH BOTOL 450ML` printed twice in a row), `superindo` (14 two-row items, two `HEMAT` savings) and `diskon` (the alignment page example: six items, `DISKON : (4.000)`, `DISKON KARTU`, 206.100). Each is photographed as an overlap set (three parts, two items shared at each seam) and a gap set (two parts, cut between items, a run of items missing). 15 JPEGs, 1.2 MB, committed under `data/receipt-long/`; the truth (`items.tsv`, `sets.tsv`) is written straight into `app/src/test/resources/receipt/long/` so there is one copy.
+- Warping: a parabolic bow with foreshortened edges, a perspective tilt, up to 1.6° rotation, a shadow ramp, noise, blur, JPEG 72. The font prints a dotted zero, which ML Kit often reads as 8 or 6 at the magnified right edge (`12.408`). Kept on purpose: thermal printers print dotted and slashed zeros, and the repair below is worth having for real receipts.
+- `ReceiptAccuracyTest` (androidTest, the deferred task 3.1 of `receipt-scan`) reads `/data/local/tmp/receipts/` through `ReceiptRecognizer` and writes dumps in the CORD format. It was run with `adb install -r` and `am instrument`, not `connectedDebugAndroidTest`, because the connected task uninstalls the app afterwards and so deletes its database.
+- CORD item truth: `cord/items.tsv` (menu `nm` and `price` from the CORD labels, same CC BY 4.0 terms).
+
+### Rows and joining
+- Rows of a tilted photo: `receiptRows` now measures the tilt as the median slope between lines that sit side by side and are each other's nearest neighbour in height, and groups rows with the tilt taken out (clamped to 0.2). Without it a price at the right edge started its own row. Pairing every side-by-side line was tried first and failed on two-row items, where a name pairs with the price under it. CORD totals are unchanged (90% exact, 95% pick or chip).
+- A tall, narrow line (taller than 2.5 times the median and taller than wide) is dropped: ML Kit sometimes reads a column of quantities as one line, `HH H`.
+- Join: rows whose amounts agree are compared on their letters only, since the digits near a photo's edge are the ones misread (`27.80A`); a row without an amount is compared without amounts (at least 4 characters), because two photos may put a two-row item's price on its name row in one and its quantity row in the other. The overlap may skip one cut row at the top of the next photo, and at least 60% of the rows in the overlap must match. Each overlapped row is kept from the photo that read it better (ends in a price, quantity times unit exact).
+- `ReceiptParser.readParts(parts, today)` reads several photos; `read(lines, today)` is one part. An overload named `read` was rejected: `read(emptyList(), today)` would be ambiguous.
+
+### Items
+- Zeros read as 8: when quantity times unit price and the line price differ only by digits recognition confuses (0, 6, 8, 9; 3 and 8; 5 and 6; 1 and 7), the one a till would print (ending 00, then 50) wins. A lone price with no second reading gets a final `06`, `08`, `68`, `80`, `86` or `88` put back to zeros. Endings in 9 are left alone: restaurant bills print `10.909` before tax.
+- A unit price equal (or look-alike) to the line price with no quantity is quantity 1. A lone number before the price that is not a quantity stays in the name (`MIE 200 11.200`). A leading quantity is stripped (`2 Iced Tea 40,000`). A letter O beside a digit in the name is a zero (`80OML`).
+- A two-row item whose price was grouped with its name (`TEMPE PAPAN 18.000` over `3 x 6.000`) takes its quantity from the second row when it checks out.
+- A discount in the item zone is a row with a negative or bracketed amount, or whose words are only discount words; `J.STB PROMO 17500` stays an item.
+- Tax and service rows between the items and the total are additions only when the items do not already add up to the total, so a tax-inclusive receipt that prints PPN above the total is not counted twice.
+- Item rows still appear in `unplaced`, because the entry sheet offers them as lines and its tests expect them (`ui/entry` was out of this step's scope). Task 5.1, which removes that sheet action, should add `items.rowIndices` to the used rows in `ReceiptParser` so the Receipt screen does not show items twice. `ReceiptReading` gains `items`, `receiptDiscounts`, `additions`, `gapsAfterPhoto` and `itemsNet`, all with defaults, so the entry sheet compiles untouched until task 5.1 removes it.
+- `itemKey` (task 3.2's pure part) lives in `receipt/ItemKey.kt`.
+
+### Measured
+- Synthetic sets: diskon 11/11 items (100%), superindo 24/25 (96%), indomaret 34/34 (100%). The one miss is `TEMPE PAPAN`, whose price at the photo's bottom edge read `18.00A`. Every overlap joined with no item twice; every gap flagged; no false gap.
+- CORD test split: 66% of 230 priced items right (price exact, name at least 80% alike), the price found for 82%. Printed, not held to a bar: CORD bills print modifiers, set menus and unit prices the labels treat differently, and the owner's case is a grocery receipt.
+- Totals: CORD 90% exact, 95% pick or chip, as before.
+
 ## Risks / Trade-offs
 
 - [A gap that is not flagged, because two different rows happen to look alike] → an overlap needs a row with an equal amount; the total check catches what the join misses.
