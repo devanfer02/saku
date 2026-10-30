@@ -22,7 +22,7 @@ com.dvnnfrr.saku
     ├── shared/     MoneyText, Donut, RankedRow, SegmentedTabs, EmptyState…
     ├── navigation/ SakuDestination, MoreRoute, SakuNavHost
     ├── shell/      the Scaffold and bottom bar; owns no feature
-    └── <feature>/  transactions, entry, stats, accounts, categories, importexport
+    └── <feature>/  transactions, entry, stats, accounts, categories, tags, importexport
 ```
 
 Receipt scan uses ML Kit's bundled text recognizer; `data/receipt/ReceiptRecognizer.kt` is the only
@@ -152,6 +152,12 @@ Settled. Reopen only with a reason, not by drift:
   The parser must keep at least 80% exact totals on every test source; see
   `openspec/changes/receipt-scan/design.md`.
 - Seeded accounts open at the epoch, because every row worth importing predates any install.
+- **Tags (31 Oct 2026).** A transaction carries zero or more tags, optional on every type. A tag is a
+  name (1 to 30 characters, no `;`, unique ignoring case and spaces) that cuts across categories, such
+  as "Monthly grocery"; it is renamed and archived, never deleted. Tables `tag` and `txn_tag`, Room
+  schema version 2, reached by `MIGRATION_1_2`, which only creates. Never add
+  `fallbackToDestructiveMigration`. Backup format 2 adds a `Tags` sheet; format 1 and schema 1 files
+  still come in. Users back up before upgrading. See `openspec/changes/transaction-tags/design.md`.
 - **No subcategories in the product.** Tagging them was a chore; search answers the same question
   with a count, totals and day-grouped rows. The UI neither shows nor asks for them. The
   `subcategory` table, `TxnEntity.subcategoryId` and every stored row stay, and import, export,
