@@ -3,16 +3,10 @@ package com.dvnnfrr.saku.ui.importexport
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -22,7 +16,11 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.dvnnfrr.saku.R
+import com.dvnnfrr.saku.ui.shared.PickCard
 import com.dvnnfrr.saku.ui.shared.ScreenHeader
+import com.dvnnfrr.saku.ui.shared.ThumbZonePane
+import com.dvnnfrr.saku.ui.theme.SakuPreview
+import com.dvnnfrr.saku.ui.theme.SakuPreviewSurface
 import com.dvnnfrr.saku.ui.theme.SakuTheme
 
 /**
@@ -37,6 +35,7 @@ import com.dvnnfrr.saku.ui.theme.SakuTheme
 fun ExportScreen(
     modifier: Modifier = Modifier,
     onBack: (() -> Unit)? = null,
+    onContinue: () -> Unit = {},
     viewModel: ExportViewModel = viewModel(factory = ExportViewModel.Factory),
 ) {
     val state by viewModel.state.collectAsState()
@@ -54,6 +53,7 @@ fun ExportScreen(
         modifier = modifier,
         onBack = onBack,
         onChooseDestination = { picker.launch("$defaultName.xlsx") },
+        onContinue = onContinue,
     )
 }
 
@@ -63,87 +63,64 @@ fun ExportScreenBody(
     modifier: Modifier = Modifier,
     onBack: (() -> Unit)? = null,
     onChooseDestination: () -> Unit = {},
+    /** After a written export: the host decides where the user goes next. */
+    onContinue: () -> Unit = {},
 ) {
     val colors = SakuTheme.colors
-    val spacing = SakuTheme.spacing
 
     Column(modifier = modifier.fillMaxSize().background(colors.background)) {
         ScreenHeader(title = stringResource(R.string.more_export_excel), onBack = onBack, backLabel = stringResource(R.string.screen_back))
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .padding(spacing.screen),
-            verticalArrangement = Arrangement.spacedBy(spacing.lg),
-        ) {
-            Text(
-                text = stringResource(R.string.export_intro),
-                style = SakuTheme.typography.body,
-                color = colors.ink2,
-            )
-
-            Button(
-                onClick = onChooseDestination,
-                enabled = state !is ExportUiState.Writing,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = colors.accent,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                    disabledContainerColor = colors.surfaceAlt,
-                    disabledContentColor = colors.inkDisabled,
-                ),
-                modifier = Modifier.fillMaxWidth().testTag(EXPORT_ACTION_TAG),
-            ) {
-                Text(
-                    text = stringResource(R.string.export_action),
-                    style = SakuTheme.typography.bodyStrong,
+        if (state is ExportUiState.Written) {
+            // As on backup: the result replaces the card, with Continue at the bottom.
+            ResultLayout(onContinue = onContinue) {
+                ResultHeadline(
+                    stringResource(R.string.export_done, state.transactionCount, state.fileName),
                 )
+                PrivacyNote(stringResource(R.string.export_local_only))
+                LinkButton(stringResource(R.string.result_save_again), onChooseDestination)
             }
-
-            when (state) {
-                ExportUiState.Idle -> Unit
-
-                is ExportUiState.Writing -> Column(
-                    verticalArrangement = Arrangement.spacedBy(spacing.sm),
-                ) {
-                    CircularProgressIndicator(color = colors.accent)
-                    Text(
-                        text = stringResource(R.string.export_writing, state.fileName),
-                        style = SakuTheme.typography.body,
-                        color = colors.ink2,
-                    )
-                }
-
-                is ExportUiState.Written -> Text(
-                    text = stringResource(
-                        R.string.export_done,
-                        state.transactionCount,
-                        state.fileName,
-                    ),
-                    style = SakuTheme.typography.bodyStrong,
-                    color = colors.income,
+        } else {
+            ThumbZonePane(modifier = Modifier.weight(1f)) {
+                PickCard(
+                    title = stringResource(R.string.export_pick_title),
+                    message = stringResource(R.string.export_intro),
+                    icon = Icons.Outlined.FolderOpen,
+                    actionLabel = stringResource(R.string.export_action),
+                    onAction = onChooseDestination,
+                    zoneLabel = if (state is ExportUiState.Writing) {
+                        stringResource(R.string.export_writing, state.fileName)
+                    } else {
+                        stringResource(R.string.export_pick_zone)
+                    },
+                    busy = state is ExportUiState.Writing,
+                    actionModifier = Modifier.testTag(EXPORT_ACTION_TAG),
+                    notes = { PrivacyNote(stringResource(R.string.export_local_only)) },
                 )
 
-                is ExportUiState.Failed -> Column(
-                    verticalArrangement = Arrangement.spacedBy(spacing.xs),
-                ) {
-                    Text(
-                        text = stringResource(R.string.export_failed, state.fileName),
-                        style = SakuTheme.typography.bodyStrong,
-                        color = colors.expense,
+                if (state is ExportUiState.Failed) {
+                    WriteFailure(
+                        message = stringResource(R.string.export_failed, state.fileName),
+                        detail = state.detail,
                     )
-                    state.detail?.let {
-                        Text(text = it, style = SakuTheme.typography.caption, color = colors.ink2)
-                    }
                 }
             }
-
-            Text(
-                text = stringResource(R.string.export_local_only),
-                style = SakuTheme.typography.caption,
-                color = colors.ink2,
-            )
         }
     }
 }
 
 /** For instrumentation. See the note beside IMPORT_ACTION_TAG. */
 const val EXPORT_ACTION_TAG = "export_choose_destination"
+
+@SakuPreview
+@Composable
+private fun ExportIdlePreview() {
+    SakuPreviewSurface(padded = false) { ExportScreenBody(state = ExportUiState.Idle) }
+}
+
+@SakuPreview
+@Composable
+private fun ExportWrittenPreview() {
+    SakuPreviewSurface(padded = false) {
+        ExportScreenBody(state = ExportUiState.Written(transactionCount = 1_300, fileName = "saku-export.xlsx"))
+    }
+}

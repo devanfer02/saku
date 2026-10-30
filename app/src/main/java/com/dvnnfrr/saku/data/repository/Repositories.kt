@@ -115,6 +115,9 @@ interface TransactionRepository {
     /** When the user last logged a transaction, or null for an empty ledger. See `TxnDao`. */
     suspend fun lastEnteredAt(): Instant?
 
+    /** True when the ledger holds any transaction of any type. For the first-run gate. */
+    suspend fun hasAny(): Boolean
+
     suspend fun record(
         occurredAt: Instant,
         type: TxnType,
@@ -148,7 +151,7 @@ interface AccountRepository {
     /**
      * Finds by name or creates, which is how import maps a file's account names.
      * Matches archived accounts too, unarchiving rather than creating a same-named
-     * duplicate — two rows with one name split the history between them.
+     * duplicate: two rows with one name split the history between them.
      */
     suspend fun findOrCreate(name: String, type: AccountType, openingAsOf: Instant): Long
 
@@ -217,7 +220,7 @@ interface CategoryRepository {
      * Transaction counts for every category in one query.
      *
      * The category screen shows a count on every row and disables delete on any row
-     * that has one. Asking per row is nineteen-plus suspend calls to paint one list —
+     * that has one. Asking per row is nineteen-plus suspend calls to paint one list:
      * the same N+1 the proving slice already found for subcategory names.
      */
     suspend fun transactionCountsByCategory(): Map<Long, Int>
@@ -238,7 +241,7 @@ interface CategoryRepository {
     suspend fun mergeCategory(fromId: Long, toId: Long): Int
 
     /**
-     * Finds or creates by name — the path the importer uses. Matches archived
+     * Finds or creates by name: the path the importer uses. Matches archived
      * categories too, unarchiving rather than creating a same-named duplicate.
      */
     suspend fun findOrCreate(name: String, kind: CategoryKind): Long
@@ -256,7 +259,7 @@ interface ImportRepository {
     /**
      * Writes [rows] in one transaction, inserting only.
      *
-     * [fileRowCount] is the number of rows in the file, which is not `rows.size` —
+     * [fileRowCount] is the number of rows in the file, which is not `rows.size`:
      * non-IDR rows and ones the user excluded at the preview are already gone by here.
      * Recording the file's real count keeps import history consistent with what the
      * preview showed.

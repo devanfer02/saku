@@ -5,33 +5,39 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.UploadFile
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.dvnnfrr.saku.R
+import com.dvnnfrr.saku.data.repository.RestoreResult
+import com.dvnnfrr.saku.domain.ImportBatch
 import com.dvnnfrr.saku.excel.AccountConflict
 import com.dvnnfrr.saku.excel.AccountSetting
 import com.dvnnfrr.saku.excel.DatabaseRefusal
+import com.dvnnfrr.saku.ui.shared.PickCard
 import com.dvnnfrr.saku.ui.shared.ScreenHeader
+import com.dvnnfrr.saku.ui.shared.ThumbZonePane
 import com.dvnnfrr.saku.ui.theme.SakuPreview
 import com.dvnnfrr.saku.ui.theme.SakuPreviewSurface
 import com.dvnnfrr.saku.ui.theme.SakuTheme
+import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 
 /**
@@ -44,6 +50,7 @@ import kotlinx.datetime.LocalDate
 fun DatabaseImportScreen(
     modifier: Modifier = Modifier,
     onBack: (() -> Unit)? = null,
+    onContinue: () -> Unit = {},
     viewModel: DatabaseImportViewModel = viewModel(factory = DatabaseImportViewModel.Factory),
 ) {
     val state by viewModel.state.collectAsState()
@@ -60,6 +67,7 @@ fun DatabaseImportScreen(
         onPickFile = { picker.launch(DATABASE_MIME_TYPES) },
         onConfirm = viewModel::confirm,
         onDiscard = viewModel::discard,
+        onContinue = onContinue,
     )
 }
 
@@ -71,78 +79,102 @@ fun DatabaseImportScreen(
     onPickFile: () -> Unit = {},
     onConfirm: () -> Unit = {},
     onDiscard: () -> Unit = {},
+    /** After a finished restore: the host decides where the user goes next. */
+    onContinue: () -> Unit = {},
 ) {
     val colors = SakuTheme.colors
     val spacing = SakuTheme.spacing
 
     Column(modifier = modifier.fillMaxSize().background(colors.background)) {
         ScreenHeader(title = stringResource(R.string.more_import_database), onBack = onBack, backLabel = stringResource(R.string.screen_back))
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .verticalScroll(rememberScrollState())
-                .padding(spacing.screen),
-            verticalArrangement = Arrangement.spacedBy(spacing.lg),
-        ) {
-            Text(
-                text = stringResource(R.string.database_import_intro),
-                style = SakuTheme.typography.body,
-                color = colors.ink2,
+        when (state) {
+            DatabaseImportUiState.Idle -> PickStep(onPickFile = onPickFile)
+
+            is DatabaseImportUiState.Reading -> PickStep(
+                onPickFile = onPickFile,
+                busyLabel = stringResource(R.string.database_import_reading, state.fileName),
             )
 
-            when (state) {
-                DatabaseImportUiState.Idle -> PrimaryButton(
-                    label = stringResource(R.string.database_import_choose_file),
-                    onClick = onPickFile,
-                    modifier = Modifier.testTag(DATABASE_IMPORT_PICK_TAG),
+            is DatabaseImportUiState.Refused -> PickStep(
+                onPickFile = onPickFile,
+                refusal = state.refusal.message(state.fileName),
+            )
+
+            is DatabaseImportUiState.Ready -> {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
+                        .padding(spacing.screen),
+                    verticalArrangement = Arrangement.spacedBy(spacing.lg),
+                ) {
+                    Preview(state)
+                }
+                BottomActionBar {
+                    if (state.committing) CircularProgressIndicator(color = colors.accent)
+                    TextButton(onClick = onDiscard, enabled = !state.committing) {
+                        Text(
+                            text = stringResource(R.string.restore_discard),
+                            style = SakuTheme.typography.bodyStrong,
+                            color = colors.ink2,
+                        )
+                    }
+                    PrimaryButton(
+                        label = stringResource(R.string.database_import_action),
+                        onClick = onConfirm,
+                        enabled = state.preview.hasAnythingNew && !state.committing,
+                        modifier = Modifier.weight(1f).testTag(DATABASE_IMPORT_CONFIRM_TAG),
+                    )
+                }
+            }
+
+            is DatabaseImportUiState.Imported -> ResultLayout(onContinue = onContinue) {
+                ResultHeadline(stringResource(R.string.database_import_done, state.fileName))
+                CountCard(
+                    listOf(
+                        stringResource(R.string.restore_new_accounts) to state.result.accountsCreated,
+                        stringResource(R.string.restore_new_categories) to state.result.categoriesCreated,
+                        stringResource(R.string.restore_new_transactions) to state.result.batch.insertedCount,
+                    ),
                 )
-
-                is DatabaseImportUiState.Reading -> Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
-                    CircularProgressIndicator(color = colors.accent)
-                    Text(
-                        text = stringResource(R.string.database_import_reading, state.fileName),
-                        style = SakuTheme.typography.body,
-                        color = colors.ink2,
-                    )
-                }
-
-                is DatabaseImportUiState.Refused -> {
-                    Text(
-                        text = state.refusal.message(state.fileName),
-                        style = SakuTheme.typography.bodyStrong,
-                        color = colors.expense,
-                    )
-                    ChooseAnother(onPickFile)
-                }
-
-                is DatabaseImportUiState.Ready -> Preview(state, onConfirm = onConfirm, onDiscard = onDiscard)
-
-                is DatabaseImportUiState.Imported -> {
-                    Text(
-                        text = stringResource(R.string.database_import_done, state.fileName),
-                        style = SakuTheme.typography.bodyStrong,
-                        color = colors.income,
-                    )
-                    CountCard(
-                        listOf(
-                            stringResource(R.string.restore_new_accounts) to state.result.accountsCreated,
-                            stringResource(R.string.restore_new_categories) to state.result.categoriesCreated,
-                            stringResource(R.string.restore_new_transactions) to state.result.batch.insertedCount,
-                        ),
-                    )
-                    Text(
-                        text = stringResource(R.string.database_import_done_note),
-                        style = SakuTheme.typography.caption,
-                        color = colors.ink2,
-                    )
-                }
+                Text(
+                    text = stringResource(R.string.database_import_done_note),
+                    style = SakuTheme.typography.caption,
+                    color = colors.ink2,
+                )
             }
         }
     }
 }
 
+/** Idle, reading and refused share one card in the thumb zone, as on restore. */
 @Composable
-private fun Preview(state: DatabaseImportUiState.Ready, onConfirm: () -> Unit, onDiscard: () -> Unit) {
+private fun ColumnScope.PickStep(
+    onPickFile: () -> Unit,
+    busyLabel: String? = null,
+    refusal: String? = null,
+) {
+    ThumbZonePane(modifier = Modifier.weight(1f)) {
+        PickCard(
+            title = stringResource(
+                if (refusal == null) R.string.database_import_pick_title else R.string.database_import_refused_title,
+            ),
+            message = refusal ?: stringResource(R.string.database_import_intro),
+            icon = Icons.Outlined.UploadFile,
+            actionLabel = stringResource(
+                if (refusal == null) R.string.database_import_choose_file else R.string.restore_choose_another,
+            ),
+            onAction = onPickFile,
+            zoneLabel = busyLabel ?: stringResource(R.string.database_import_pick_zone),
+            busy = busyLabel != null,
+            isError = refusal != null,
+            actionModifier = Modifier.testTag(DATABASE_IMPORT_PICK_TAG),
+        )
+    }
+}
+
+@Composable
+private fun Preview(state: DatabaseImportUiState.Ready) {
     val preview = state.preview
     val colors = SakuTheme.colors
     val spacing = SakuTheme.spacing
@@ -201,27 +233,6 @@ private fun Preview(state: DatabaseImportUiState.Ready, onConfirm: () -> Unit, o
             text = stringResource(R.string.database_import_failed, it),
             style = SakuTheme.typography.bodyStrong,
             color = colors.expense,
-        )
-    }
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(spacing.sm, Alignment.End),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (state.committing) CircularProgressIndicator(color = colors.accent)
-        TextButton(onClick = onDiscard, enabled = !state.committing) {
-            Text(
-                text = stringResource(R.string.restore_discard),
-                style = SakuTheme.typography.bodyStrong,
-                color = colors.ink2,
-            )
-        }
-        PrimaryButton(
-            label = stringResource(R.string.database_import_action),
-            onClick = onConfirm,
-            enabled = preview.hasAnythingNew && !state.committing,
-            modifier = Modifier.testTag(DATABASE_IMPORT_CONFIRM_TAG),
         )
     }
 }
@@ -294,6 +305,50 @@ private fun DatabaseImportPreviewPreview() {
                     newTransactions = 1_200,
                     alreadyPresent = 0,
                     conflicts = listOf(AccountConflict("Cash", listOf(AccountSetting.OPENING_BALANCE))),
+                ),
+            ),
+        )
+    }
+}
+
+@SakuPreview
+@Composable
+private fun DatabaseImportIdlePreview() {
+    SakuPreviewSurface(padded = false) { DatabaseImportScreen(state = DatabaseImportUiState.Idle) }
+}
+
+@SakuPreview
+@Composable
+private fun DatabaseImportRefusedPreview() {
+    SakuPreviewSurface(padded = false) {
+        DatabaseImportScreen(
+            state = DatabaseImportUiState.Refused(
+                "notes.db",
+                DatabaseImportRefusal.Database(DatabaseRefusal.NotSaku),
+            ),
+        )
+    }
+}
+
+@SakuPreview
+@Composable
+private fun DatabaseImportImportedPreview() {
+    SakuPreviewSurface(padded = false) {
+        DatabaseImportScreen(
+            state = DatabaseImportUiState.Imported(
+                "mock-saku.db",
+                RestoreResult(
+                    accountsCreated = 2,
+                    categoriesCreated = 12,
+                    subcategoriesCreated = 0,
+                    batch = ImportBatch(
+                        id = 1,
+                        fileName = "mock-saku.db",
+                        importedAt = Instant.fromEpochMilliseconds(0),
+                        rowCount = 1_300,
+                        insertedCount = 1_300,
+                        skippedCount = 0,
+                    ),
                 ),
             ),
         )

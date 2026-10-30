@@ -9,7 +9,7 @@ import com.dvnnfrr.saku.domain.TxnType
  * The complete colour token set for one theme.
  *
  * Light and dark are written out in full and neither is derived from the other, so a
- * token can never exist in one theme and be missing from the other — the compiler
+ * token can never exist in one theme and be missing from the other: the compiler
  * refuses a [SakuColors] that leaves a field unset.
  *
  * [accent] is blue in both themes and carries brand and interactive state only. Money
@@ -34,7 +34,7 @@ data class SakuColors(
     val transfer: Color,
     /** Exactly [ColorSlot.COUNT] entries; the index is the [ColorSlot.index]. */
     /**
-     * For a segment that owns no slot — the stats screen's aggregated "Other".
+     * For a segment that owns no slot, such as the stats screen's aggregated "Other".
      * Deliberately not `surfaceAlt`: that is a share bar's unfilled track, so a bar
      * painted in it would be invisible.
      */
@@ -51,6 +51,19 @@ data class SakuColors(
     val netInvested: Color,
     /** Ink for a control that is present but cannot be used. */
     val inkDisabled: Color,
+    /**
+     * The welcome screen's illustration, and nothing else: a blue, a yellow and a red, each
+     * with a pale wash for the shapes behind. Decorative, so no contrast floor applies, and
+     * they never sit beside a figure. The red is held at least 15 degrees of OKLCH hue off
+     * `expense` and the yellow off `warning`, both at lower chroma, so neither reads as a
+     * loss or an alarm. Named by hue because the hue is the content.
+     */
+    val artBlue: Color,
+    val artBlueWash: Color,
+    val artYellow: Color,
+    val artYellowWash: Color,
+    val artRed: Color,
+    val artRedWash: Color,
     val chart: List<Color>,
 ) {
     init {
@@ -88,6 +101,12 @@ val LightSakuColors = SakuColors(
     netSpendable = Color(0xFF1B5AD9),
     netInvested = Color(0xFFC9541A),
     inkDisabled = Color(0xFFB3BBCB),
+    artBlue = Color(0xFF3F78E0),
+    artBlueWash = Color(0xFFD8E3FA),
+    artYellow = Color(0xFFEFC650),
+    artYellowWash = Color(0xFFFBEDC4),
+    artRed = Color(0xFFDE6479),
+    artRedWash = Color(0xFFF9D5DB),
     chart = listOf(
         Color(0xFF1B5AD9),
         Color(0xFFC2741C),
@@ -119,6 +138,12 @@ val DarkSakuColors = SakuColors(
     netSpendable = Color(0xFF6C9BF0),
     netInvested = Color(0xFFF08A52),
     inkDisabled = Color(0xFF4C566E),
+    artBlue = Color(0xFF5A86E0),
+    artBlueWash = Color(0xFF1A2A50),
+    artYellow = Color(0xFFD9B44A),
+    artYellowWash = Color(0xFF3A3420),
+    artRed = Color(0xFFCC6680),
+    artRedWash = Color(0xFF3D1E2A),
     chart = listOf(
         Color(0xFF5688DD),
         Color(0xFFB0651C),

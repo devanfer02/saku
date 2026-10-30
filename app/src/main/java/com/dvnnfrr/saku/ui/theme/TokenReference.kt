@@ -26,7 +26,7 @@ import com.dvnnfrr.saku.domain.TxnType
  * Every token in the active theme, on one screen.
  *
  * Previewed in both themes so a colour defined for only one set is visible as a hole
- * rather than discovered on a device. Not a destination — it exists for the preview pane
+ * rather than discovered on a device. Not a destination; it exists for the preview pane
  * and for a future screenshot harness to point at.
  */
 @Composable
@@ -61,6 +61,14 @@ fun TokenReference(modifier: Modifier = Modifier) {
         Swatch("income", colors.income)
         Swatch("expense", colors.expense)
         Swatch("transfer", colors.transfer)
+
+        Text("Welcome art", style = SakuTheme.typography.title, color = colors.ink)
+        Swatch("artBlue", colors.artBlue)
+        Swatch("artBlueWash", colors.artBlueWash)
+        Swatch("artYellow", colors.artYellow)
+        Swatch("artYellowWash", colors.artYellowWash)
+        Swatch("artRed", colors.artRed)
+        Swatch("artRedWash", colors.artRedWash)
 
         Text("Chart slots", style = SakuTheme.typography.title, color = colors.ink)
         for (index in 0 until ColorSlot.COUNT) {

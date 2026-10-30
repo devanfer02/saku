@@ -14,7 +14,7 @@ import kotlinx.datetime.LocalDate
 /**
  * Where the import model meets copy.
  *
- * The `excel` package holds no user-facing English at all — it deals in enums and
+ * The `excel` package holds no user-facing English at all; it deals in enums and
  * structured values, which is what lets it be tested against the real export without a
  * resource loader, and what stops a parser change quietly rewriting a sentence. Every
  * mapping lives here and is exhaustive, so adding a case without copy fails to compile.
@@ -33,6 +33,13 @@ fun TxnType.addedRes(): Int = when (this) {
     TxnType.INCOME -> R.string.import_done_income
     TxnType.TRANSFER -> R.string.import_done_transfers
     TxnType.ADJUSTMENT -> R.string.import_done_adjustments
+}
+
+/** The bold title on the pick card. */
+@StringRes
+fun ImportEntryPoint.pickTitleRes(): Int = when (this) {
+    ImportEntryPoint.MONEY_MANAGER -> R.string.import_pick_title_money_manager
+    ImportEntryPoint.EXCEL -> R.string.import_pick_title_excel
 }
 
 @StringRes

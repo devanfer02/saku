@@ -12,7 +12,7 @@ name: Import from Money Manager
 #     tapping "Choose a file" and landing back in Saku are the system picker's, not
 #     ours. They are the one part of this flow that varies by device.
 #
-# Saku holds no storage permission and no INTERNET permission — SAF is the only way a
+# Saku holds no storage permission and no INTERNET permission, so SAF is the only way a
 # file gets in, which is why the picker is in the flow at all.
 
 - clearState
@@ -80,7 +80,7 @@ name: Import from Money Manager
 - tapOn: "Create \"Emas\""
 
 # Everything is mapped, so the action turns on and says what it will do. The count is
-# in the label deliberately — a button reading just "Import" would let a preview the
+# in the label deliberately: a button reading just "Import" would let a preview the
 # user misread be confirmed without ever showing the number.
 - assertVisible: "Import 390 transactions"
 - tapOn: "Import 390 transactions"
@@ -88,7 +88,7 @@ name: Import from Money Manager
 - assertVisible: "Import finished"
 - assertVisible: "390 added from mock-money-manager.xlsx. 0 were already here."
 - assertVisible: "What was added"
-- assertVisible: "View transactions"
+- assertVisible: "Continue"
 
 # --- the same file again --------------------------------------------------------
 # Every row is now present, so the second pass must add nothing at all.

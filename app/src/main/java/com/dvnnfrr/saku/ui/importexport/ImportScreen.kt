@@ -17,14 +17,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.FileUpload
+import androidx.compose.material.icons.outlined.UploadFile
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -43,28 +42,32 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.dvnnfrr.saku.R
+import com.dvnnfrr.saku.domain.TxnType
 import com.dvnnfrr.saku.ui.shared.AccountPicker
-import com.dvnnfrr.saku.ui.shared.EmptyState
+import com.dvnnfrr.saku.ui.shared.PickCard
 import com.dvnnfrr.saku.ui.shared.ScreenHeader
+import com.dvnnfrr.saku.ui.shared.ThumbZonePane
+import com.dvnnfrr.saku.ui.theme.SakuPreview
+import com.dvnnfrr.saku.ui.theme.SakuPreviewSurface
 import com.dvnnfrr.saku.ui.theme.SakuTheme
 import com.dvnnfrr.saku.ui.theme.formatIdr
+import kotlinx.datetime.LocalDate
 
 /**
  * The import screen: pick a file, check what it will do, confirm.
  *
  * The preview is the product here, not a courtesy. A year of history arriving
- * in one tap is unreviewable afterwards, so everything that could be wrong — which
+ * in one tap is unreviewable afterwards, so everything that could be wrong (which
  * account a name maps to, where an investment transfer lands, how many rows are already
- * present — is settled before a single row is written.
+ * present) is settled before a single row is written.
  */
 @Composable
 fun ImportScreen(
     entryPoint: ImportEntryPoint,
     modifier: Modifier = Modifier,
     onBack: (() -> Unit)? = null,
-    onViewTransactions: () -> Unit = {},
     onOpenHistory: () -> Unit = {},
-    onDone: () -> Unit = {},
+    onContinue: () -> Unit = {},
     viewModel: ImportViewModel = viewModel(factory = ImportViewModel.factory(entryPoint)),
 ) {
     val state by viewModel.state.collectAsState()
@@ -85,9 +88,8 @@ fun ImportScreen(
         onConfirm = viewModel::confirm,
         onDiscard = viewModel::discard,
         onBack = onBack,
-        onViewTransactions = onViewTransactions,
         onOpenHistory = onOpenHistory,
-        onDone = onDone,
+        onContinue = onContinue,
     )
 }
 
@@ -104,34 +106,30 @@ fun ImportScreenBody(
     onDiscard: () -> Unit = {},
     /** Null hides the back arrow, for a host with its own way out. */
     onBack: (() -> Unit)? = null,
-    onViewTransactions: () -> Unit = {},
     onOpenHistory: () -> Unit = {},
-    onDone: () -> Unit = {},
+    /** After a committed import: the host decides where the user goes next. */
+    onContinue: () -> Unit = {},
 ) {
     val colors = SakuTheme.colors
 
     Column(modifier = modifier.fillMaxSize().background(colors.background)) {
         ScreenHeader(title = stringResource(state.entryPoint.titleRes()), onBack = onBack, backLabel = stringResource(R.string.screen_back))
         when (state) {
-            is ImportUiState.Idle -> IdleBody(state.entryPoint, onPickFile)
+            is ImportUiState.Idle -> PickStep(state.entryPoint, onPickFile)
 
-            is ImportUiState.Reading -> Centered {
-                CircularProgressIndicator(color = colors.accent)
-                Text(
-                    text = stringResource(R.string.import_reading, state.fileName),
-                    style = SakuTheme.typography.body,
-                    color = colors.ink2,
-                )
-            }
+            is ImportUiState.Reading -> PickStep(
+                entryPoint = state.entryPoint,
+                onPickFile = onPickFile,
+                busyLabel = stringResource(R.string.import_reading, state.fileName),
+            )
 
             is ImportUiState.Refused -> RefusedBody(state, onPickFile)
 
             is ImportUiState.Imported -> DoneBody(
                 summary = state.summary,
-                onViewTransactions = onViewTransactions,
                 onOpenHistory = onOpenHistory,
                 onPickFile = onPickFile,
-                onDone = onDone,
+                onContinue = onContinue,
             )
 
             is ImportUiState.Ready -> PreviewBody(
@@ -146,75 +144,72 @@ fun ImportScreenBody(
     }
 }
 
+/**
+ * Idle and reading are one card in the thumb zone; the file being read shows in the drop
+ * zone, so the button does not jump when the picker returns.
+ */
 @Composable
-private fun IdleBody(entryPoint: ImportEntryPoint, onPickFile: () -> Unit) {
-    EmptyState(
-        icon = Icons.Outlined.FileUpload,
-        message = stringResource(entryPoint.introRes()),
-        modifier = Modifier.fillMaxWidth(),
-        action = {
-            TextButton(onClick = onPickFile) {
-                Text(
-                    text = stringResource(R.string.import_choose_file),
-                    color = SakuTheme.colors.accent,
-                    style = SakuTheme.typography.bodyStrong,
-                )
-            }
-        },
-    )
+private fun ColumnScope.PickStep(
+    entryPoint: ImportEntryPoint,
+    onPickFile: () -> Unit,
+    busyLabel: String? = null,
+) {
+    ThumbZonePane(modifier = Modifier.weight(1f)) {
+        PickCard(
+            title = stringResource(entryPoint.pickTitleRes()),
+            message = stringResource(entryPoint.introRes()),
+            icon = Icons.Outlined.UploadFile,
+            actionLabel = stringResource(R.string.import_choose_file),
+            onAction = onPickFile,
+            zoneLabel = busyLabel ?: stringResource(R.string.import_pick_zone),
+            busy = busyLabel != null,
+        )
+    }
 }
 
+/**
+ * The same card, refused: the reason replaces the short line and "Choose another file"
+ * stays where "Choose a file" was.
+ */
 @Composable
-private fun RefusedBody(state: ImportUiState.Refused, onPickFile: () -> Unit) {
-    val spacing = SakuTheme.spacing
-    Column(
-        modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(spacing.screen),
-        verticalArrangement = Arrangement.spacedBy(spacing.md),
-    ) {
-        SectionTitle(stringResource(R.string.import_refused_title))
-        Body(state.reason.message(state.fileName))
-
-        // Naming both column lists is the difference between "wrong file" and a user who
-        // can see that one header was renamed.
-        (state.reason as? ReadFailure.UnrecognisedLayout)?.let { layout ->
-            val (expected, found) = layout.expectedAndFound()
-            Caption(expected)
-            Caption(found)
-        }
-
-        TextButton(onClick = onPickFile) {
-            Text(
-                text = stringResource(R.string.import_choose_another),
-                color = SakuTheme.colors.accent,
-                style = SakuTheme.typography.bodyStrong,
-            )
-        }
+private fun ColumnScope.RefusedBody(state: ImportUiState.Refused, onPickFile: () -> Unit) {
+    ThumbZonePane(modifier = Modifier.weight(1f)) {
+        PickCard(
+            title = stringResource(R.string.import_refused_title),
+            message = state.reason.message(state.fileName),
+            icon = Icons.Outlined.UploadFile,
+            actionLabel = stringResource(R.string.import_choose_another),
+            onAction = onPickFile,
+            isError = true,
+            details = {
+                // Naming both column lists is the difference between "wrong file" and a
+                // user who can see that one header was renamed.
+                (state.reason as? ReadFailure.UnrecognisedLayout)?.let { layout ->
+                    val (expected, found) = layout.expectedAndFound()
+                    Text(text = expected, style = SakuTheme.typography.caption, color = SakuTheme.colors.ink2)
+                    Text(text = found, style = SakuTheme.typography.caption, color = SakuTheme.colors.ink2)
+                }
+            },
+        )
     }
 }
 
 /**
  * The result. It says what went in, by type and date and account, because "1300 added"
  * alone gives the user no way to tell whether a mapping landed where they meant, and
- * the obvious next step is to go and look at those transactions.
+ * the obvious next step is to go and look at those transactions, which is where
+ * Continue goes. Import history and another file stay as links inside the result.
  */
 @Composable
 private fun ColumnScope.DoneBody(
     summary: ImportSummary,
-    onViewTransactions: () -> Unit,
     onOpenHistory: () -> Unit,
     onPickFile: () -> Unit,
-    onDone: () -> Unit,
+    onContinue: () -> Unit,
 ) {
     val spacing = SakuTheme.spacing
 
-    Column(
-        modifier = Modifier
-            .weight(1f)
-            .fillMaxWidth()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = spacing.screen, vertical = spacing.md),
-        verticalArrangement = Arrangement.spacedBy(spacing.lg),
-    ) {
+    ResultLayout(onContinue = onContinue) {
         Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
             SectionTitle(stringResource(R.string.import_done_title))
             Body(
@@ -268,48 +263,6 @@ private fun ColumnScope.DoneBody(
             LinkButton(stringResource(R.string.more_import_history), onOpenHistory)
             LinkButton(stringResource(R.string.import_choose_another), onPickFile)
         }
-    }
-
-    HorizontalDivider(color = SakuTheme.colors.line)
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(SakuTheme.colors.surface)
-            .padding(horizontal = spacing.screen, vertical = spacing.md),
-        horizontalArrangement = Arrangement.spacedBy(spacing.md),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        TextButton(onClick = onDone) {
-            Text(
-                text = stringResource(R.string.action_done),
-                style = SakuTheme.typography.bodyStrong,
-                color = SakuTheme.colors.ink2,
-            )
-        }
-        Button(
-            onClick = onViewTransactions,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = SakuTheme.colors.accent,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-            ),
-            modifier = Modifier.weight(1f),
-        ) {
-            Text(
-                text = stringResource(R.string.import_done_view_transactions),
-                style = SakuTheme.typography.bodyStrong,
-            )
-        }
-    }
-}
-
-@Composable
-private fun LinkButton(text: String, onClick: () -> Unit) {
-    TextButton(onClick = onClick) {
-        Text(
-            text = text,
-            color = SakuTheme.colors.accent,
-            style = SakuTheme.typography.bodyStrong,
-        )
     }
 }
 
@@ -624,17 +577,8 @@ private fun FailureSection(message: String) {
 }
 
 @Composable
-private fun ActionRow(preview: ImportPreview, onConfirm: () -> Unit, onDiscard: () -> Unit) {
-    val spacing = SakuTheme.spacing
-    HorizontalDivider(color = SakuTheme.colors.line)
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(SakuTheme.colors.surface)
-            .padding(horizontal = spacing.screen, vertical = spacing.md),
-        horizontalArrangement = Arrangement.spacedBy(spacing.md),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+private fun ColumnScope.ActionRow(preview: ImportPreview, onConfirm: () -> Unit, onDiscard: () -> Unit) {
+    BottomActionBar {
         TextButton(onClick = onDiscard) {
             Text(
                 text = stringResource(R.string.import_discard),
@@ -776,23 +720,9 @@ private fun Caption(text: String) {
     )
 }
 
-@Composable
-private fun Centered(content: @Composable () -> Unit) {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(
-            SakuTheme.spacing.md,
-            Alignment.CenterVertically,
-        ),
-    ) {
-        content()
-    }
-}
-
 /**
  * For instrumentation, which should not depend on a label that carries a row count.
- * Maestro matches on the visible text instead — Compose test tags are not exposed as
+ * Maestro matches on the visible text instead, because Compose test tags are not exposed as
  * resource ids here, and turning that on is a shell-wide change no track owns.
  */
 const val IMPORT_ACTION_TAG = "import_confirm"
@@ -801,3 +731,56 @@ const val IMPORT_ACTION_TAG = "import_confirm"
  *  name can contain one, so this key cannot collide with a real one. */
 private const val UNCATEGORISED_KEY = "\u0000uncategorised"
 private const val HELD_BACK_SHOWN = 20
+
+@SakuPreview
+@Composable
+private fun ImportIdlePreview() {
+    SakuPreviewSurface(padded = false) {
+        ImportScreenBody(state = ImportUiState.Idle(ImportEntryPoint.MONEY_MANAGER), onBack = {})
+    }
+}
+
+@SakuPreview
+@Composable
+private fun ImportReadingPreview() {
+    SakuPreviewSurface(padded = false) {
+        ImportScreenBody(state = ImportUiState.Reading(ImportEntryPoint.EXCEL, "mock-money-manager.xlsx"), onBack = {})
+    }
+}
+
+@SakuPreview
+@Composable
+private fun ImportRefusedPreview() {
+    SakuPreviewSurface(padded = false) {
+        ImportScreenBody(
+            state = ImportUiState.Refused(
+                entryPoint = ImportEntryPoint.MONEY_MANAGER,
+                fileName = "notes.xlsx",
+                reason = ReadFailure.Unreadable(detail = null),
+            ),
+            onBack = {},
+        )
+    }
+}
+
+@SakuPreview
+@Composable
+private fun ImportImportedPreview() {
+    SakuPreviewSurface(padded = false) {
+        ImportScreenBody(
+            state = ImportUiState.Imported(
+                entryPoint = ImportEntryPoint.MONEY_MANAGER,
+                summary = ImportSummary(
+                    fileName = "mock-money-manager.xlsx",
+                    added = 390,
+                    alreadyHere = 0,
+                    span = DateSpan(LocalDate(2026, 7, 1), LocalDate(2026, 10, 31)),
+                    byType = mapOf(TxnType.EXPENSE to 352, TxnType.INCOME to 8, TxnType.TRANSFER to 30),
+                    accounts = listOf("Cash", "BCA", "Gopay"),
+                    createdCategories = listOf("Makan & Minum", "Kebutuhan Kos", "Transportasi Umum"),
+                ),
+            ),
+            onBack = {},
+        )
+    }
+}

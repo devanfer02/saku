@@ -29,7 +29,7 @@ name: Manage categories
 - assertNotVisible: "Add subcategory"
 - pressKey: Back
 
-# A category of its own, created from the header, appended to the end of the list.
+# A category of its own, created from the add button, appended to the end of the list.
 - tapOn: "New category"
 - assertVisible: "New category"
 - inputText: "Asuransi"

@@ -4,17 +4,23 @@
     <string name="more_backup">Back up everything</string>
     <string name="more_restore">Restore from backup</string>
 
-    <string name="backup_intro">Writes one .xlsx file holding every account, category and transaction, archived ones included, with opening balances, colours and reconcile dates. Restoring it on a new phone rebuilds Saku as it is now.</string>
+    <string name="backup_pick_title">Save a backup</string>
+    <string name="backup_intro">Every account, category and transaction, archived ones included, with their settings. Restore it on a new phone to rebuild Saku as it is now.</string>
+    <string name="backup_pick_zone">Saved as .xlsx, wherever you choose</string>
     <string name="backup_action">Choose where to save</string>
     <string name="backup_writing">Writing %1$s…</string>
     <string name="backup_done">Saved to %1$s</string>
+    <string name="result_save_again">Save another copy</string>
     <string name="backup_failed">%1$s could not be written</string>
     <string name="backup_not_encrypted">The file is not encrypted. Anyone who can open it can read your whole history, so keep it somewhere private.</string>
     <string name="backup_count_accounts">Accounts</string>
     <string name="backup_count_categories">Categories</string>
     <string name="backup_count_transactions">Transactions</string>
 
-    <string name="restore_intro">Reads a Saku backup and adds what this phone does not have yet. Nothing here is deleted or changed, and the transactions arrive as one entry in Import history, so they can be reversed.</string>
+    <string name="restore_pick_title">Pick a Saku backup</string>
+    <string name="restore_intro">Adds only what this phone lacks. Nothing is deleted or changed, and Import history can reverse it.</string>
+    <string name="restore_pick_zone">A Saku backup, saved as .xlsx</string>
+    <string name="restore_refused_title">That backup was not restored</string>
     <string name="restore_choose_file">Choose a backup</string>
     <string name="restore_choose_another">Choose another file</string>
     <string name="restore_reading">Reading %1$s…</string>

@@ -68,25 +68,31 @@ fun SakuNavHost(
             ImportScreen(
                 entryPoint = ImportEntryPoint.MONEY_MANAGER,
                 onBack = back,
-                onViewTransactions = { navController.leaveMoreFor(SakuDestination.TRANSACTIONS) },
                 onOpenHistory = { navController.replaceWithinMore(MoreRoute.IMPORT_HISTORY) },
-                onDone = { navController.popToMoreMenu() },
+                onContinue = { navController.continueToLedger() },
             )
         }
         composable(MoreRoute.IMPORT_EXCEL.route) {
             ImportScreen(
                 entryPoint = ImportEntryPoint.EXCEL,
                 onBack = back,
-                onViewTransactions = { navController.leaveMoreFor(SakuDestination.TRANSACTIONS) },
                 onOpenHistory = { navController.replaceWithinMore(MoreRoute.IMPORT_HISTORY) },
-                onDone = { navController.popToMoreMenu() },
+                onContinue = { navController.continueToLedger() },
             )
         }
-        composable(MoreRoute.EXPORT_EXCEL.route) { ExportScreen(onBack = back) }
+        composable(MoreRoute.EXPORT_EXCEL.route) {
+            ExportScreen(onBack = back, onContinue = { navController.popToMoreMenu() })
+        }
         composable(MoreRoute.IMPORT_HISTORY.route) { ImportHistoryScreen(onBack = back) }
-        composable(MoreRoute.BACKUP.route) { BackupScreen(onBack = back) }
-        composable(MoreRoute.RESTORE.route) { RestoreScreen(onBack = back) }
-        composable(MoreRoute.IMPORT_DATABASE.route) { DatabaseImportScreen(onBack = back) }
+        composable(MoreRoute.BACKUP.route) {
+            BackupScreen(onBack = back, onContinue = { navController.popToMoreMenu() })
+        }
+        composable(MoreRoute.RESTORE.route) {
+            RestoreScreen(onBack = back, onContinue = { navController.continueToLedger() })
+        }
+        composable(MoreRoute.IMPORT_DATABASE.route) {
+            DatabaseImportScreen(onBack = back, onContinue = { navController.continueToLedger() })
+        }
     }
 }
 
@@ -95,7 +101,7 @@ fun SakuNavHost(
  * grow, and each destination is restored as the user left it.
  *
  * `saveState`/`restoreState` are what make that true. Without them Compose disposes
- * the outgoing destination and the next visit rebuilds it from scratch — the user
+ * the outgoing destination and the next visit rebuilds it from scratch, and the user
  * loses their scroll position and their selected sub-tab, which the spec forbids.
  */
 fun NavHostController.navigateTo(destination: SakuDestination) {
@@ -120,6 +126,15 @@ fun NavHostController.leaveMoreFor(destination: SakuDestination) {
     popToMoreMenu()
     navigateTo(destination)
 }
+
+/**
+ * Continue on a finished import, restore or database import: the new rows are in Trans,
+ * so that is where the user lands, and More reopens on its menu next time.
+ *
+ * Backup and export do not come here. They change nothing in the ledger, so their
+ * Continue goes back to the More menu the user started from, through [popToMoreMenu].
+ */
+fun NavHostController.continueToLedger() = leaveMoreFor(SakuDestination.TRANSACTIONS)
 
 /** Swaps the open More screen for [route], so back from it returns to the menu. */
 fun NavHostController.replaceWithinMore(route: MoreRoute) {
