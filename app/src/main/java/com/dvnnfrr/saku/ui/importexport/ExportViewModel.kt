@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dvnnfrr.saku.data.repository.AccountRepository
 import com.dvnnfrr.saku.data.repository.CategoryRepository
+import com.dvnnfrr.saku.data.repository.TagRepository
 import com.dvnnfrr.saku.data.repository.TransactionRepository
 import com.dvnnfrr.saku.excel.ExportSheet
 import com.dvnnfrr.saku.excel.XlsxWriter
@@ -38,6 +39,7 @@ class ExportViewModel(
     private val transactions: TransactionRepository,
     private val accounts: AccountRepository,
     private val categories: CategoryRepository,
+    private val tags: TagRepository,
     private val zone: TimeZone = TimeZone.currentSystemDefault(),
     private val io: CoroutineDispatcher = Dispatchers.IO,
 ) : ViewModel() {
@@ -53,8 +55,9 @@ class ExportViewModel(
             val accountNames = accounts.all().associate { it.id to it.name }
             val categoryNames = categories.allCategories().associate { it.id to it.name }
             val subcategoryNames = categories.allSubcategories().associate { it.id to it.name }
+            val tagNames = tags.all().associate { it.id to it.name }
 
-            val table = ExportSheet.build(rows, accountNames, categoryNames, subcategoryNames, zone)
+            val table = ExportSheet.build(rows, accountNames, categoryNames, subcategoryNames, zone, tagNames)
 
             val result = withContext(io) {
                 runCatching { sink.openOutput().use { XlsxWriter.write(table, it) } }
@@ -68,6 +71,6 @@ class ExportViewModel(
     }
 
     companion object {
-        val Factory = sakuViewModelFactory { ExportViewModel(transactions, accounts, categories) }
+        val Factory = sakuViewModelFactory { ExportViewModel(transactions, accounts, categories, tags) }
     }
 }

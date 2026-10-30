@@ -1,5 +1,6 @@
 package com.dvnnfrr.saku.excel
 
+import com.dvnnfrr.saku.domain.TagName
 import com.dvnnfrr.saku.domain.Transaction
 import com.dvnnfrr.saku.domain.TxnType
 import kotlinx.datetime.TimeZone
@@ -30,6 +31,8 @@ object ExportSheet {
         categoryNames: Map<Long, String>,
         subcategoryNames: Map<Long, String>,
         zone: TimeZone,
+        /** Every tag, archived included. A row lists its tags in this map's order. */
+        tagNames: Map<Long, String> = emptyMap(),
     ): SheetTable = SheetTable(
         sheetName = SHEET_NAME,
         headers = SheetLayout.SAKU.headers,
@@ -49,6 +52,7 @@ object ExportSheet {
                     text(transaction.categoryId?.let(categoryNames::get)),
                     text(transaction.subcategoryId?.let(subcategoryNames::get)),
                     text(transaction.note),
+                    text(TagName.join(tagNames.filterKeys { it in transaction.tagIds }.values.toList())),
                 ),
             )
         },

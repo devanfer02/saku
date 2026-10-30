@@ -3,6 +3,7 @@ package com.dvnnfrr.saku.data.repository
 import androidx.room.withTransaction
 import com.dvnnfrr.saku.data.local.SakuDatabase
 import com.dvnnfrr.saku.data.local.TxnEntity
+import com.dvnnfrr.saku.data.local.TxnTagEntity
 import com.dvnnfrr.saku.domain.AccountFlows
 import com.dvnnfrr.saku.domain.CategoryTotal
 import com.dvnnfrr.saku.domain.DailyTotals
@@ -16,6 +17,7 @@ import com.dvnnfrr.saku.domain.TransactionFilter
 import com.dvnnfrr.saku.domain.TxnType
 import com.dvnnfrr.saku.domain.truncatedToSeconds
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
@@ -32,6 +34,17 @@ class RoomTransactionRepository(
     private val categoryDao = db.categoryDao()
     private val subcategoryDao = db.subcategoryDao()
     private val accountDao = db.accountDao()
+    private val tagDao = db.tagDao()
+
+    /**
+     * Attaches each row's tags. Combined with the link table's own Flow, so tagging a row
+     * re-emits the list even though no `txn` row changed.
+     */
+    private fun Flow<List<TxnEntity>>.withTags(): Flow<List<Transaction>> =
+        combine(this, tagDao.observeLinks()) { rows, links ->
+            val tagsByTxn = links.byTxn()
+            rows.map { it.toDomain(tagsByTxn[it.id].orEmpty()) }
+        }
 
     override fun observeInRange(
         range: DateRange,
@@ -41,8 +54,8 @@ class RoomTransactionRepository(
         val f = filter.toArgs()
         return txnDao.observeInRange(
             range.startSec(zone), range.endSec(zone),
-            f.allAccounts, f.accountIds, f.allIncome, f.incomeIds, f.allExpense, f.expenseIds,
-        ).map { rows -> rows.map { it.toDomain() } }
+            f.allAccounts, f.accountIds, f.allIncome, f.incomeIds, f.allExpense, f.expenseIds, f.allTags, f.tagIds,
+        ).withTags()
     }
 
     override fun observeForCategory(
@@ -55,8 +68,8 @@ class RoomTransactionRepository(
         val f = filter.toArgs()
         return txnDao.observeInRangeForCategory(
             range.startSec(zone), range.endSec(zone), categoryId, type.name,
-            f.allAccounts, f.accountIds, f.allIncome, f.incomeIds, f.allExpense, f.expenseIds,
-        ).map { rows -> rows.map { it.toDomain() } }
+            f.allAccounts, f.accountIds, f.allIncome, f.incomeIds, f.allExpense, f.expenseIds, f.allTags, f.tagIds,
+        ).withTags()
     }
 
     override fun observeForCategories(
@@ -69,8 +82,8 @@ class RoomTransactionRepository(
         val f = filter.toArgs()
         return txnDao.observeInRangeForCategories(
             range.startSec(zone), range.endSec(zone), categoryIds, type.name,
-            f.allAccounts, f.accountIds, f.allIncome, f.incomeIds, f.allExpense, f.expenseIds,
-        ).map { rows -> rows.map { it.toDomain() } }
+            f.allAccounts, f.accountIds, f.allIncome, f.incomeIds, f.allExpense, f.expenseIds, f.allTags, f.tagIds,
+        ).withTags()
     }
 
     override fun observePeriodTotals(
@@ -81,7 +94,7 @@ class RoomTransactionRepository(
         val f = filter.toArgs()
         return txnDao.observePeriodTotals(
             range.startSec(zone), range.endSec(zone),
-            f.allAccounts, f.accountIds, f.allIncome, f.incomeIds, f.allExpense, f.expenseIds,
+            f.allAccounts, f.accountIds, f.allIncome, f.incomeIds, f.allExpense, f.expenseIds, f.allTags, f.tagIds,
         ).map { PeriodTotals(Money(it.income), Money(it.expense)) }
     }
 
@@ -96,7 +109,7 @@ class RoomTransactionRepository(
         val f = filter.toArgs()
         return txnDao.observeDailyTotals(
             range.startSec(zone), range.endSec(zone), offset,
-            f.allAccounts, f.accountIds, f.allIncome, f.incomeIds, f.allExpense, f.expenseIds,
+            f.allAccounts, f.accountIds, f.allIncome, f.incomeIds, f.allExpense, f.expenseIds, f.allTags, f.tagIds,
         ).map { rows ->
             rows.map { row ->
                 DailyTotals(
@@ -117,7 +130,7 @@ class RoomTransactionRepository(
         val f = filter.toArgs()
         return txnDao.observeCategoryTotals(
             range.startSec(zone), range.endSec(zone), type.name,
-            f.allAccounts, f.accountIds, f.allIncome, f.incomeIds, f.allExpense, f.expenseIds,
+            f.allAccounts, f.accountIds, f.allIncome, f.incomeIds, f.allExpense, f.expenseIds, f.allTags, f.tagIds,
         ).map { it.toDomain() }
     }
 
@@ -128,16 +141,20 @@ class RoomTransactionRepository(
     override fun observeAll(filter: TransactionFilter): Flow<List<Transaction>> {
         val f = filter.toArgs()
         return txnDao.observeAll(
-            f.allAccounts, f.accountIds, f.allIncome, f.incomeIds, f.allExpense, f.expenseIds,
-        ).map { rows -> rows.map { it.toDomain() } }
+            f.allAccounts, f.accountIds, f.allIncome, f.incomeIds, f.allExpense, f.expenseIds, f.allTags, f.tagIds,
+        ).withTags()
     }
 
     override fun observeNoteUsage(type: TxnType): Flow<List<NoteUsage>> =
         txnDao.observeNoteUses(type.name).map(::foldNoteUsage)
 
-    override suspend fun byId(id: Long): Transaction? = txnDao.byId(id)?.toDomain()
+    override suspend fun byId(id: Long): Transaction? =
+        txnDao.byId(id)?.toDomain(tagDao.tagIdsFor(id).toSet())
 
-    override suspend fun all(): List<Transaction> = txnDao.all().map { it.toDomain() }
+    override suspend fun all(): List<Transaction> = db.withTransaction {
+        val tagsByTxn = tagDao.allLinks().byTxn()
+        txnDao.all().map { it.toDomain(tagsByTxn[it.id].orEmpty()) }
+    }
 
     override suspend fun lastEnteredAt(): Instant? =
         txnDao.lastEnteredAtEpochSec()?.let(Instant::fromEpochSeconds)
@@ -153,11 +170,12 @@ class RoomTransactionRepository(
         categoryId: Long?,
         subcategoryId: Long?,
         note: String?,
+        tagIds: Set<Long>,
     ): Long = db.withTransaction {
         validate(occurredAt, type, amount, accountId, toAccountId, categoryId, subcategoryId)
 
         val at = occurredAt.truncatedToSeconds()
-        txnDao.insert(
+        val id = txnDao.insert(
             TxnEntity(
                 occurredAtEpochSec = at.epochSeconds,
                 type = type,
@@ -174,6 +192,8 @@ class RoomTransactionRepository(
                 ),
             ),
         )
+        tagDao.link(tagIds.map { TxnTagEntity(txnId = id, tagId = it) })
+        id
     }
 
     override suspend fun update(transaction: Transaction) {
@@ -211,6 +231,13 @@ class RoomTransactionRepository(
                     ),
                 ),
             )
+
+            // Only the difference is written, so an untouched tag keeps its link row.
+            val current = tagDao.tagIdsFor(transaction.id).toSet()
+            val removed = current - transaction.tagIds
+            if (removed.isNotEmpty()) tagDao.unlink(transaction.id, removed.toList())
+            val added = transaction.tagIds - current
+            tagDao.link(added.map { TxnTagEntity(txnId = transaction.id, tagId = it) })
         }
     }
 

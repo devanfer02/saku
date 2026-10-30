@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dvnnfrr.saku.data.repository.AccountRepository
 import com.dvnnfrr.saku.data.repository.CategoryRepository
+import com.dvnnfrr.saku.data.repository.TagRepository
 import com.dvnnfrr.saku.data.repository.TransactionRepository
 import com.dvnnfrr.saku.domain.DailyTotals
 import com.dvnnfrr.saku.domain.DateRange
@@ -44,6 +45,7 @@ class TransactionListViewModel(
     transactionRepository: TransactionRepository,
     accountRepository: AccountRepository,
     categoryRepository: CategoryRepository,
+    tagRepository: TagRepository,
     private val sharedFilter: SharedFilter,
     private val zone: TimeZone = TimeZone.currentSystemDefault(),
     private val clock: Clock = Clock.System,
@@ -90,8 +92,9 @@ class TransactionListViewModel(
                     transactionRepository.observeInRange(range, zone, filter),
                     accountRepository.observeAll(),
                     categoryRepository.observeAll(),
-                ) { transactions, accounts, categories ->
-                    val index = DisplayIndex(accounts, categories)
+                    tagRepository.observeAll(),
+                ) { transactions, accounts, categories, tags ->
+                    val index = DisplayIndex(accounts, categories, tags)
                     MonthData(
                         range = range,
                         filter = filter,
@@ -253,7 +256,7 @@ class TransactionListViewModel(
 
     companion object {
         val Factory = sakuViewModelFactory {
-            TransactionListViewModel(transactions, accounts, categories, filter)
+            TransactionListViewModel(transactions, accounts, categories, tags, filter)
         }
     }
 }

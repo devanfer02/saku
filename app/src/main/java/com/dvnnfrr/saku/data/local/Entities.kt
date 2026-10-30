@@ -132,3 +132,43 @@ data class ImportBatchEntity(
     /** Set when the batch is reversed; the record itself is never deleted. */
     val reversedAtEpochSec: Long? = null,
 )
+
+/**
+ * A label a transaction may carry, cutting across categories ("Monthly grocery"). Archived,
+ * never deleted, like a category. Names are unique ignoring case; `TagName` holds the rule.
+ */
+@Entity(tableName = "tag")
+data class TagEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String,
+    val sortOrder: Int,
+    val archived: Boolean = false,
+)
+
+/**
+ * One tag on one transaction. Deleting a transaction drops its links; a tag holding links
+ * cannot be deleted at all, and nothing in Saku tries.
+ */
+@Entity(
+    tableName = "txn_tag",
+    primaryKeys = ["txnId", "tagId"],
+    foreignKeys = [
+        ForeignKey(
+            entity = TxnEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["txnId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+        ForeignKey(
+            entity = TagEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["tagId"],
+            onDelete = ForeignKey.RESTRICT,
+        ),
+    ],
+    indices = [Index(value = ["tagId"])],
+)
+data class TxnTagEntity(
+    val txnId: Long,
+    val tagId: Long,
+)

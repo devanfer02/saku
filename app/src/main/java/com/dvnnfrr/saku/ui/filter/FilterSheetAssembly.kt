@@ -8,6 +8,7 @@ import com.dvnnfrr.saku.domain.ColorSlot
 import com.dvnnfrr.saku.domain.DateRange
 import com.dvnnfrr.saku.domain.Money
 import com.dvnnfrr.saku.domain.PeriodTotals
+import com.dvnnfrr.saku.domain.Tag
 import com.dvnnfrr.saku.domain.TransactionFilter
 import com.dvnnfrr.saku.domain.sharePercent
 
@@ -20,13 +21,13 @@ import com.dvnnfrr.saku.domain.sharePercent
  * one implementation of the rule.
  */
 
-enum class FilterTab { INCOME, EXPENSES, ACCOUNT }
+enum class FilterTab { INCOME, EXPENSES, ACCOUNT, TAGS }
 
-/** One ticked or unticked item on the INCOME or EXPENSES tab. */
+/** One ticked or unticked item on the INCOME, EXPENSES or TAGS tab. A tag has no colour. */
 data class CheckRow(
     val id: Long,
     val name: String,
-    val colorSlot: ColorSlot,
+    val colorSlot: ColorSlot?,
     val ticked: Boolean,
 )
 
@@ -69,6 +70,8 @@ data class FilterSheetUiState(
     val expenseRows: List<CheckRow> = emptyList(),
     val allAccounts: Boolean = true,
     val accountGroups: List<AccountCheckGroup> = emptyList(),
+    val allTags: Boolean = true,
+    val tagRows: List<CheckRow> = emptyList(),
     val loading: Boolean = true,
 )
 
@@ -100,18 +103,33 @@ fun toggledItem(selection: Set<Long>?, id: Long, listed: List<Long>): Set<Long>?
 /** The "All" row: ticking it ticks everything, unticking it unticks everything. */
 fun allToggled(selection: Set<Long>?): Set<Long>? = if (selection == null) emptySet() else null
 
+/**
+ * One tag ticked or unticked. Tags differ from the other tabs: "All" also passes untagged
+ * rows, so ticking every tag is not "All", and under "All" no tag shows ticked. The first
+ * tick narrows to that tag; unticking the last one returns to "All", because an empty tag
+ * selection would hide every row and nobody asks for that.
+ */
+fun toggledTag(selection: Set<Long>?, id: Long): Set<Long>? = when {
+    selection == null -> setOf(id)
+    id in selection -> (selection - id).ifEmpty { null }
+    else -> selection + id
+}
+
 /** [toggledItem] applied to whichever of the three selections [tab] edits. */
 fun TransactionFilter.toggled(tab: FilterTab, id: Long, listed: List<Long>): TransactionFilter =
     when (tab) {
         FilterTab.INCOME -> copy(incomeCategoryIds = toggledItem(incomeCategoryIds, id, listed))
         FilterTab.EXPENSES -> copy(expenseCategoryIds = toggledItem(expenseCategoryIds, id, listed))
         FilterTab.ACCOUNT -> copy(accountIds = toggledItem(accountIds, id, listed))
+        FilterTab.TAGS -> copy(tagIds = toggledTag(tagIds, id))
     }
 
 fun TransactionFilter.toggledAll(tab: FilterTab): TransactionFilter = when (tab) {
     FilterTab.INCOME -> copy(incomeCategoryIds = allToggled(incomeCategoryIds))
     FilterTab.EXPENSES -> copy(expenseCategoryIds = allToggled(expenseCategoryIds))
     FilterTab.ACCOUNT -> copy(accountIds = allToggled(accountIds))
+    // "All" is the only way out of a tag selection; tapping it under "All" changes nothing.
+    FilterTab.TAGS -> copy(tagIds = null)
 }
 
 fun ringFigure(filtered: Money, whole: Money): RingFigure =
@@ -145,6 +163,10 @@ fun groupAccounts(
 private fun List<Category>.toCheckRows(selection: Set<Long>?): List<CheckRow> =
     map { CheckRow(it.id, it.name, it.colorSlot, selection.ticks(it.id)) }
 
+/** Archived tags listed too: rows keep an archived tag, so the filter must reach them. */
+private fun List<Tag>.toTagRows(selection: Set<Long>?): List<CheckRow> =
+    map { CheckRow(it.id, it.name, colorSlot = null, ticked = selection != null && it.id in selection) }
+
 /**
  * The whole sheet. [filtered] and [whole] are the period's totals with and without the
  * filter; the categories and accounts are the active (non-archived) ones, in the user's
@@ -160,6 +182,7 @@ fun assembleFilterSheet(
     incomeCategories: List<Category>,
     expenseCategories: List<Category>,
     accounts: List<Account>,
+    tags: List<Tag> = emptyList(),
 ): FilterSheetUiState = FilterSheetUiState(
     range = range,
     tab = tab,
@@ -172,12 +195,14 @@ fun assembleFilterSheet(
     expenseRows = expenseCategories.toCheckRows(filter.expenseCategoryIds),
     allAccounts = filter.accountIds == null,
     accountGroups = groupAccounts(accounts, flows, filter.accountIds),
+    allTags = filter.tagIds == null,
+    tagRows = tags.toTagRows(filter.tagIds),
     loading = false,
 )
 
 /**
  * Names what an active filter selects, for the "Filtered" bar: "2 accounts · 1 expense
- * category". Accounts first, then expenses, then income; a tab at "All" says nothing, and
+ * category". Accounts first, then expenses, then income, then tags; a tab at "All" says nothing, and
  * one with nothing ticked says so in words. Empty when the filter is inactive.
  *
  * Copy in an assembly file, against the habit elsewhere, because the phrase is the rule
@@ -191,6 +216,7 @@ fun filterSummary(filter: TransactionFilter): String = listOfNotNull(
     filter.incomeCategoryIds?.let {
         counted(it.size, "income category", "income categories", "no income")
     },
+    filter.tagIds?.let { counted(it.size, "tag", "tags", "no tags") },
 ).joinToString(" · ")
 
 private fun counted(count: Int, one: String, many: String, none: String): String = when (count) {

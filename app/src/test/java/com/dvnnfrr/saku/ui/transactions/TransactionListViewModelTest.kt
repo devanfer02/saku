@@ -5,6 +5,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.dvnnfrr.saku.data.local.SakuDatabase
 import com.dvnnfrr.saku.data.repository.RoomAccountRepository
 import com.dvnnfrr.saku.data.repository.RoomCategoryRepository
+import com.dvnnfrr.saku.data.repository.RoomTagRepository
 import com.dvnnfrr.saku.data.repository.RoomTransactionRepository
 import com.dvnnfrr.saku.domain.AccountType
 import com.dvnnfrr.saku.domain.CategoryKind
@@ -119,6 +120,7 @@ class TransactionListViewModelTest {
         transactionRepository = transactions,
         accountRepository = accounts,
         categoryRepository = categories,
+        tagRepository = RoomTagRepository(db),
         sharedFilter = shared,
         zone = zone,
         clock = clock,

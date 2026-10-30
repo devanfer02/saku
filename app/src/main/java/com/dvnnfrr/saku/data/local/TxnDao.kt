@@ -17,13 +17,16 @@ import kotlinx.coroutines.flow.Flow
  *
  * Column names are unqualified so the fragment also works in the joined category-totals
  * query. A filtered query must therefore never join a table that also has `accountId`,
- * `toAccountId`, `categoryId` or `type`.
+ * `toAccountId`, `categoryId` or `type`, and must not alias `txn`: the tag clause names
+ * `txn.id`, because `category` has an `id` too. Tags pass rows carrying any chosen tag;
+ * "All" passes every row, untagged ones included. Eight arguments in all.
  */
 const val TXN_FILTER_WHERE = """
           AND (:allAccounts OR accountId IN (:accountIds) OR toAccountId IN (:accountIds))
           AND (    (type = 'INCOME'  AND (:allIncome  OR categoryId IN (:incomeIds)))
                 OR (type = 'EXPENSE' AND (:allExpense OR categoryId IN (:expenseIds)))
                 OR (type IN ('TRANSFER', 'ADJUSTMENT') AND :allIncome AND :allExpense) )
+          AND (:allTags OR txn.id IN (SELECT txnId FROM txn_tag WHERE tagId IN (:tagIds)))
 """
 
 /**
@@ -51,6 +54,8 @@ interface TxnDao {
         incomeIds: List<Long>,
         allExpense: Boolean,
         expenseIds: List<Long>,
+        allTags: Boolean,
+        tagIds: List<Long>,
     ): Flow<List<TxnEntity>>
 
     @Query(
@@ -74,6 +79,8 @@ interface TxnDao {
         incomeIds: List<Long>,
         allExpense: Boolean,
         expenseIds: List<Long>,
+        allTags: Boolean,
+        tagIds: List<Long>,
     ): Flow<List<TxnEntity>>
 
     @Query(
@@ -94,6 +101,8 @@ interface TxnDao {
         incomeIds: List<Long>,
         allExpense: Boolean,
         expenseIds: List<Long>,
+        allTags: Boolean,
+        tagIds: List<Long>,
     ): Flow<PeriodTotalsRow>
 
     /**
@@ -135,21 +144,23 @@ interface TxnDao {
         incomeIds: List<Long>,
         allExpense: Boolean,
         expenseIds: List<Long>,
+        allTags: Boolean,
+        tagIds: List<Long>,
     ): Flow<List<DailyTotalRow>>
 
     @Query(
         """
-        SELECT t.categoryId  AS categoryId,
-               c.name        AS categoryName,
-               c.colorSlot   AS colorSlot,
-               SUM(t.amountIdr) AS total
-        FROM txn t
-        JOIN category c ON c.id = t.categoryId
-        WHERE t.type = :type
-          AND t.occurredAtEpochSec >= :startSec
-          AND t.occurredAtEpochSec < :endSec
+        SELECT txn.categoryId  AS categoryId,
+               c.name          AS categoryName,
+               c.colorSlot     AS colorSlot,
+               SUM(txn.amountIdr) AS total
+        FROM txn
+        JOIN category c ON c.id = txn.categoryId
+        WHERE txn.type = :type
+          AND txn.occurredAtEpochSec >= :startSec
+          AND txn.occurredAtEpochSec < :endSec
         """ + TXN_FILTER_WHERE + """
-        GROUP BY t.categoryId, c.name, c.colorSlot
+        GROUP BY txn.categoryId, c.name, c.colorSlot
         ORDER BY total DESC
         """,
     )
@@ -163,6 +174,8 @@ interface TxnDao {
         incomeIds: List<Long>,
         allExpense: Boolean,
         expenseIds: List<Long>,
+        allTags: Boolean,
+        tagIds: List<Long>,
     ): Flow<List<CategoryTotalRow>>
 
     /** Drill-through for the stats screen's aggregated "Other" slice. */
@@ -187,6 +200,8 @@ interface TxnDao {
         incomeIds: List<Long>,
         allExpense: Boolean,
         expenseIds: List<Long>,
+        allTags: Boolean,
+        tagIds: List<Long>,
     ): Flow<List<TxnEntity>>
 
     /**
@@ -241,6 +256,8 @@ interface TxnDao {
         incomeIds: List<Long>,
         allExpense: Boolean,
         expenseIds: List<Long>,
+        allTags: Boolean,
+        tagIds: List<Long>,
     ): Flow<List<TxnEntity>>
 
     /**

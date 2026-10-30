@@ -19,6 +19,7 @@ import com.dvnnfrr.saku.ui.importexport.RestoreScreen
 import com.dvnnfrr.saku.ui.search.SearchScreen
 import com.dvnnfrr.saku.ui.shell.MoreScreen
 import com.dvnnfrr.saku.ui.stats.StatsScreen
+import com.dvnnfrr.saku.ui.tags.TagsScreen
 import com.dvnnfrr.saku.ui.transactions.TransactionsScreen
 
 /**
@@ -64,6 +65,7 @@ fun SakuNavHost(
         }
 
         composable(MoreRoute.CATEGORIES.route) { CategoriesScreen(onBack = back) }
+        composable(MoreRoute.TAGS.route) { TagsScreen(onBack = back) }
         composable(MoreRoute.IMPORT_MONEY_MANAGER.route) {
             ImportScreen(
                 entryPoint = ImportEntryPoint.MONEY_MANAGER,

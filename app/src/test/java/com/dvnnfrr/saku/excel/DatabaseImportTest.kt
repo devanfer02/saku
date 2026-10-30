@@ -33,27 +33,27 @@ class DatabaseImportTest {
 
     @Test
     fun `a matching version and hash pass`() {
-        assertNull(DatabaseImport.refusalFor(DatabaseHeader(1, hash), 1, hash))
+        assertNull(DatabaseImport.refusalFor(DatabaseHeader(1, hash), mapOf(1 to hash), 1))
     }
 
     @Test
     fun `a different version is named with both numbers`() {
         assertEquals(
             DatabaseRefusal.DifferentVersion(found = 2, expected = 1),
-            DatabaseImport.refusalFor(DatabaseHeader(2, hash), 1, hash),
+            DatabaseImport.refusalFor(DatabaseHeader(2, hash), mapOf(1 to hash), 1),
         )
     }
 
     @Test
     fun `a missing master table wins over the version, since Room never wrote the file`() {
-        assertEquals(DatabaseRefusal.NotSaku, DatabaseImport.refusalFor(DatabaseHeader(0, null), 1, hash))
+        assertEquals(DatabaseRefusal.NotSaku, DatabaseImport.refusalFor(DatabaseHeader(0, null), mapOf(1 to hash), 1))
     }
 
     @Test
     fun `the same version with another hash is another layout`() {
         assertEquals(
             DatabaseRefusal.DifferentLayout,
-            DatabaseImport.refusalFor(DatabaseHeader(1, "0".repeat(32)), 1, hash),
+            DatabaseImport.refusalFor(DatabaseHeader(1, "0".repeat(32)), mapOf(1 to hash), 1),
         )
     }
 

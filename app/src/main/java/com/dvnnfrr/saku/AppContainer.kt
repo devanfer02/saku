@@ -20,7 +20,9 @@ import com.dvnnfrr.saku.data.repository.ImportRepository
 import com.dvnnfrr.saku.data.repository.RoomAccountRepository
 import com.dvnnfrr.saku.data.repository.RoomCategoryRepository
 import com.dvnnfrr.saku.data.repository.RoomImportRepository
+import com.dvnnfrr.saku.data.repository.RoomTagRepository
 import com.dvnnfrr.saku.data.repository.RoomTransactionRepository
+import com.dvnnfrr.saku.data.repository.TagRepository
 import com.dvnnfrr.saku.data.repository.TransactionRepository
 import com.dvnnfrr.saku.reminder.ReminderScheduler
 import com.dvnnfrr.saku.ui.filter.SharedFilter
@@ -49,6 +51,7 @@ interface AppContainer {
     val accounts: AccountRepository
     val categories: CategoryRepository
     val imports: ImportRepository
+    val tags: TagRepository
     val appearance: AppearanceStore
 
     /** The Stats chart style, remembered across restarts. */
@@ -83,6 +86,7 @@ class RoomAppContainer(context: Context) : AppContainer {
     override val accounts: AccountRepository by lazy { RoomAccountRepository(db) }
     override val categories: CategoryRepository by lazy { RoomCategoryRepository(db) }
     override val imports: ImportRepository by lazy { RoomImportRepository(db) }
+    override val tags: TagRepository by lazy { RoomTagRepository(db) }
 
     /**
      * Not lazy. The theme reads it during the first composition, so deferring the

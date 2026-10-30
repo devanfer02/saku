@@ -5,6 +5,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.dvnnfrr.saku.data.local.SakuDatabase
 import com.dvnnfrr.saku.data.repository.RoomAccountRepository
 import com.dvnnfrr.saku.data.repository.RoomCategoryRepository
+import com.dvnnfrr.saku.data.repository.RoomTagRepository
 import com.dvnnfrr.saku.data.repository.RoomTransactionRepository
 import com.dvnnfrr.saku.domain.AccountType
 import com.dvnnfrr.saku.domain.CategoryKind
@@ -96,7 +97,7 @@ class FilterSheetViewModelTest {
             categoryId = category,
         )
 
-    private fun viewModel() = FilterSheetViewModel(october, transactions, accounts, categories, shared, zone)
+    private fun viewModel() = FilterSheetViewModel(october, transactions, accounts, categories, RoomTagRepository(db), shared, zone)
 
     @Test
     fun `the sheet opens on INCOME with the opening screen's period`() = runTest(dispatcher) {

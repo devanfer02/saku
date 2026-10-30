@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Entry sheet: Tags row and the Add tag picker -->
+    <string name="entry_field_tags">Tags</string>
+    <string name="entry_tag_add">Add tag</string>
+    <!-- TalkBack on a chip, which removes the tag when tapped: "Tag Trip Bali, remove" -->
+    <string name="entry_tag_remove">Tag %1$s, remove</string>
+    <string name="entry_tag_create">Create “%1$s”</string>
+    <string name="entry_tag_name_label">Tag name</string>
+    <string name="entry_tag_name_example">Monthly grocery</string>
+    <string name="entry_tag_done">Done</string>
+    <string name="entry_tag_too_long">Use 30 characters or fewer</string>
+    <string name="entry_tag_has_separator">Use a name without ;</string>
+    <string name="entry_tag_none">No tags yet. Type a name to create one.</string>
+
+    <!-- List rows: what TalkBack reads for "#Monthly grocery #Ramadan +1" -->
+    <string name="row_tags_spoken">Tags %1$s</string>
+    <plurals name="row_tags_spoken_more">
+        <item quantity="one">Tags %1$s and %2$d more</item>
+        <item quantity="other">Tags %1$s and %2$d more</item>
+    </plurals>
+
+    <!-- Filter sheet -->
+    <string name="filter_tab_tags">TAGS</string>
+    <string name="filter_no_tags">No tags yet. Add one from a transaction’s Tags row.</string>
+
+    <!-- More menu and the Tags screen -->
+    <string name="more_tags">Tags</string>
+    <string name="more_tags_subtitle">Rename or archive the labels on your transactions</string>
+    <string name="tags_title">Tags</string>
+    <string name="tags_empty">No tags yet. Add one from a transaction’s Tags row.</string>
+    <string name="tags_archived_header">Archived</string>
+    <plurals name="tags_row_count">
+        <item quantity="one">%d transaction</item>
+        <item quantity="other">%d transactions</item>
+    </plurals>
+    <string name="tags_edit_hint">Tap a tag to rename or archive it</string>
+    <string name="tags_name_label">Name</string>
+    <string name="tags_save_name">Save name</string>
+    <string name="tags_archive">Archive tag</string>
+    <string name="tags_unarchive">Unarchive tag</string>
+    <string name="tags_archive_note">An archived tag stays on its transactions and in the filter. Add tag stops offering it.</string>
+    <string name="tags_name_taken">Another tag is already called %1$s</string>
+    <string name="tags_name_invalid">Use 1 to 30 characters, without ;</string>
+</resources>

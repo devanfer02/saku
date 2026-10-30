@@ -146,6 +146,10 @@ android {
     buildFeatures {
         compose = true
     }
+    sourceSets {
+        // MigrationTestHelper reads the exported schemas as assets.
+        getByName("androidTest").assets.srcDir("$projectDir/schemas")
+    }
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
@@ -228,6 +232,7 @@ dependencies {
     testImplementation(libs.androidx.test.core)
 
     androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.room.testing)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)

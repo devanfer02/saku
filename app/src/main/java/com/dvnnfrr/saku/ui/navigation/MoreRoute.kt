@@ -15,6 +15,7 @@ import com.dvnnfrr.saku.ui.shell.MoreEntry
  */
 enum class MoreRoute(val route: String, val entry: MoreEntry) {
     CATEGORIES("more/categories", MoreEntry.CATEGORIES),
+    TAGS("more/tags", MoreEntry.TAGS),
     IMPORT_MONEY_MANAGER("more/import-money-manager", MoreEntry.IMPORT_MONEY_MANAGER),
     IMPORT_EXCEL("more/import-excel", MoreEntry.IMPORT_EXCEL),
     EXPORT_EXCEL("more/export-excel", MoreEntry.EXPORT_EXCEL),

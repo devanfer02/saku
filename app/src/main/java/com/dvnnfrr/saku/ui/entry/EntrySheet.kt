@@ -69,7 +69,7 @@ import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
 
 /** Which field's picker is expanded. Only one at a time; the sheet is not tall. */
-private enum class OpenPicker { NONE, ACCOUNT, DESTINATION, CATEGORY }
+private enum class OpenPicker { NONE, ACCOUNT, DESTINATION, CATEGORY, TAGS }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -225,6 +225,15 @@ private fun EntrySheetBody(
                 )
             }
 
+            TagsRow(
+                tags = form.tags,
+                onRemove = viewModel::removeTag,
+                onAdd = {
+                    focusManager.clearFocus()
+                    openPicker = OpenPicker.TAGS
+                },
+            )
+
             state.receipt?.let { panel ->
                 ReceiptLines(lines = panel.lines, onAdd = viewModel::addReceiptLine)
             }
@@ -265,7 +274,10 @@ private fun EntrySheetBody(
                 open = openPicker,
                 state = state,
                 viewModel = viewModel,
-                onClose = { openPicker = OpenPicker.NONE },
+                onClose = {
+                    if (openPicker == OpenPicker.TAGS) viewModel.closeTagPicker()
+                    openPicker = OpenPicker.NONE
+                },
                 onCreateCategory = { creatingCategory = true },
             )
         }
@@ -523,6 +535,7 @@ private fun ExpandedPicker(
     val titleRes = when (open) {
         OpenPicker.ACCOUNT -> R.string.entry_field_account
         OpenPicker.DESTINATION -> R.string.entry_field_destination
+        OpenPicker.TAGS -> R.string.entry_field_tags
         else -> R.string.entry_field_category
     }
 
@@ -577,6 +590,20 @@ private fun ExpandedPicker(
                 onCreateNew = onCreateCategory,
                 createLabel = stringResource(R.string.entry_new_category),
                 modifier = gridModifier,
+            )
+
+            // Takes the keypad's place like the other pickers, so Done sits where the thumb is.
+            OpenPicker.TAGS -> TagPicker(
+                query = state.tagQuery,
+                picker = state.tagPickerUi,
+                hasAnyTag = state.allTags.isNotEmpty(),
+                onQuery = viewModel::setTagQuery,
+                onPick = viewModel::pickTag,
+                onAddTyped = viewModel::addTypedTag,
+                onDone = {
+                    viewModel.addTypedTag()
+                    onClose()
+                },
             )
 
             OpenPicker.NONE -> Unit

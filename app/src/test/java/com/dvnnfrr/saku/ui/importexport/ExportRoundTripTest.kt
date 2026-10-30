@@ -5,6 +5,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.dvnnfrr.saku.data.local.SakuDatabase
 import com.dvnnfrr.saku.data.repository.RoomAccountRepository
 import com.dvnnfrr.saku.data.repository.RoomCategoryRepository
+import com.dvnnfrr.saku.data.repository.RoomTagRepository
 import com.dvnnfrr.saku.data.repository.RoomImportRepository
 import com.dvnnfrr.saku.data.repository.RoomTransactionRepository
 import com.dvnnfrr.saku.domain.AccountType
@@ -134,6 +135,7 @@ class ExportRoundTripTest {
             transactions = RoomTransactionRepository(source),
             accounts = RoomAccountRepository(source),
             categories = RoomCategoryRepository(source),
+            tags = RoomTagRepository(source),
             zone = JAKARTA,
             io = dispatcher,
         ).also { it.export(sink) }
@@ -211,6 +213,7 @@ class ExportRoundTripTest {
             transactions = RoomTransactionRepository(db),
             accounts = RoomAccountRepository(db),
             categories = RoomCategoryRepository(db),
+            tags = RoomTagRepository(db),
             zone = JAKARTA,
             io = dispatcher,
         ).export(sink)

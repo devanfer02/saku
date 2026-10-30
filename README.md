@@ -38,6 +38,9 @@ money.
   themselves. This replaces subcategories, which Saku does not ask for.
 - **Entry**: amount keypad with `+` and `-` for quick sums, note suggestions from what you typed
   before, and category and account pickers laid out as a grid.
+- **Tags**: optional labels that cut across categories. Mark the rice under Makan & Minum and the soap
+  under Kebutuhan Kos both "Monthly grocery", then filter Trans and Stats by that tag to see the trip's
+  total split by category. A row can carry several tags; More > Tags renames and archives them.
 - **Scan receipt**: take a photo of a paper receipt or pick a payment screenshot (m-BCA, BRImo, GoPay,
   OVO, DANA and the like). Saku reads it on the phone and fills the amount, the date and the store.
   Other amounts on the receipt show as chips, and lines it could not place can be added to the note
@@ -55,6 +58,10 @@ money.
   - import a prepared Saku `.db` file
 
 Import only ever adds rows. Nothing is deleted or overwritten by an import or a restore.
+
+**Back up before upgrading to a build with tags.** It moves the database to schema version 2. The
+upgrade only adds two tables and keeps every row, but an older Saku cannot open the upgraded database
+or read a backup it writes (backup format 2).
 
 ## Requirements
 

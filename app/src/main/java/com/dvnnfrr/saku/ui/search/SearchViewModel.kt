@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dvnnfrr.saku.data.repository.AccountRepository
 import com.dvnnfrr.saku.data.repository.CategoryRepository
+import com.dvnnfrr.saku.data.repository.TagRepository
 import com.dvnnfrr.saku.data.repository.TransactionRepository
 import com.dvnnfrr.saku.domain.TransactionFilter
 import com.dvnnfrr.saku.sakuViewModelFactory
@@ -40,6 +41,7 @@ class SearchViewModel(
     transactionRepository: TransactionRepository,
     accountRepository: AccountRepository,
     categoryRepository: CategoryRepository,
+    tagRepository: TagRepository,
     private val sharedFilter: SharedFilter,
     private val zone: TimeZone = TimeZone.currentSystemDefault(),
 ) : ViewModel() {
@@ -74,6 +76,7 @@ class SearchViewModel(
     private val index = combine(
         accountRepository.observeAll(),
         categoryRepository.observeAll(),
+        tagRepository.observeAll(),
         ::DisplayIndex,
     )
 
@@ -100,7 +103,7 @@ class SearchViewModel(
 
     companion object {
         val Factory = sakuViewModelFactory {
-            SearchViewModel(transactions, accounts, categories, filter)
+            SearchViewModel(transactions, accounts, categories, tags, filter)
         }
     }
 }

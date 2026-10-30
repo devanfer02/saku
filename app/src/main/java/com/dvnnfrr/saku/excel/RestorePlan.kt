@@ -5,12 +5,15 @@ import com.dvnnfrr.saku.domain.Account
 import com.dvnnfrr.saku.domain.Category
 import com.dvnnfrr.saku.domain.DedupHash
 import com.dvnnfrr.saku.domain.Subcategory
+import com.dvnnfrr.saku.domain.Tag
+import com.dvnnfrr.saku.domain.TagName
 
 /** What the database already holds, as the plan needs to see it. Archived records included. */
 data class ExistingRecords(
     val accounts: List<Account>,
     val categories: List<Category>,
     val subcategories: List<Subcategory>,
+    val tags: List<Tag> = emptyList(),
 )
 
 /** An account setting the backup holds differently from the same-named account here. */
@@ -48,6 +51,8 @@ data class RestorePlan(
     val accountsToCreate: List<BackupAccount>,
     val categoriesToCreate: List<BackupCategory>,
     val subcategoriesToCreate: List<BackupSubcategory>,
+    /** Tags the backup lists and this database lacks, by [TagName.key]. An existing tag is never changed. */
+    val tagsToCreate: List<BackupTag>,
     val conflicts: List<AccountConflict>,
     /** Ids of records that already exist. Records still to be created are absent. */
     val matched: RestoreIds,
@@ -88,6 +93,7 @@ data class RestorePlan(
                 categoryId = categoryId,
                 subcategoryId = subcategoryId,
                 note = row.note,
+                tagNames = row.tagNames,
                 dedupHash = hashOf(row, ::accountId),
             )
         }
@@ -124,6 +130,8 @@ data class RestorePlan(
             val accountsToCreate = backup.accounts.filter { nameKey(it.name) !in accountsByKey }
             val categoriesToCreate = backup.categories.filter { it.ref !in categoriesByRef }
             val subcategoriesToCreate = backup.subcategories.filter { it.ref !in subcategoriesByRef }
+            val tagKeys = existing.tags.map { TagName.key(it.name) }.toSet()
+            val tagsToCreate = backup.tags.filter { TagName.key(it.name) !in tagKeys }
 
             val conflicts = backup.accounts.mapNotNull { wanted ->
                 val here = accountsByKey[nameKey(wanted.name)] ?: return@mapNotNull null
@@ -135,6 +143,7 @@ data class RestorePlan(
                 accountsToCreate = accountsToCreate,
                 categoriesToCreate = categoriesToCreate,
                 subcategoriesToCreate = subcategoriesToCreate,
+                tagsToCreate = tagsToCreate,
                 conflicts = conflicts,
                 matched = RestoreIds(
                     accounts = accountsByKey.mapValues { it.value.id },
