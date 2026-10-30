@@ -319,4 +319,11 @@ interface TxnDao {
         """,
     )
     suspend fun lastEnteredAtEpochSec(): Long?
+
+    /**
+     * Whether the ledger holds any row at all, adjustments included. The first-run gate
+     * asks this: an install with history is already in use, whatever produced the rows.
+     */
+    @Query("SELECT EXISTS(SELECT 1 FROM txn)")
+    suspend fun hasAny(): Boolean
 }

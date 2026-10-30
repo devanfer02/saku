@@ -115,6 +115,9 @@ interface TransactionRepository {
     /** When the user last logged a transaction, or null for an empty ledger. See `TxnDao`. */
     suspend fun lastEnteredAt(): Instant?
 
+    /** True when the ledger holds any transaction of any type. For the first-run gate. */
+    suspend fun hasAny(): Boolean
+
     suspend fun record(
         occurredAt: Instant,
         type: TxnType,

@@ -142,6 +142,8 @@ class RoomTransactionRepository(
     override suspend fun lastEnteredAt(): Instant? =
         txnDao.lastEnteredAtEpochSec()?.let(Instant::fromEpochSeconds)
 
+    override suspend fun hasAny(): Boolean = txnDao.hasAny()
+
     override suspend fun record(
         occurredAt: Instant,
         type: TxnType,
