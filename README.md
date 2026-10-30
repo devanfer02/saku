@@ -74,13 +74,6 @@ compileSdk 35, minSdk 26.
 - [Maestro](https://github.com/mobile-dev-inc/Maestro) flows live in `.maestro/flows/`. They are not in
   CI yet; run them against an emulator with `maestro test .maestro`.
 
-## Not built yet
-
-These were planned and are not in the app:
-
-- budget caps per category
-- a first-run setup screen for opening balances (for now you set them on the Accounts screen)
-
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
