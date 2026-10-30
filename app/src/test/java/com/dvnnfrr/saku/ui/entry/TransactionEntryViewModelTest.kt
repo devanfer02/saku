@@ -6,6 +6,7 @@ import com.dvnnfrr.saku.data.FirstRunSeed
 import com.dvnnfrr.saku.data.local.SakuDatabase
 import com.dvnnfrr.saku.data.repository.RoomAccountRepository
 import com.dvnnfrr.saku.data.repository.RoomCategoryRepository
+import com.dvnnfrr.saku.data.repository.RoomTagRepository
 import com.dvnnfrr.saku.data.repository.RoomTransactionRepository
 import com.dvnnfrr.saku.domain.AccountType
 import com.dvnnfrr.saku.domain.CategoryKind
@@ -104,6 +105,7 @@ class TransactionEntryViewModelTest {
         transactions = transactions,
         categoryRepository = categories,
         accountRepository = accounts,
+        tagRepository = RoomTagRepository(db),
         zone = zone,
         clock = clock,
     )
@@ -671,5 +673,93 @@ class TransactionEntryViewModelTest {
         advanceUntilIdle()
 
         assertEquals(listOf("es teh"), vm.suggestions.value.map { it.note })
+    }
+
+    // -- Tags ---------------------------------------------------------------------
+
+    @Test
+    fun `a new tag and an existing tag save with the row, and the new tag is made only at Save`() =
+        runTest(dispatcher) {
+            seed()
+            val tags = RoomTagRepository(db)
+            val grocery = tags.findOrCreate("Monthly grocery")
+            val vm = viewModel()
+            vm.open()
+            advanceUntilIdle()
+
+            type(vm, "120000")
+            vm.selectCategory(makan)
+            vm.setTagQuery("monthly  GROCERY")
+            vm.addTypedTag()
+            vm.setTagQuery("Trip Bali")
+            vm.addTypedTag()
+            assertEquals(
+                listOf(EntryTag(grocery, "Monthly grocery"), EntryTag(null, "Trip Bali")),
+                vm.state.value.form.tags,
+            )
+            assertEquals("Trip Bali is not created before Save", 1, tags.all().size)
+
+            vm.save()
+            advanceUntilIdle()
+
+            val stored = transactions.observeInRange(august, zone, TransactionFilter.ALL).first().single()
+            val names = tags.all().associate { it.id to it.name }
+            assertEquals(setOf("Monthly grocery", "Trip Bali"), stored.tagIds.map(names::getValue).toSet())
+        }
+
+    @Test
+    fun `saving without touching Tags saves no tags`() = runTest(dispatcher) {
+        seed()
+        val vm = viewModel()
+        vm.open()
+        advanceUntilIdle()
+        type(vm, "5000")
+        vm.selectCategory(makan)
+        vm.save()
+        advanceUntilIdle()
+        assertTrue(transactions.observeInRange(august, zone, TransactionFilter.ALL).first().single().tagIds.isEmpty())
+    }
+
+    @Test
+    fun `removing a chip while editing leaves the row untagged and the tag in place`() = runTest(dispatcher) {
+        seed()
+        val tags = RoomTagRepository(db)
+        val grocery = tags.findOrCreate("Monthly grocery")
+        val id = transactions.record(
+            occurredAt = LocalDateTime(2026, 8, 10, 9, 0).toInstant(zone),
+            type = TxnType.EXPENSE, amount = Money(30_000), accountId = bca, categoryId = makan,
+            tagIds = setOf(grocery),
+        )
+        val vm = viewModel()
+        vm.open(id)
+        advanceUntilIdle()
+        assertEquals(listOf(EntryTag(grocery, "Monthly grocery")), vm.state.value.form.tags)
+
+        vm.removeTag(vm.state.value.form.tags.single())
+        vm.save()
+        advanceUntilIdle()
+
+        assertTrue(transactions.byId(id)!!.tagIds.isEmpty())
+        assertEquals(listOf("Monthly grocery"), tags.all().map { it.name })
+    }
+
+    @Test
+    fun `a transfer can carry a tag`() = runTest(dispatcher) {
+        seed()
+        val vm = viewModel()
+        vm.open()
+        advanceUntilIdle()
+        vm.setType(TxnType.TRANSFER)
+        advanceUntilIdle()
+        type(vm, "500000")
+        vm.setDestination(rdpu)
+        vm.setTagQuery("Trip Bali")
+        vm.addTypedTag()
+        vm.save()
+        advanceUntilIdle()
+
+        val stored = transactions.observeInRange(august, zone, TransactionFilter.ALL).first().single()
+        assertEquals(TxnType.TRANSFER, stored.type)
+        assertEquals(1, stored.tagIds.size)
     }
 }

@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.dvnnfrr.saku.data.repository.AccountRepository
 import com.dvnnfrr.saku.data.repository.CategoryRepository
 import com.dvnnfrr.saku.data.repository.DuplicateNameException
+import com.dvnnfrr.saku.data.repository.TagRepository
 import com.dvnnfrr.saku.data.repository.TransactionRepository
 import com.dvnnfrr.saku.domain.Account
 import com.dvnnfrr.saku.domain.Category
@@ -15,6 +16,7 @@ import com.dvnnfrr.saku.domain.TxnType
 import com.dvnnfrr.saku.sakuViewModelFactory
 import com.dvnnfrr.saku.domain.Money
 import com.dvnnfrr.saku.domain.NoteUsage
+import com.dvnnfrr.saku.domain.Tag
 import com.dvnnfrr.saku.receipt.OcrLine
 import com.dvnnfrr.saku.receipt.ReceiptParser
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -61,7 +63,14 @@ data class EntryUiState(
     val readingReceipt: Boolean = false,
     /** What the last scan left to pick from. Null until a scan, and after the sheet reopens. */
     val receipt: ReceiptPanel? = null,
+    /** Every tag, archived included, so a saved row's archived tag still shows as a chip. */
+    val allTags: List<Tag> = emptyList(),
+    /** What is typed in the Add tag picker. */
+    val tagQuery: String = "",
 ) {
+    /** The Add tag picker's list for [tagQuery]. */
+    val tagPickerUi: TagPickerUi get() = tagPicker(allTags, form.tags, tagQuery)
+
     /** Scanning is for recording a new expense, the only entry a receipt describes. */
     val canScanReceipt: Boolean get() = !form.isEditing && form.type == TxnType.EXPENSE
 
@@ -74,6 +83,7 @@ class TransactionEntryViewModel(
     private val transactions: TransactionRepository,
     private val categoryRepository: CategoryRepository,
     private val accountRepository: AccountRepository,
+    private val tagRepository: TagRepository,
     private val zone: TimeZone = TimeZone.currentSystemDefault(),
     private val clock: Clock = Clock.System,
     /** Reads a receipt image's text on the device; see `data/receipt/ReceiptRecognizer`. */
@@ -152,15 +162,17 @@ class TransactionEntryViewModel(
 
         viewModelScope.launch {
             val accounts = accountRepository.observeActive().first()
+            val allTags = tagRepository.all()
             val existing = editingId?.let { transactions.byId(it) }
             val form = when (existing) {
                 null -> EntryFormState.recording(now(), accountId = accounts.firstOrNull()?.id)
                 else -> EntryFormState.editing(
                     existing,
                     existing.occurredAt.toLocalDateTime(zone),
+                    entryTagsOf(existing.tagIds, allTags),
                 )
             }
-            _state.value = EntryUiState(form = form, accounts = accounts)
+            _state.value = EntryUiState(form = form, accounts = accounts, allTags = allTags)
             refreshCategories(form.categoryKind)
         }
     }
@@ -231,6 +243,27 @@ class TransactionEntryViewModel(
 
     fun dismissDuplicateNotice() = _state.update { it.copy(duplicateName = null) }
 
+    fun setTagQuery(query: String) = _state.update { it.copy(tagQuery = query) }
+
+    /** Adds an existing tag from the picker's list and clears what was typed. */
+    fun pickTag(tag: Tag) = _state.update {
+        it.copy(form = it.form.copy(tags = it.form.tags.plusTag(tag)), tagQuery = "")
+    }
+
+    /**
+     * Adds what is typed: the tag it names in any case, or a new one created on Save.
+     * Does nothing for a blank or invalid name, which the picker already explains.
+     */
+    fun addTypedTag() = _state.update {
+        val next = it.form.tags.plusTyped(it.tagQuery, it.allTags)
+        if (next == it.form.tags) it else it.copy(form = it.form.copy(tags = next), tagQuery = "")
+    }
+
+    fun removeTag(tag: EntryTag) = updateForm { it.copy(tags = it.tags.minusTag(tag)) }
+
+    /** The picker closed; typing left in it is dropped, not added behind the user's back. */
+    fun closeTagPicker() = _state.update { it.copy(tagQuery = "") }
+
     private var scanJob: Job? = null
 
     /** Where the system camera should write the next receipt photo. */
@@ -273,6 +306,8 @@ class TransactionEntryViewModel(
         }
         viewModelScope.launch {
             val occurredAt = form.occurredAt.toInstant(zone)
+            // New tags are made here, at Save, so a sheet closed without saving leaves none.
+            val tagIds = form.tags.map { it.id ?: tagRepository.findOrCreate(it.name) }.toSet()
             if (form.id == null) {
                 transactions.record(
                     occurredAt = occurredAt,
@@ -282,10 +317,11 @@ class TransactionEntryViewModel(
                     toAccountId = form.toAccountId,
                     categoryId = form.categoryId,
                     note = form.note.takeIf { it.isNotBlank() },
+                    tagIds = tagIds,
                 )
             } else {
                 val original = requireNotNull(transactions.byId(form.id))
-                transactions.update(form.toTransaction(original, occurredAt))
+                transactions.update(form.toTransaction(original, occurredAt).copy(tagIds = tagIds))
             }
             _state.update { it.copy(saved = true) }
             // The next open is a different transaction, so let it reload.
@@ -326,6 +362,7 @@ class TransactionEntryViewModel(
                 transactions,
                 categories,
                 accounts,
+                tags,
                 readReceipt = receipts::read,
                 newCameraUri = receipts::newCameraUri,
             )

@@ -6,6 +6,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.dvnnfrr.saku.data.local.SakuDatabase
 import com.dvnnfrr.saku.data.repository.RoomAccountRepository
 import com.dvnnfrr.saku.data.repository.RoomCategoryRepository
+import com.dvnnfrr.saku.data.repository.RoomTagRepository
 import com.dvnnfrr.saku.data.repository.RoomTransactionRepository
 import com.dvnnfrr.saku.domain.AccountType
 import com.dvnnfrr.saku.domain.Money
@@ -85,6 +86,7 @@ class ReceiptScanViewModelTest {
             transactions = transactions,
             categoryRepository = categories,
             accountRepository = accounts,
+            tagRepository = RoomTagRepository(db),
             zone = zone,
             clock = clock,
             readReceipt = read,
