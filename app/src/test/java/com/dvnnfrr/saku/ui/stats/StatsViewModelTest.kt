@@ -398,13 +398,13 @@ class StatsViewModelTest {
         assertNull(vm.state.first { it.side == StatsSide.INCOME }.drill)
     }
 
-    // The subcategory split, which is why the drill exists at all.
+    // Stored subcategories are no longer split out; the drill lists every row as one.
 
     @Test
-    fun `a category's drill splits by subcategory and names the untagged remainder`() =
+    fun `a category's drill lists rows with and without a stored subcategory as one`() =
         runTest(dispatcher) {
             seed()
-            val rutin = categories.createSubcategory(pemberian, "Rutin keluarga")
+            val rutin = categories.findOrCreateSubcategory(pemberian, "Rutin keluarga")
             record(LocalDateTime(2026, 8, 5, 12, 0), 800_000, categoryId = pemberian, subcategoryId = rutin)
             record(LocalDateTime(2026, 8, 6, 12, 0), 200_000, categoryId = pemberian)
 
@@ -413,13 +413,9 @@ class StatsViewModelTest {
             vm.openCategory(pemberian)
 
             val drill = vm.state.first { it.drill != null }.drill as DrillUiState.Category
-            assertEquals(2, drill.subcategories.size)
-            assertEquals("Rutin keluarga", drill.subcategories[0].name)
-            assertEquals(Money(800_000), drill.subcategories[0].total)
-            assertEquals(80, drill.subcategories[0].percent)
-            assertTrue(drill.subcategories[1].isUnassigned)
-            assertEquals(Money(200_000), drill.subcategories[1].total)
-            assertEquals(100, drill.subcategories.sumOf { it.percent })
+            assertEquals(Money(1_000_000), drill.total)
+            assertEquals(2, drill.count)
+            assertEquals(2, drill.rows.size)
         }
 
     // The zone boundary.

@@ -166,7 +166,6 @@ fun StatsScreen(
                 side = state.side,
                 onBack = onCloseDrill,
                 onOpenCategory = onOpenCategory,
-                chartStyle = state.chartStyle,
                 onSelectPeriod = onSelectPeriod,
             )
         }
@@ -402,7 +401,7 @@ internal fun CategoryRow(
     )
 }
 
-/** Names a block within the drill: the subcategory split, then the transactions. */
+/** Names a block within the drill: the strip, then the transactions. */
 @Composable
 internal fun SectionHeader(text: String, modifier: Modifier = Modifier) {
     Text(

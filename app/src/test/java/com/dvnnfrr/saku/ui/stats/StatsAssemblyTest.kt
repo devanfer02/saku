@@ -8,7 +8,6 @@ import com.dvnnfrr.saku.domain.Money
 import com.dvnnfrr.saku.domain.PeriodMode
 import com.dvnnfrr.saku.domain.PeriodTotals
 import com.dvnnfrr.saku.ui.theme.formatIdrCompact
-import com.dvnnfrr.saku.domain.Subcategory
 import com.dvnnfrr.saku.domain.Transaction
 import com.dvnnfrr.saku.domain.TransactionFilter
 import com.dvnnfrr.saku.domain.TxnType
@@ -249,79 +248,6 @@ class StatsAssemblyTest {
     fun `an all-zero period draws no bars`() {
         val composition = rankComposition(totals("A" to 0, "B" to 0))
         assertEquals(listOf(0, 0), composition.rows.map { it.barPermille })
-    }
-
-    // Subcategory drill-down.
-
-    private fun txn(id: Long, amount: Long, subcategoryId: Long?) = Transaction(
-        id = id,
-        occurredAt = Instant.fromEpochSeconds(1_760_000_000 + id),
-        type = TxnType.EXPENSE,
-        amount = Money(amount),
-        accountId = 1,
-        categoryId = 7,
-        subcategoryId = subcategoryId,
-        createdAt = Instant.fromEpochSeconds(1_760_000_000),
-    )
-
-    private val subcategories = listOf(
-        Subcategory(1, 7, "Rutin keluarga", 0, archived = false),
-        Subcategory(2, 7, "Sekali jalan", 1, archived = false),
-    )
-
-    @Test
-    fun `subcategories rank by amount with shares summing to one hundred`() {
-        val slices = foldSubcategories(
-            transactions = listOf(
-                txn(1, 300_000, subcategoryId = 2),
-                txn(2, 800_000, subcategoryId = 1),
-                txn(3, 200_000, subcategoryId = 1),
-            ),
-            subcategories = subcategories,
-            slot = ColorSlot(2),
-        )
-
-        assertEquals(listOf("Rutin keluarga", "Sekali jalan"), slices.map { it.name })
-        assertEquals(listOf(1_000_000L, 300_000L), slices.map { it.total.rupiah })
-        assertEquals(100, slices.sumOf { it.percent })
-        assertEquals(77, slices[0].percent)
-    }
-
-    @Test
-    fun `untagged rows collect into a visible unassigned bucket`() {
-        // The finding this screen exists for: the export left subcategory blank on all
-        // 1,200 rows, so a fold that dropped them would report a category as fully split.
-        val slices = foldSubcategories(
-            transactions = listOf(
-                txn(1, 800_000, subcategoryId = null),
-                txn(2, 200_000, subcategoryId = 1),
-            ),
-            subcategories = subcategories,
-            slot = ColorSlot(2),
-        )
-
-        assertEquals(2, slices.size)
-        assertTrue(slices[0].isUnassigned)
-        assertNull(slices[0].name)
-        assertEquals(Money(800_000), slices[0].total)
-        assertEquals(80, slices[0].percent)
-        assertEquals(100, slices.sumOf { it.percent })
-    }
-
-    @Test
-    fun `an archived subcategory keeps its name on the history that references it`() {
-        val slices = foldSubcategories(
-            transactions = listOf(txn(1, 100_000, subcategoryId = 3)),
-            subcategories = subcategories + Subcategory(3, 7, "Lama", 2, archived = true),
-            slot = ColorSlot(2),
-        )
-
-        assertEquals("Lama", slices.single().name)
-    }
-
-    @Test
-    fun `a category with no transactions folds to no slices`() {
-        assertTrue(foldSubcategories(emptyList(), subcategories, ColorSlot(2)).isEmpty())
     }
 
     // Comparison against the previous equivalent period.
@@ -686,18 +612,5 @@ class StatsAssemblyTest {
         val income = categoryFilter(TransactionFilter.ALL, StatsSide.INCOME, 2)
         assertEquals(setOf(2L), income.incomeCategoryIds)
         assertEquals(emptySet<Long>(), income.expenseCategoryIds)
-    }
-
-    @Test
-    fun `subcategories step down in strength and the unassigned bucket is neutral`() {
-        val slices = foldSubcategories(
-            listOf(txn(1, 3_000_000, 1), txn(2, 1_200_000, 2), txn(3, 621_600, null)),
-            subcategories,
-            ColorSlot(0),
-        )
-
-        assertEquals(listOf(100, 82, null), slices.map { it.strengthPercent })
-        assertEquals(PIE_WHOLE, slices.sumOf { it.sweepTenths })
-        assertEquals(28, subcategoryStrength(20))
     }
 }

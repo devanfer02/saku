@@ -69,7 +69,7 @@ sealed interface DrillTarget {
  * The drill-through, resolved.
  *
  * Two shapes, because the spec asks for two different things. A category opens its
- * subcategory split and its transactions; "Other" opens the categories it combines and
+ * summary, strip and transactions; "Other" opens the categories it combines and
  * no transaction list at all — those are separate figures and merging them would show a
  * total nobody asked for.
  */
@@ -77,14 +77,7 @@ sealed interface DrillUiState {
     val title: String?
     val total: Money
 
-    /**
-     * One category, for [range].
-     *
-     * [subcategories] is the reason this screen exists. The old app made subcategory
-     * skippable and all 1,200 exported rows left it blank, so the unassigned bucket is
-     * carried as a first-class slice rather than dropped — seeing how much of Pemberian
-     * is untagged is the finding.
-     */
+    /** One category, for [range]. */
     data class Category(
         val categoryId: Long,
         override val title: String?,
@@ -96,7 +89,6 @@ sealed interface DrillUiState {
         val average: Money = Money.ZERO,
         /** This category's own strip across all history. Empty in Period mode. */
         val strip: List<StripColumn> = emptyList(),
-        val subcategories: List<SubcategorySlice>,
         val rows: List<TransactionRowUi>,
     ) : DrillUiState
 
@@ -149,31 +141,6 @@ data class RankedComposition(
     companion object {
         val EMPTY = RankedComposition(emptyList(), emptyList(), Money.ZERO)
     }
-}
-
-/**
- * One subcategory's share of its parent category.
- *
- * [subcategoryId] is null for the bucket of transactions that carry no subcategory at
- * all. That bucket is shown, not hidden: it is the measure of how much of a category is
- * still untagged.
- */
-data class SubcategorySlice(
-    val subcategoryId: Long?,
-    val name: String?,
-    val total: Money,
-    val percent: Int,
-    /** Bar length in thousandths of the largest slice. */
-    val barPermille: Int = 0,
-    /** Pie slice in tenths of a degree. */
-    val sweepTenths: Int = 0,
-    /**
-     * How strongly the parent's colour is drawn, in percent; null for the unassigned
-     * bucket, which draws in the neutral chart colour. From `subcategoryStrength`.
-     */
-    val strengthPercent: Int? = 100,
-) {
-    val isUnassigned: Boolean get() = subcategoryId == null
 }
 
 /** The line under the period total, resolved; the screen supplies the words. */

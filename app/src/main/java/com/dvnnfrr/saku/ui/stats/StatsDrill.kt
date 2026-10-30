@@ -24,19 +24,16 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.dvnnfrr.saku.R
-import com.dvnnfrr.saku.domain.ChartStyle
 import com.dvnnfrr.saku.domain.ColorSlot
 import com.dvnnfrr.saku.domain.DateRange
 import com.dvnnfrr.saku.domain.Money
 import com.dvnnfrr.saku.ui.shared.EmptyState
 import com.dvnnfrr.saku.ui.shared.MoneyText
-import com.dvnnfrr.saku.ui.shared.RankedRow
 import com.dvnnfrr.saku.ui.shared.TransactionRow
 import com.dvnnfrr.saku.ui.shared.periodLabel
 import com.dvnnfrr.saku.ui.theme.SakuPreview
 import com.dvnnfrr.saku.ui.theme.SakuPreviewSurface
 import com.dvnnfrr.saku.ui.theme.SakuTheme
-import com.dvnnfrr.saku.ui.theme.forSlotOrNeutral
 import com.dvnnfrr.saku.ui.theme.formatIdr
 import com.dvnnfrr.saku.ui.transactions.AccountRef
 import com.dvnnfrr.saku.ui.transactions.TransactionRowUi
@@ -58,7 +55,6 @@ fun DrillPane(
     onBack: () -> Unit,
     onOpenCategory: (Long) -> Unit,
     modifier: Modifier = Modifier,
-    chartStyle: ChartStyle = ChartStyle.BARS,
     onSelectPeriod: (DateRange) -> Unit = {},
 ) {
     val otherLabel = stringResource(R.string.stats_other)
@@ -73,7 +69,7 @@ fun DrillPane(
         )
         when (drill) {
             is DrillUiState.Other -> OtherBody(drill, otherLabel, onOpenCategory)
-            is DrillUiState.Category -> CategoryBody(drill, side, chartStyle, onSelectPeriod)
+            is DrillUiState.Category -> CategoryBody(drill, side, onSelectPeriod)
         }
     }
 }
@@ -162,28 +158,19 @@ private fun OtherBody(
 
 /**
  * One category, top to bottom: its share, count and average under the total the header
- * already shows; its own strip across all history; its subcategory split in the chosen
- * chart style; then its transactions.
+ * already shows; its own strip across all history; then its transactions.
  *
- * The split is the reason this screen exists. Pemberian is 50% of a year of
- * spending and the export carried no subcategory on any of its rows, so "how much of
- * this is the recurring family obligation" is a question the old app could not answer.
- * The strip comes before it because the owner asked to see the trend first: whether a
- * category is growing is read before what it is made of.
+ * No subcategory split. The owner dropped subcategories on 30 Oct 2026 and answers "how
+ * much of Pemberian went to Arisan" with search instead, which already shows a count, the
+ * totals and the matching rows.
  */
 @Composable
 private fun CategoryBody(
     drill: DrillUiState.Category,
     side: StatsSide,
-    chartStyle: ChartStyle,
     onSelectPeriod: (DateRange) -> Unit,
 ) {
     val colors = SakuTheme.colors
-    val unassigned = stringResource(R.string.stats_no_subcategory)
-    val sliceColors = drill.subcategories.map { slice ->
-        slice.strengthPercent?.let { colors.forSlotOrNeutral(drill.colorSlot).copy(alpha = it / 100f) }
-            ?: colors.forSlotOrNeutral(null)
-    }
 
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         item(key = "summary") { CategorySummary(drill, side) }
@@ -210,42 +197,6 @@ private fun CategoryBody(
                 )
             }
             return@LazyColumn
-        }
-
-        // A single slice is the whole category by definition, so the split says nothing
-        // — except when that slice is the unassigned one, which is the finding.
-        if (drill.subcategories.size > 1 || drill.subcategories.any { it.isUnassigned }) {
-            item(key = "sub-heading") {
-                SectionHeader(stringResource(R.string.stats_subcategory_heading))
-            }
-            if (chartStyle == ChartStyle.PIE) {
-                item(key = "sub-pie") {
-                    StatsPie(
-                        slices = drill.subcategories.mapIndexed { index, slice ->
-                            PieSlice(sliceColors[index], slice.sweepTenths, slice.name ?: unassigned, slice.percent, slice.total)
-                        },
-                        centerLabel = drill.title.orEmpty(),
-                        centerValue = formatIdr(drill.total),
-                    )
-                }
-            }
-            items(
-                count = drill.subcategories.size,
-                key = { index -> drill.subcategories[index].subcategoryId ?: UNASSIGNED_KEY },
-            ) { index ->
-                val slice = drill.subcategories[index]
-                RankedRow(
-                    colorSlot = drill.colorSlot,
-                    color = sliceColors[index],
-                    name = slice.name ?: unassigned,
-                    value = slice.total,
-                    sharePercent = slice.percent,
-                    barPermille = slice.barPermille,
-                )
-            }
-            item(key = "sub-divider") {
-                HorizontalDivider(thickness = 1.dp, color = colors.line)
-            }
         }
 
         item(key = "txn-heading") {
@@ -295,9 +246,6 @@ private fun CategorySummary(drill: DrillUiState.Category, side: StatsSide) {
     }
 }
 
-/** No subcategory id can be negative, so this cannot collide with a real key. */
-private const val UNASSIGNED_KEY = -1L
-
 @SakuPreview
 @Composable
 private fun CategoryDrillPreview() {
@@ -312,10 +260,6 @@ private fun CategoryDrillPreview() {
                 count = 2,
                 average = Money(525_000),
                 strip = foldStrip(previewHistory(), DateRange.ofMonth(LocalDate(2026, 8, 1))),
-                subcategories = listOf(
-                    SubcategorySlice(1, "Rutin keluarga", Money(800_000), 76, 1_000, 2_743, 100),
-                    SubcategorySlice(null, null, Money(250_000), 24, 313, 857, null),
-                ),
                 rows = listOf(
                     TransactionRowUi(
                         id = 1,

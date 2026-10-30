@@ -6,7 +6,6 @@ import com.dvnnfrr.saku.domain.DailyTotals
 import com.dvnnfrr.saku.domain.DateRange
 import com.dvnnfrr.saku.domain.Money
 import com.dvnnfrr.saku.domain.PeriodMode
-import com.dvnnfrr.saku.domain.Subcategory
 import com.dvnnfrr.saku.domain.Transaction
 import com.dvnnfrr.saku.domain.TransactionFilter
 import com.dvnnfrr.saku.domain.wholePercents
@@ -22,9 +21,7 @@ import kotlinx.datetime.LocalDate
  * What is NOT here is any summing of transactions into period or category totals. The
  * transaction list folds a month in Kotlin because it already has the rows on screen;
  * stats reports on periods it does not list, so an annual view must not load a year of
- * rows to total them. Those figures arrive from the repository's SQL aggregates. The one
- * fold that survives is the subcategory split, which is scoped to a single category in a
- * single period — rows the drill-through has already loaded to render anyway.
+ * rows to total them. Those figures arrive from the repository's SQL aggregates.
  */
 
 /** The palette has eight slots, so the ninth category onward is aggregated. */
@@ -123,84 +120,6 @@ fun pieSweeps(values: List<Money>): List<Int> {
         (boundary - previous).also { previous = boundary }
     }
 }
-
-/**
- * Splits one category's transactions by subcategory, largest first.
- *
- * Transactions with no subcategory collect into a single bucket carrying a null id.
- * Dropping them would be the same mistake the old app made: subcategory was optional
- * there and every one of 1,200 rows left it blank, so a screen that only charts the
- * tagged rows reports a category as fully split when none of it is.
- *
- * Archived subcategories keep their names — archiving does not rewrite the history that
- * references them, so excluding them would blank the label on real rows.
- */
-fun foldSubcategories(
-    transactions: List<Transaction>,
-    subcategories: List<Subcategory>,
-    slot: ColorSlot,
-): List<SubcategorySlice> {
-    if (transactions.isEmpty()) return emptyList()
-
-    val names = subcategories.associate { it.id to it.name }
-    val sums = LinkedHashMap<Long?, Long>()
-    for (txn in transactions) {
-        sums[txn.subcategoryId] = (sums[txn.subcategoryId] ?: 0L) + txn.amount.rupiah
-    }
-
-    // Named slices before the unassigned bucket on an exact tie, then by name, so the
-    // order does not depend on which row the database happened to return first.
-    val ordered = sums.entries.sortedWith(
-        compareByDescending<Map.Entry<Long?, Long>> { it.value }
-            .thenBy { it.key == null }
-            .thenBy { names[it.key].orEmpty() },
-    )
-
-    val total = ordered.sumOf { it.value }
-    val sweeps = pieSweeps(ordered.map { Money(it.value) })
-    // A category whose rows cancel to zero — possible only through a signed adjustment
-    // — would otherwise divide by nothing here.
-    val asTotals = ordered.map { (id, amount) ->
-        CategoryTotal(
-            categoryId = id ?: 0L,
-            name = names[id].orEmpty(),
-            colorSlot = slot,
-            total = Money(amount),
-            shareBasisPoints = if (total == 0L) 0 else ((amount * 10_000L) / total).toInt(),
-        )
-    }
-    val percents = wholePercents(asTotals)
-    val largest = Money(ordered.maxOf { it.value })
-
-    var named = 0
-    return ordered.mapIndexed { index, (id, amount) ->
-        SubcategorySlice(
-            subcategoryId = id,
-            name = id?.let { names[it] },
-            total = Money(amount),
-            percent = percents[index],
-            barPermille = barPermille(Money(amount), largest),
-            sweepTenths = sweeps[index],
-            strengthPercent = if (id == null) null else subcategoryStrength(named++),
-        )
-    }
-}
-
-/**
- * How strongly the [rank]th named subcategory draws its parent's colour, in percent.
- *
- * Every subcategory shares its parent's slot, because a slot is a category's identity
- * for life, so the slices of one category tell themselves apart by strength: full for
- * the largest, a step lighter for each one after, never below a floor that still reads
- * as the colour. The unassigned bucket takes the neutral chart colour instead (a null
- * strength), which also marks it as not a subcategory at all.
- */
-fun subcategoryStrength(rank: Int): Int =
-    (STRENGTH_FULL - rank * STRENGTH_STEP).coerceAtLeast(STRENGTH_FLOOR)
-
-private const val STRENGTH_FULL = 100
-private const val STRENGTH_STEP = 18
-private const val STRENGTH_FLOOR = 28
 
 /**
  * A category's whole percent of its side, as the ranked list showed it. Taken from the

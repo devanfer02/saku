@@ -163,11 +163,10 @@ class StatsViewModel(
      */
     private fun categoryDrill(key: PeriodKey, categoryId: Long): Flow<DrillData> = combine(
         transactionRepository.observeForCategory(key.range, zone, categoryId, key.side.txnType, key.filter),
-        categoryRepository.observeAllSubcategories(categoryId),
         categoryRepository.observeAll(),
         accountRepository.observeAll(),
         categoryStrip(key, categoryId),
-    ) { transactions, subcategories, categories, accounts, strip ->
+    ) { transactions, categories, accounts, strip ->
         val category = categories.firstOrNull { it.id == categoryId }
         val slot = category?.colorSlot ?: ColorSlot.FIRST
         val index = DisplayIndex(accounts = accounts, categories = categories)
@@ -185,7 +184,6 @@ class StatsViewModel(
                 count = transactions.size,
                 average = averagePerTransaction(total, transactions.size),
                 strip = strip,
-                subcategories = foldSubcategories(transactions, subcategories, slot),
                 rows = transactions.map { it.toRowUi(index) },
             ),
         )

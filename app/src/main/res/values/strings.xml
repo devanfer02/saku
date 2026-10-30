@@ -33,8 +33,6 @@
     <string name="stats_pick_range_none">No dates chosen</string>
     <string name="stats_other">Other</string>
     <string name="stats_other_heading">Combined into Other</string>
-    <string name="stats_no_subcategory">No subcategory</string>
-    <string name="stats_subcategory_heading">By subcategory</string>
     <string name="stats_transactions_heading">Transactions</string>
     <string name="stats_empty_expenses">Nothing spent in %1$s</string>
     <string name="stats_empty_income">Nothing earned in %1$s</string>
