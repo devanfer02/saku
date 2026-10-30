@@ -9,10 +9,10 @@ name: Transaction list
 
 - assertVisible: "Daily"
 - assertVisible: "Calendar"
-- assertVisible: "Income"
-- assertVisible: "Expenses"
-- assertVisible: "Total"
-- assertVisible: "Nothing recorded this month"
+- assertVisible: "Left over"
+- assertVisible: "In"
+- assertVisible: "Out"
+- assertVisible: "No transactions in .*\\. Tap \\+ to add one\\."
 
 # Month navigation keeps the selected tab. Stepping back and forward must land on
 # the month it started from.

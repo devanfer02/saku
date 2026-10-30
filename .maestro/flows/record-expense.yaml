@@ -10,7 +10,7 @@ name: Record an expense
 - clearState
 - launchApp
 
-- assertVisible: "Nothing recorded this month"
+- assertVisible: "No transactions in .*\\. Tap \\+ to add one\\."
 
 - tapOn: "Add transaction"
 - assertVisible: "New transaction"
@@ -42,7 +42,7 @@ name: Record an expense
 # Back on the list, with the row and the month header both updated.
 - assertVisible: "Makan & Minum"
 - assertVisible: "Warung Padang"
-- assertNotVisible: "Nothing recorded this month"
+- assertNotVisible: "No transactions in .*\\. Tap \\+ to add one\\."
 
 # Reopening it must show what was saved, not an empty sheet.
 - tapOn: "Makan & Minum"
