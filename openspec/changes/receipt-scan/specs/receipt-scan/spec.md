@@ -38,6 +38,14 @@ After reading, Saku SHALL set the amount to the receipt total it picked, SHALL s
 - **WHEN** the total row reads `T0TAL 28,000`
 - **THEN** the amount is Rp 28.000
 
+#### Scenario: E-wallet screenshot
+- **WHEN** the user picks a DANA screenshot that reads `Total Bayar Rp46.882`, `Pembayaran ke` followed by a merchant name, and `15 Okt 2026 • 13:33`
+- **THEN** the amount is Rp 46.882, the note is the merchant name, and the date is 15 Oct 2026
+
+#### Scenario: Mobile-banking screenshot with an admin fee
+- **WHEN** a mobile-banking screenshot shows `Nominal Rp 50.000,00`, `Biaya Admin Rp 2.500,00` and `Total Rp 52.500,00`
+- **THEN** the amount is Rp 52.500 and Rp 50.000 is offered as a chip
+
 #### Scenario: Future or stale date
 - **WHEN** the printed date is in the future or more than one year ago
 - **THEN** the sheet keeps its current date
@@ -49,6 +57,17 @@ After reading, Saku SHALL set the amount to the receipt total it picked, SHALL s
 #### Scenario: No total found
 - **WHEN** no amount can be read from the photo
 - **THEN** the amount stays as it was, the sheet says no total was found, and the unplaced lines are still shown
+
+### Requirement: Detect the receipt kind automatically
+Saku SHALL read paper receipts and e-wallet or mobile-banking screenshots with the same action and the same reading, and SHALL NOT ask the user which kind the image is. Total labels, store labels and date formats of both kinds SHALL be tried on every image.
+
+#### Scenario: No kind to choose
+- **WHEN** the user taps Scan receipt
+- **THEN** the next step is the camera or the photo picker, with no choice between receipt and screenshot
+
+#### Scenario: Same flow for both
+- **WHEN** the user scans an Indomaret photo and then a GoPay screenshot
+- **THEN** both fill the sheet through the same steps, each with its own total and store
 
 ### Requirement: Offer other amounts as chips
 After a reading, the sheet SHALL show up to 3 other distinct amounts from the receipt as chips, ranked after the picked total. Tapping a chip SHALL replace the amount with that value.

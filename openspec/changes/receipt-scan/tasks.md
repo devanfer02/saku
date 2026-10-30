@@ -20,7 +20,7 @@
 - [ ] 3.1 Instrumented `ReceiptAccuracyTest` (androidTest, not in CI): reads every image in `/data/local/tmp/receipts/` through `ReceiptRecognizer`, writes OCR lines and the reading per image, prints exact-total and pick-or-chip rates
 - [ ] 3.2 Run it on the emulator over the CORD v2 test split; save the OCR-line files as `app/src/test/resources/receipt/cord/*.txt` with `totals.tsv`, and add `CORD-NOTICE.md` (CC BY 4.0 credit to NAVER CLOVA, link, "OCR text derived from the images")
 - [ ] 3.3 `ReceiptFixtureAccuracyTest` (JVM): fails below 70% exact or 75% pick-or-chip on the CORD fixtures and prints both rates
-- [ ] 3.4 Run the accuracy test over the local web set (Indomaret, Alfamart, Solaria, Waroeng Steak & Shake and others); record per-store rates for the PR; commit nothing from that set
+- [ ] 3.4 Run the accuracy test over the local web sets: paper (Indomaret, Alfamart, Solaria, Waroeng Steak & Shake and others) and screenshots (m-BCA, BRImo, Livin', BNI, GoPay, OVO, ShopeePay, DANA); record per-store and per-app rates for the PR; commit nothing from either set
 - [ ] 3.5 Fix the worst misses from 3.2 and 3.4 in the parser and keep both bars green; note what was tried in `design.md`
 
 ## 4. Recognizer and wiring
@@ -42,6 +42,7 @@
 
 - [ ] 6.1 Script that draws `data/mock-receipt-indomaret.png`: invented items, `TOTAL 52.300`, `TUNAI 100.000`, `KEMBALI 47.700`, a date, `INDOMARET` header, one item line used by the flow
 - [ ] 6.2 `.maestro/flows/scan-receipt.yaml`: header documents the `adb push` to `/sdcard/Pictures/` and the photo-picker block; scan, assert `Rp 52.300` and `Indomaret`, tap an unplaced line, pick a category, Save, assert the row
+- [ ] 6.2a Script that draws `data/mock-receipt-ewallet.png` (DANA-style screen, invented merchant, `Total Bayar Rp46.500`), and a second case in the flow (or `scan-ewallet.yaml`) asserting the amount and the merchant note
 - [ ] 6.3 Run the new flow and the existing 7 flows on the emulator; all pass
 - [ ] 6.4 Check the camera path once by hand on the emulator and with logcat open (no crash, no network retries)
 

@@ -52,9 +52,11 @@ The gap between 71% and 80% is the picker; the gap above 80% is recognition (blu
 - `ui/entry/ReceiptScanAssembly.kt` turns a `ReceiptReading` into a form update. This follows the adapter-at-every-boundary rule: foreign shapes stop at `data/receipt/`.
 
 ### 4. How the total is picked (from the spike, to be ported and extended)
+- One reading for every image, with no receipt-or-screenshot switch (owner, 31 Oct 2026: "it should autodetect too"). Paper and screenshot labels sit in one list, and the spike already scored paper and DANA screens with the same code. If a label means different things on the two kinds, the parser may tell them apart by itself (a status-bar time row at the top, or `Transaksi berhasil`), but the user never chooses.
 1. Rebuild printed rows: sort lines by vertical centre and join those whose centres are within 0.6 of a line height. ML Kit returns blocks out of reading order, so a label and its amount often arrive apart.
 2. Read amounts: `25.000`, `25,000`, `Rp25.000`, `25000`, with a trailing `,00` or `.00` treated as sen and dropped. Values under Rp 100 are ignored (quantities, item counts). `O` between digits reads as `0`.
-3. Match total labels allowing OCR slips: `T0TAL`, `TUTAI`, `TOTA1`, plus `GRAND TOTAL`, `TOTAL BELANJA`, `TOTAL BAYAR`, `TAGIHAN`, `JUMLAH`. Exclude `SUBTOTAL`, `TOTAL DISC`, `TOTAL ITEM`, `TOTAL HEMAT`, and payment rows (`TUNAI`, `CASH`, `KEMBALI`, `CHANGE`, `DEBIT`, `EDC`, `QRIS`, e-wallet names).
+3. Match total labels allowing OCR slips: `T0TAL`, `TUTAI`, `TOTA1`, plus `GRAND TOTAL`, `TOTAL BELANJA`, `TOTAL BAYAR`, `TOTAL PEMBAYARAN`, `TOTAL TRANSAKSI`, `TAGIHAN`, `JUMLAH`, and the screenshot labels `NOMINAL`, `NOMINAL TRANSAKSI`, `JUMLAH PEMBAYARAN`. Exclude `SUBTOTAL`, `TOTAL DISC`, `TOTAL ITEM`, `TOTAL HEMAT`, `BIAYA ADMIN`, `SALDO`, and payment rows (`TUNAI`, `CASH`, `KEMBALI`, `CHANGE`, `DEBIT`, `EDC`, `QRIS`, e-wallet names), except that a `TOTAL BAYAR` or `TOTAL PEMBAYARAN` label always counts as a total even on a payment row.
+   - Screenshots: when both `NOMINAL` and a `TOTAL` that includes an admin fee are shown, pick the `TOTAL` (what left the account) and offer `NOMINAL` as a chip. The full label list is checked against the screenshot test set before it is fixed.
 4. Prefer a grand-total style label over a plain `TOTAL`, and a later row over an earlier one. Take the rightmost amount on the row; if the row has none, take the next row unless it is a payment row.
 5. If no label matched, take the largest amount that appears at least twice (the total repeats as the card or QRIS payment), else the largest amount outside payment rows.
 - Other-amount chips: the next 3 distinct amounts by the same ranking, so the right total is usually one tap away when step 4 picks wrong.
@@ -62,7 +64,8 @@ The gap between 71% and 80% is the picker; the gap above 80% is recognition (blu
 
 ### 5. Date and store
 - Date: `dd/MM/yyyy`, `dd-MM-yyyy`, `dd.MM.yy`, `yyyy-MM-dd`, and Indonesian month names (`31 Okt 2026`). A date more than 1 year back or any date in the future is ignored. If found, it replaces the date and keeps the current time of day; the user sees it before saving.
-- Store: the first row in the top quarter of the receipt that has letters and no amount, matched first against a small list of known chains (Indomaret, Alfamart, Alfamidi, Solaria, Waroeng Steak & Shake, KFC, McDonald's, Starbucks, Janji Jiwa, Kopi Kenangan, Gacoan) so `lNDOMARET` still reads `Indomaret`. Fills the note only if the note is empty.
+- Store on a screenshot: the text after `Pembayaran ke`, `Bayar ke`, `Merchant`, `Nama Merchant`, `Penerima` or `Ke`, on the same row or the next. A private person's name from a transfer fills the note like a store name; the user sees it before saving.
+- Store on paper: the first row in the top quarter of the receipt that has letters and no amount, matched first against a small list of known chains (Indomaret, Alfamart, Alfamidi, Solaria, Waroeng Steak & Shake, KFC, McDonald's, Starbucks, Janji Jiwa, Kopi Kenangan, Gacoan) so `lNDOMARET` still reads `Indomaret`. Fills the note only if the note is empty.
 
 ### 6. Unplaced lines
 - Every row that is not the total, a payment row, the date or the store goes to `unplaced`, in printed order, trimmed, at most 40 rows.
@@ -73,6 +76,8 @@ The gap between 71% and 80% is the picker; the gap above 80% is recognition (blu
 | --- | --- | --- | --- |
 | CORD v2 test split, 100 Indonesian receipts (NAVER CLOVA) | CC BY 4.0 | OCR text fixtures (ML Kit output, saved once from the emulator) with ground-truth totals; JVM parser tests | Yes, the text fixtures only, credited in `app/src/test/resources/receipt/CORD-NOTICE.md`; not the images |
 | Web photos of Indomaret, Alfamart, Solaria, Waroeng Steak & Shake and similar receipts | Not ours | Emulator accuracy run only | No. Kept in a local scratch folder; text fixtures from them are not committed either |
+| Web screenshots of m-BCA, BRImo, Livin' by Mandiri, BNI, GoPay, OVO, ShopeePay and DANA payment confirmations | Not ours | Emulator accuracy run only, reported per app | No, same as the paper photos |
+| Synthetic mock screenshot (a DANA-style payment screen with an invented merchant) | Ours | One JVM fixture and a second Maestro case | Yes, `data/mock-receipt-ewallet.png` |
 | Synthetic mock receipt, drawn by a script with invented items | Ours | Maestro e2e and one instrumented test | Yes, `data/mock-receipt-indomaret.png` beside `mock-money-manager.xlsx` |
 | The owner's own receipts | Private | Never used in tests | Never |
 
@@ -105,4 +110,4 @@ No data migration. The feature ships with the next release. Rollback is removing
 ## Open Questions
 
 - Owner to confirm the release APK size after measuring (decision 1).
-- Owner to confirm whether e-wallet and m-banking screenshots (GoPay, OVO, DANA, BCA) should be in the web set; they are easier to read than paper and may be the more common input.
+- Decided 31 Oct 2026: e-wallet and mobile-banking screenshots are in scope (owner: "e wallet too, like mbca, gopay, ovo"). They have their own test set and per-app numbers.

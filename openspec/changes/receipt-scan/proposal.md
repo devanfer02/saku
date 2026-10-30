@@ -1,12 +1,13 @@
 ## Why
 
-Most spending the owner logs late comes with a paper receipt or a payment screen: Indomaret, Alfamart, Solaria, Waroeng Steak & Shake. Typing the total from it is the slow part of an entry, and a total read off a crumpled receipt hours later is where typos come from. The owner asked for OCR: read the receipt, fill what can be filled, and show the lines Saku could not place so they can note them by hand.
+Most spending the owner logs late comes with a paper receipt or a payment screen: Indomaret, Alfamart, Solaria, Waroeng Steak & Shake on paper, and m-BCA, BRImo, Livin' by Mandiri, GoPay, OVO, ShopeePay and DANA on screen. Typing the total from it is the slow part of an entry, and a total read off a crumpled receipt hours later is where typos come from. The owner asked for OCR: read the receipt, fill what can be filled, and show the lines Saku could not place so they can note them by hand.
 
 A spike on 31 Oct 2026 (branch `spike/ocr-mlkit`, not merged) showed it is doable offline. ML Kit's bundled text recognizer read the 100 receipts of the CORD v2 test split on the emulator in 794 ms median, 2.1 s at most. A first total picker got the right total on 68 of 95 labelled receipts (71%), and the true total was read somewhere on 76 (80%).
 
 ## What Changes
 
 - The entry sheet for a new transaction gets a **Scan receipt** action. It offers the system camera or the photo picker. Neither needs a permission.
+- A receipt is either a photo of paper or a screenshot of an e-wallet or mobile-banking payment confirmation. A screenshot arrives through the photo picker, since screenshots are in the gallery.
 - Saku reads the photo on the device and fills the sheet: the amount from the receipt's total, the date if one is printed, and the store name as the note. Type stays Expense; account and category stay as they were.
 - Under the amount, up to 3 other amounts read from the receipt show as chips. Tapping one replaces the amount, so a wrong pick costs one tap.
 - A **Lines Saku could not place** list shows the item lines and codes it read but does not use (`INDOMIE GRG SPCL 2 3.100`). Tapping a line adds it to the note. Nothing is filled from a line the user did not tap.
