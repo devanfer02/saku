@@ -25,12 +25,14 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.dvnnfrr.saku.R
 import com.dvnnfrr.saku.domain.DateRange
 import com.dvnnfrr.saku.domain.Money
+import com.dvnnfrr.saku.domain.MonthView
 import com.dvnnfrr.saku.domain.PeriodTotals
 import com.dvnnfrr.saku.domain.TransactionFilter
 import com.dvnnfrr.saku.ui.entry.EntrySheet
 import com.dvnnfrr.saku.ui.filter.FilterAction
 import com.dvnnfrr.saku.ui.filter.FilterBar
 import com.dvnnfrr.saku.ui.filter.FilterSheet
+import com.dvnnfrr.saku.ui.paycycle.MonthViewSwitch
 import com.dvnnfrr.saku.ui.shared.SegmentedTabs
 import com.dvnnfrr.saku.ui.shared.periodName
 import com.dvnnfrr.saku.ui.theme.SakuPreview
@@ -75,6 +77,7 @@ fun TransactionsScreen(
             onClearFilter = viewModel::clearFilter,
             onOpenSearch = onOpenSearch,
             onToggleMonth = viewModel::toggleMonth,
+            onSelectMonthView = viewModel::selectMonthView,
         )
 
         FloatingActionButton(
@@ -119,6 +122,7 @@ fun TransactionsScreen(
     onClearFilter: () -> Unit = {},
     onOpenSearch: () -> Unit = {},
     onToggleMonth: (Month) -> Unit = {},
+    onSelectMonthView: (MonthView) -> Unit = {},
 ) {
     val tabs = listOf(
         stringResource(R.string.transactions_tab_daily),
@@ -155,6 +159,7 @@ fun TransactionsScreen(
                 FilterAction(active = filtered, onClick = onOpenFilter)
             },
         )
+        MonthViewSwitch(view = state.monthView, onSelect = onSelectMonthView, span = state.headerRange)
         FilterBar(filter = state.filter, onClear = onClearFilter)
 
         SegmentedTabs(

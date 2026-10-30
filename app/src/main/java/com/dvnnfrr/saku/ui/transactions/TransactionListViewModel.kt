@@ -2,11 +2,13 @@ package com.dvnnfrr.saku.ui.transactions
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.dvnnfrr.saku.data.PeriodStore
 import com.dvnnfrr.saku.data.repository.AccountRepository
 import com.dvnnfrr.saku.data.repository.CategoryRepository
 import com.dvnnfrr.saku.data.repository.TransactionRepository
 import com.dvnnfrr.saku.domain.DailyTotals
 import com.dvnnfrr.saku.domain.DateRange
+import com.dvnnfrr.saku.domain.MonthView
 import com.dvnnfrr.saku.domain.PeriodTotals
 import com.dvnnfrr.saku.domain.TransactionFilter
 import com.dvnnfrr.saku.sakuViewModelFactory
@@ -23,12 +25,11 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
-import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.Month
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 
 /**
@@ -44,13 +45,16 @@ class TransactionListViewModel(
     accountRepository: AccountRepository,
     categoryRepository: CategoryRepository,
     private val sharedFilter: SharedFilter,
+    private val periodStore: PeriodStore,
     private val zone: TimeZone = TimeZone.currentSystemDefault(),
     private val clock: Clock = Clock.System,
 ) : ViewModel() {
 
     /**
      * [range] is the month and stays the anchor in Monthly too: the year arrows step it by
-     * twelve months, so going back to Daily shows the same month in the new year.
+     * twelve months, so going back to Daily shows the same month in the new year. Under a
+     * pay cycle it is a pay month, and every step and jump below keeps it one, because
+     * each builds from the range's own [DateRange.payStartDay].
      */
     private data class Selection(
         val range: DateRange,
@@ -61,7 +65,7 @@ class TransactionListViewModel(
 
     private val selection = MutableStateFlow(
         Selection(
-            range = DateRange.currentMonth(today()),
+            range = DateRange.monthOf(today(), periodStore.current().activeStartDay),
             tab = TransactionTab.DAILY,
             pendingScrollTo = null,
             expandedMonth = null,
@@ -109,7 +113,10 @@ class TransactionListViewModel(
         val calendar: CalendarMonth,
     )
 
-    private data class YearData(val year: Int, val days: List<DailyTotals>)
+    /** A Monthly year: the year its months are named in, and the pay cycle they follow. */
+    private data class YearKey(val year: Int, val payStartDay: Int?)
+
+    private data class YearData(val key: YearKey, val days: List<DailyTotals>)
 
     /**
      * The Monthly year's day totals, keyed on the year and the filter, and subscribed only
@@ -119,23 +126,26 @@ class TransactionListViewModel(
     @OptIn(ExperimentalCoroutinesApi::class)
     private val yearData: Flow<YearData?> =
         combine(
-            selection.map { if (it.tab == TransactionTab.MONTHLY) it.range.start.year else null },
+            selection.map { if (it.tab == TransactionTab.MONTHLY) it.range.yearKey() else null },
             sharedFilter.state,
             ::Pair,
         )
             .distinctUntilChanged()
-            .flatMapLatest { (year, filter) ->
-                if (year == null) {
+            .flatMapLatest { (key, filter) ->
+                if (key == null) {
                     flowOf(null)
                 } else {
                     transactionRepository
-                        .observeDailyTotals(monthlyQueryRange(year), zone, filter)
-                        .map { YearData(year, it) }
+                        .observeDailyTotals(monthlyQueryRange(key.year, key.payStartDay), zone, filter)
+                        .map { YearData(key, it) }
                 }
             }
 
+    /** A pay month belongs to the year it is named in, which for 30 Dec is the next one. */
+    private fun DateRange.yearKey() = YearKey(majorityMonth().year, payStartDay)
+
     val state: StateFlow<TransactionListUiState> =
-        combine(selection, monthData, yearData) { current, data, year ->
+        combine(selection, monthData, yearData, periodStore.settings) { current, data, year, period ->
             TransactionListUiState(
                 // The month the data is for, not the month just selected — otherwise
                 // the header flips before its figures arrive.
@@ -147,8 +157,9 @@ class TransactionListViewModel(
                 pendingScrollTo = current.pendingScrollTo,
                 filter = data.filter,
                 monthly = year?.let {
-                    assembleMonthlyYear(it.year, it.days, today(), current.expandedMonth)
+                    assembleMonthlyYear(it.key.year, it.days, today(), current.expandedMonth, it.key.payStartDay)
                 },
+                monthView = period.switchView,
                 loading = false,
             )
         }
@@ -171,15 +182,36 @@ class TransactionListViewModel(
         if (it.tab != TransactionTab.MONTHLY) {
             it.copy(range = if (direction < 0) it.range.previous() else it.range.next())
         } else {
-            val range = DateRange.ofMonth(it.range.start.plus(12 * direction, DateTimeUnit.MONTH))
+            val range = it.range.shift(12 * direction)
             it.copy(range = range, expandedMonth = openingMonthFor(range))
         }
     }
 
-    /** The current month in the current year, nothing in any other. */
+    /**
+     * The current month in the current year, nothing in any other. Keyed by the month the
+     * row starts in, which is how [MonthRow.month] keys a pay month too.
+     */
     private fun openingMonthFor(range: DateRange): Month? {
-        val today = today()
-        return if (range.start.year == today.year) today.month else null
+        val current = DateRange.monthOf(today(), range.payStartDay)
+        return if (current.yearKey() == range.yearKey()) current.start.month else null
+    }
+
+    /** The switch writes to the store; the collector in `init` moves the range. */
+    fun selectMonthView(view: MonthView) = periodStore.setView(view)
+
+    init {
+        // A changed pay cycle or month view moves the month on screen to the same month
+        // under the new basis, in whichever tab is open. Trans and Stats each do this from
+        // the one store, which is what keeps the choice shared between them.
+        viewModelScope.launch {
+            periodStore.settings.collect { period ->
+                selection.update { current ->
+                    val range = current.range.rebased(period.activeStartDay, today())
+                    if (range == current.range) current
+                    else current.copy(range = range, expandedMonth = openingMonthFor(range))
+                }
+            }
+        }
     }
 
     fun selectTab(tab: TransactionTab) = selection.update {
@@ -201,7 +233,11 @@ class TransactionListViewModel(
      * listed under, which is how a week crossing a month edge opens the right month.
      */
     fun openDay(date: LocalDate) = selection.update {
-        it.copy(range = DateRange.ofMonth(date), tab = TransactionTab.DAILY, pendingScrollTo = date)
+        it.copy(
+            range = DateRange.monthOf(date, it.range.payStartDay),
+            tab = TransactionTab.DAILY,
+            pendingScrollTo = date,
+        )
     }
 
     /** Called once the list has scrolled, so a recomposition does not scroll again. */
@@ -211,7 +247,7 @@ class TransactionListViewModel(
 
     companion object {
         val Factory = sakuViewModelFactory {
-            TransactionListViewModel(transactions, accounts, categories, filter)
+            TransactionListViewModel(transactions, accounts, categories, filter, period)
         }
     }
 }

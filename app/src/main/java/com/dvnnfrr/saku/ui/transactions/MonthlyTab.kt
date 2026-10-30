@@ -95,7 +95,7 @@ fun MonthlyTab(
 private fun MonthLine(month: MonthRow, onClick: () -> Unit) {
     val colors = SakuTheme.colors
     val spacing = SakuTheme.spacing
-    val name = month.month.shortLabel()
+    val name = month.labelMonth.shortLabel()
     val action = stringResource(
         if (month.expanded) R.string.monthly_collapse else R.string.monthly_expand,
         name,
