@@ -75,6 +75,7 @@ fun StatsScreen(
         onOpenFilter = { filtering = true },
         onClearFilter = viewModel::clearFilter,
         onSelectMonth = viewModel::selectMonth,
+        onToggleStrip = viewModel::toggleStrip,
         modifier = modifier,
     )
 
@@ -98,6 +99,7 @@ fun StatsScreen(
     onOpenFilter: () -> Unit = {},
     onClearFilter: () -> Unit = {},
     onSelectMonth: (DateRange) -> Unit = {},
+    onToggleStrip: () -> Unit = {},
 ) {
     var pickingRange by remember { mutableStateOf(false) }
 
@@ -132,6 +134,7 @@ fun StatsScreen(
                 state = state,
                 onSelectSide = onSelectSide,
                 onSelectMonth = onSelectMonth,
+                onToggleStrip = onToggleStrip,
                 onOpenCategory = onOpenCategory,
                 onOpenOther = onOpenOther,
                 onClearFilter = onClearFilter,
@@ -185,6 +188,7 @@ private fun Overview(
     state: StatsUiState,
     onSelectSide: (StatsSide) -> Unit,
     onSelectMonth: (DateRange) -> Unit,
+    onToggleStrip: () -> Unit,
     onOpenCategory: (Long) -> Unit,
     onOpenOther: () -> Unit,
     onClearFilter: () -> Unit,
@@ -205,7 +209,8 @@ private fun Overview(
     LazyColumn(state = listState, modifier = modifier.fillMaxSize()) {
         if (state.strip.isNotEmpty()) {
             item(key = "strip") {
-                SixMonthStrip(months = state.strip, onSelectMonth = onSelectMonth)
+                StripHeader(months = state.strip, expanded = state.stripExpanded, onToggle = onToggleStrip)
+                if (state.stripExpanded) SixMonthStrip(months = state.strip, onSelectMonth = onSelectMonth)
                 HorizontalDivider(thickness = 1.dp, color = SakuTheme.colors.line)
             }
         }

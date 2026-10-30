@@ -40,6 +40,8 @@ data class StatsUiState(
     val composition: RankedComposition = RankedComposition.EMPTY,
     /** The six months ending with the selected one. Empty outside Monthly mode. */
     val strip: List<StripMonth> = emptyList(),
+    /** Whether the strip shows its bars or only its header line. */
+    val stripExpanded: Boolean = true,
     /** Null while the overview is showing; set once the user drills into a slice. */
     val drill: DrillUiState? = null,
     /** The filter the figures were computed under, for the bar and the action. */

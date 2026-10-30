@@ -63,6 +63,9 @@ class StatsViewModel(
         ),
     )
 
+    /** Kept apart from [selection] so collapsing the strip never re-runs a query. */
+    private val stripExpanded = MutableStateFlow(true)
+
     private fun today(): LocalDate = clock.now().toLocalDateTime(zone).date
 
     /**
@@ -181,7 +184,7 @@ class StatsViewModel(
     }
 
     val state: StateFlow<StatsUiState> =
-        combine(selection, periodData, drillData, stripData) { current, period, drill, strip ->
+        combine(selection, periodData, drillData, stripData, stripExpanded) { current, period, drill, strip, expanded ->
             StatsUiState(
                 // The period the data is for, not the one just selected — otherwise the
                 // header flips before its figures arrive.
@@ -194,6 +197,7 @@ class StatsViewModel(
                 // to land, rather than the strip vanishing and the list jumping under it.
                 // Leaving Monthly hides it at once.
                 strip = strip.takeIf { period.key.range.mode == PeriodMode.MONTHLY }.orEmpty(),
+                stripExpanded = expanded,
                 filter = period.key.filter,
                 drill = resolveDrill(current.drill, period, drill),
                 loading = false,
@@ -250,6 +254,8 @@ class StatsViewModel(
         val ordered = if (start <= endInclusive) start to endInclusive else endInclusive to start
         it.copy(range = DateRange.custom(ordered.first, ordered.second), drill = null)
     }
+
+    fun toggleStrip() = stripExpanded.update { !it }
 
     /** Switching side closes the drill: the rows behind it are the other side's. */
     fun selectSide(side: StatsSide) = selection.update {

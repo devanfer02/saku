@@ -13,6 +13,10 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -24,6 +28,8 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import com.dvnnfrr.saku.R
 import com.dvnnfrr.saku.domain.DateRange
@@ -71,6 +77,59 @@ fun SixMonthStrip(
                 modifier = Modifier.weight(1f),
             )
         }
+    }
+}
+
+/**
+ * The strip's own header, which folds the bars away.
+ *
+ * Collapsed, it still names the selected month's net, so hiding the chart hides the
+ * comparison but never the figure. The whole row is the tap target and speaks its state.
+ */
+@Composable
+fun StripHeader(
+    months: List<StripMonth>,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = SakuTheme.colors
+    val spacing = SakuTheme.spacing
+    val selected = months.firstOrNull { it.selected }
+    val state = stringResource(if (expanded) R.string.stats_strip_expanded else R.string.stats_strip_collapsed)
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = spacing.touchTarget)
+            .clickable(role = Role.Button, onClick = onToggle)
+            .semantics(mergeDescendants = true) { stateDescription = state }
+            .padding(horizontal = spacing.md),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = stringResource(R.string.stats_strip_title),
+            style = SakuTheme.typography.label,
+            color = colors.ink2,
+            modifier = Modifier.weight(1f),
+        )
+        if (!expanded && selected != null && !selected.empty) {
+            Text(
+                text = stringResource(
+                    R.string.stats_strip_collapsed_net,
+                    selected.range.start.month.shortLabel(),
+                    formatIdrCompact(selected.net),
+                ),
+                style = SakuTheme.typography.caption,
+                color = colors.ink2,
+                modifier = Modifier.padding(end = spacing.sm),
+            )
+        }
+        Icon(
+            imageVector = if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+            contentDescription = null,
+            tint = colors.ink2,
+        )
     }
 }
 
