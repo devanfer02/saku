@@ -19,7 +19,7 @@
 
 - [ ] 3.1 (deferred: the spike's `OcrSpikeTest` produced the dumps; port it into androidTest when the fixtures are re-recorded) Instrumented `ReceiptAccuracyTest` (androidTest, not in CI): reads every image in `/data/local/tmp/receipts/` through `ReceiptRecognizer`, writes OCR lines and the reading per image, prints exact-total and pick-or-chip rates
 - [x] 3.2 Run it on the emulator over the CORD v2 test split (done with the spike's identical `OcrSpikeTest` output, ML Kit 16.0.1); save the OCR-line files as `app/src/test/resources/receipt/cord/*.txt` with `totals.tsv`, and add `CORD-NOTICE.md` (CC BY 4.0 credit to NAVER CLOVA, link, "OCR text derived from the images")
-- [x] 3.3 `ReceiptFixtureAccuracyTest` (JVM): fails below 70% exact or 75% pick-or-chip on the CORD fixtures and prints both rates
+- [x] 3.3 `ReceiptFixtureAccuracyTest` (JVM): fails below 70% exact or 75% pick-or-chip on the CORD fixtures and prints both rates (raised to 80% and 85% in 8.2)
 - [x] 3.4 Run the accuracy test over the local web sets: paper (Indomaret, Alfamart, Solaria, Waroeng Steak & Shake and others) and screenshots (m-BCA, BRImo, Livin', BNI, GoPay, OVO, ShopeePay, DANA); record per-store and per-app rates for the PR; commit nothing from either set
 - [x] 3.5 Fix the worst misses from 3.2 and 3.4 in the parser and keep both bars green; note what was tried in `design.md`
 
@@ -51,3 +51,11 @@
 - [x] 7.1 Full build: `:app:lintDebug :app:testDebugUnitTest :app:assembleDebug` green
 - [x] 7.2 Update `README.md` features and the root `CLAUDE.md` package map with `receipt/`
 - [ ] 7.3 PR with APK sizes, CORD and web-set accuracy, and the e2e result; wait for checks
+
+## 8. Accuracy to the owner's 80% minimum
+
+- [x] 8.1 Repair recognizer slips before parsing: spaces inside numbers, look-alike letters, cut-short totals, space thousands on total rows, misread total and subtotal labels; tests for each
+- [x] 8.2 Raise the fixture bar to 80% exact and 85% pick or chip; CORD now 90% and 95%
+- [x] 8.3 Local sets at 80% or more each: paper 95%, screenshots 100%
+- [x] 8.4 Check overfitting on the unseen CORD validation split: 87% exact, 93% pick or chip
+- [x] 8.5 README requirements: Android 8.0+, 64-bit ARM, about 21 MB; one download (two builds tried and dropped)

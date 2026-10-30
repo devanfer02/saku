@@ -39,7 +39,7 @@ The gap between 71% and 80% is the picker; the gap above 80% is recognition (blu
 - Chosen: `com.google.mlkit:text-recognition` (bundled model inside the APK, no Play Services download, works with no network).
 - Alternatives: Tesseract4Android (no network code, but lower accuracy on phone photos and a slower, larger engine); the unbundled Play Services model (downloads on first use, so needs network: ruled out); a cloud OCR or vision LLM (ruled out by the offline rule).
 - Network permissions: remove both merged permissions in `AndroidManifest.xml` with `tools:node="remove"`, and leave the gate exactly as it is, so a new network permission from any later dependency still fails. Without the permission the logging backend cannot send anything; the spike shows recognition does not depend on it.
-- Size: ML Kit adds `libmlkit_google_ocr_pipeline.so` at 6.8 to 11.6 MB per ABI. Release keeps `arm64-v8a` and `armeabi-v7a` through `abiFilters`; debug also keeps `x86_64` for the emulator. Measure the release APK before and after and record it in the PR.
+- Size: ML Kit adds `libmlkit_google_ocr_pipeline.so` at 6.8 to 11.6 MB per ABI. Planned: release keeps `arm64-v8a` and `armeabi-v7a`. Built: arm64-v8a only with compressed native libraries, 21.0 MB (see Built); debug also keeps `x86_64` for the emulator.
 
 ### 2. Camera through the system intent, gallery through the photo picker
 - Chosen: `ActivityResultContracts.TakePicture` into a `FileProvider` URI under `cache/receipts/`, and `PickVisualMedia(ImageOnly)`. Neither needs a permission, so the allowlist does not change.
@@ -81,7 +81,7 @@ The gap between 71% and 80% is the picker; the gap above 80% is recognition (blu
 | Synthetic mock receipt, drawn by a script with invented items | Ours | Maestro e2e and one instrumented test | Yes, `data/mock-receipt-indomaret.png` beside `mock-money-manager.xlsx` |
 | The owner's own receipts | Private | Never used in tests | Never |
 
-- Accuracy bar for the JVM suite on the CORD fixtures: at least 70% exact total and at least 75% "true total is the pick or one of the 3 chips". The spike measured 71% and 78% (the ceiling is 80%, the share where the true total was read at all). The suite fails below either, so a parser change cannot quietly lower accuracy. Raise the bar as the parser improves.
+- Accuracy bar for the JVM suite on the CORD fixtures: at least 80% exact total and at least 85% "true total is the pick or one of the 3 chips" (owner, 31 Oct 2026: "minimum OCR pass 80% from all sources"). The first bar was 70% and 75%, set from the spike's 71% and 78%; the number repairs below took it to 90% and 95%. The suite fails below either, so a parser change cannot quietly lower accuracy.
 - The emulator accuracy run (`ReceiptAccuracyTest`, instrumented, not in CI) prints the same two numbers for the CORD images and the web set, and the PR reports both.
 
 ### 8. End-to-end test
@@ -97,7 +97,7 @@ The gap between 71% and 80% is the picker; the gap above 80% is recognition (blu
 
 - [ML Kit's logging code tries to send without the permission] → It cannot open a socket without `INTERNET`; the spike ran clean. Check logcat for a crash or repeated retries during the accuracy run.
 - [A future ML Kit update adds another network permission] → The unchanged gate fails the build, by design.
-- [APK grows from 13.6 MB] → `abiFilters` to the two ARM ABIs; measure in the PR. If the growth exceeds about 15 MB, revisit (split APKs per ABI on the release).
+- [APK grows from 13.6 MB] → Measured 34.5 MB with two ARM ABIs; the owner chose arm64 only with compressed native libraries: 21.0 MB.
 - [The 80% recognition ceiling] → Chips and the unplaced list make a miss cheap; the user always confirms. Suggest a flat, well-lit photo in the action's helper text.
 - [CORD is mostly restaurants and cafés, older receipts] → The web set adds Indomaret, Alfamart and chain restaurants; report both numbers separately.
 - [Fixture text is ML Kit output from one model version] → Re-record the fixtures when the dependency is upgraded; the accuracy test does that in one run.
@@ -137,6 +137,27 @@ Notes from implementation, rejected turns included:
 - **Maestro not run.** It is not installed, and the owner chose not to install it now. The steps of
   `scan-receipt.yaml` were run by hand through adb on the emulator (paper receipt, line to note,
   category, save, row on the list; wallet screenshot; Income hides the action) and passed.
+
+- **80% on every source (owner).** Strictly read, OCR printed the true total on only 80% of
+  the CORD receipts, so the parser alone could not pass 80%. The misses were recognizer slips,
+  repaired before parsing: a space inside a number (`123. 585`, `54 ,000`), look-alike letters in
+  a number token (`6B,000`, `Ii1,000`, `118.D00`, `Rpl65000`; only when real digits outnumber the
+  letters, so `BOX` and `ID` stay words), a total cut short (`63.00`, `17,50`, `30. 0`, padded to a
+  full group of three on a total row only), a space as the thousands separator on a total row
+  (`63 000`), and misread labels (`TOTA.`, `10TAL`, `Tolal`, `GRAD`/`GND TOTAL`, `TL` and `DU` at
+  the start of a row, `SUETOTAL`/`SUB, TOTAL`/`SUBTTL` as subtotals). A bare GRAND TOTAL takes a
+  following card or QRIS amount, never cash.
+- **Results after the repairs.** CORD test fixtures 86 of 95 (90%) exact, 91 (95%) pick or chip.
+  Paper photos 19 of 20 (95%); the miss has its total cut off the photo. Screenshots 25 of 25.
+  These sets guided the repairs, so as a check on overfitting the CORD validation split (98
+  labelled receipts, never looked at) scored 86 (87%) exact and 92 (93%) pick or chip.
+- **A regression the local set caught.** Allowing `TL` anywhere matched a phone status bar
+  (`18.19 tl LTE`) and read 18.190 off a wondr screenshot; `TL` and `DU` now count only at the
+  start of a row.
+- **Two builds, tried and dropped.** The owner first asked for two downloads, standard (as v1) and
+  scan. It was built as product flavors (standard 13.6 MB for any CPU, scan 21.0 MB arm64) and
+  reverted the same day once both turned out to run on Android 8.0 and up: the owner chose one
+  download. Cost of that choice: 32-bit phones, which v1.0 ran on, are no longer supported.
 
 ## Migration Plan
 

@@ -32,6 +32,6 @@ None. The entry sheet's existing requirements (types, amount, category, account,
 - `ui/entry/`: `ReceiptScanAssembly.kt` (reading to sheet fill), scan action, chips and lines list in `EntrySheet.kt`, ViewModel events, strings.
 - `AppContainer`: provides the recognizer.
 - `AndroidManifest.xml`: 2 `tools:node="remove"` lines and a `FileProvider` for the camera photo (cache path only).
-- `app/build.gradle.kts`: the ML Kit dependency; release `abiFilters` to keep the APK size in check (v1.0 is 13.6 MB; ML Kit's native library is about 11 MB per ABI uncompressed).
+- `app/build.gradle.kts`: the ML Kit dependency; release `abiFilters` arm64-v8a only and compressed native libraries (owner's choice), so the release is 21.0 MB against v1.0's 13.6 MB. One download; 32-bit phones are no longer supported.
 - Tests: JVM parser tests with OCR-text fixtures derived from CORD v2 (CC BY 4.0, credited); an instrumented accuracy run on the emulator, not in CI; `.maestro/flows/scan-receipt.yaml` with a synthetic receipt image.
 - No Room entity change, no migration, no repository interface change.

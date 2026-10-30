@@ -99,8 +99,12 @@ Reading SHALL run on the device with no network access. The merged manifest SHAL
 - **THEN** no file remains under the app cache's receipts folder
 
 ### Requirement: Accuracy is measured against fixtures
-The project SHALL keep OCR-text fixtures from the CORD v2 test split with their labelled totals, and a JVM test SHALL fail if the exact-total rate drops below 70% or the rate where the true total is the pick or one of the chips drops below 75%.
+The project SHALL keep OCR-text fixtures from the CORD v2 test split with their labelled totals, and a JVM test SHALL fail if the exact-total rate drops below 80% or the rate where the true total is the pick or one of the chips drops below 85%. Before release, the exact-total rate SHALL be at least 80% on each local source as well: web photos of paper receipts and e-wallet or mobile-banking screenshots.
 
 #### Scenario: Regression caught
-- **WHEN** a parser change makes the exact-total rate on the CORD fixtures fall below 70%
+- **WHEN** a parser change makes the exact-total rate on the CORD fixtures fall below 80%
 - **THEN** the unit test suite fails and names the rate
+
+#### Scenario: Misread numbers repaired
+- **WHEN** the total row reads `TOTAL 6B,000`, `4 Total 123. 585` or `TOTAL 63.00`
+- **THEN** the amount is Rp 68.000, Rp 123.585 or Rp 63.000
