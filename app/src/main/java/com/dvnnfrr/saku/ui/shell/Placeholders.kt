@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.HorizontalDivider
@@ -31,13 +32,14 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import com.dvnnfrr.saku.R
 import com.dvnnfrr.saku.domain.ThemePreference
+import com.dvnnfrr.saku.ui.reminder.ReminderDialog
 import com.dvnnfrr.saku.ui.theme.SakuPreview
 import com.dvnnfrr.saku.ui.theme.SakuPreviewSurface
 import com.dvnnfrr.saku.ui.theme.SakuTheme
 
 /**
- * The More menu, grouped so eight rows read as three decisions: how the ledger is
- * organised, what happens to the data, and how the app looks. Each row says in one line
+ * The More menu, grouped so nine rows read as three decisions: how the ledger is
+ * organised, what happens to the data, and how the app behaves. Each row says in one line
  * what it does, because "Import Excel" beside "Import from Money Manager" does not.
  */
 @Composable
@@ -96,8 +98,9 @@ private fun GroupHeading(text: String) {
  *
  * Appearance is handled here rather than routed. It is a dialog over the menu, so
  * choosing a theme does not cost a back press to undo, and the user can see the menu
- * change behind it. Every other entry is a screen, and the caller decides where it
- * goes; the shell still owns no feature.
+ * change behind it. Reminder is a dialog for the same reason; it brings its own
+ * ViewModel, so the shell still reads no store. Every other entry is a screen, and the
+ * caller decides where it goes; the shell still owns no feature.
  */
 @Composable
 fun MoreScreen(
@@ -107,11 +110,16 @@ fun MoreScreen(
     onOpen: (MoreEntry) -> Unit = {},
 ) {
     var showAppearance by rememberSaveable { mutableStateOf(false) }
+    var showReminder by rememberSaveable { mutableStateOf(false) }
 
     MoreMenu(
         modifier = modifier,
         onSelect = { entry ->
-            if (entry == MoreEntry.APPEARANCE) showAppearance = true else onOpen(entry)
+            when (entry) {
+                MoreEntry.APPEARANCE -> showAppearance = true
+                MoreEntry.REMINDER -> showReminder = true
+                else -> onOpen(entry)
+            }
         },
     )
 
@@ -121,6 +129,10 @@ fun MoreScreen(
             onSelect = onAppearanceChange,
             onDismiss = { showAppearance = false },
         )
+    }
+
+    if (showReminder) {
+        ReminderDialog(onDismiss = { showReminder = false })
     }
 }
 
@@ -156,6 +168,7 @@ enum class MoreEntry(
         MoreGroup.YOUR_DATA,
     ),
     APPEARANCE(R.string.more_appearance, R.string.more_appearance_subtitle, Icons.Filled.DarkMode, MoreGroup.APP),
+    REMINDER(R.string.more_reminder, R.string.more_reminder_subtitle, Icons.Filled.Notifications, MoreGroup.APP),
 }
 
 @SakuPreview

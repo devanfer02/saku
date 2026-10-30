@@ -10,7 +10,7 @@ import com.dvnnfrr.saku.ui.shell.MoreEntry
  * they are pushed, the More tab has to stay lit while one is open — see
  * [SakuDestination.owning].
  *
- * [MoreEntry.APPEARANCE] has no route. It is a dialog over the menu, not a
+ * [MoreEntry.APPEARANCE] and [MoreEntry.REMINDER] have no route. Each is a dialog over the menu, not a
  * destination, so opening it must not cost a back press to undo.
  */
 enum class MoreRoute(val route: String, val entry: MoreEntry) {

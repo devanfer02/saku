@@ -12,4 +12,4 @@
 
 ## 3. Verify
 
-- [ ] 3.1 `:app:testDebugUnitTest :app:assembleDebug` green
+- [x] 3.1 `:app:testDebugUnitTest :app:assembleDebug` green

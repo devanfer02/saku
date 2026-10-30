@@ -15,8 +15,8 @@
 
 - [x] 3.1 Add `ui/reminder/ReminderAssembly.kt` (`ReminderUiState`, `assembleReminder`) with tests
 - [x] 3.2 Add `ReminderViewModel` (setEnabled, setDay, setTime, recheck) with Robolectric tests that read the scheduled alarm
-- [ ] 3.3 Add `ReminderDialog` (stateless and stateful): switch, day options, time picker, permission request, blocked line with a settings button, next-reminder line
-- [ ] 3.4 Add `MoreEntry.REMINDER` under Appearance and host the dialog in `MoreScreen`
+- [x] 3.3 Add `ReminderDialog` (stateless and stateful): switch, day options, time picker, permission request, blocked line with a settings button, next-reminder line
+- [x] 3.4 Add `MoreEntry.REMINDER` under Appearance and host the dialog in `MoreScreen`
 
 ## 4. Tap target
 
@@ -24,4 +24,4 @@
 
 ## 5. Verify
 
-- [ ] 5.1 `:app:testDebugUnitTest :app:assembleDebug` green
+- [x] 5.1 `:app:testDebugUnitTest :app:assembleDebug` green

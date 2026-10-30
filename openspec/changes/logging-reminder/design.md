@@ -52,6 +52,12 @@ The notification's purpose is to get a transaction typed, so it opens the sheet 
 
 The ViewModel holds nothing; its state is `assembleReminder(store.schedule, scheduler.canNotify(), clock.now(), zone)` re-evaluated when the store emits or `recheck()` is called. Every write goes to the store and to `scheduler.sync`.
 
+### Re-reading the permission on resume
+The dialog calls `recheck()` on `ON_RESUME` through `LifecycleEventEffect`, from `lifecycle-runtime-compose`. That artifact was already on the classpath through Compose UI and Navigation; it is now declared in the version catalog so the import does not lean on a transitive dependency. It adds nothing to the merged manifest (checked). Rejected: re-reading only when the dialog opens, which leaves the warning up after the user allowed notifications and came back.
+
+### Reusing the entry sheet's time picker
+The time row opens `TimePickerSheet` from `ui/entry/WhenPicker.kt` instead of a second picker. It takes a `LocalDateTime`, so the dialog passes a fixed date and reads back only the hour and minute. `clockLabel()` joins the date labels in `ui/transactions/DateLabels.kt`, so "20:00" has one formatter.
+
 ### Two receivers
 `ReminderReceiver` is not exported and handles only the alarm. `ReminderRescheduleReceiver` is exported because it listens for system broadcasts; all it does is re-run `sync` from the stored schedule, so a forged intent can do nothing but reschedule the same alarm. Keeping the alarm receiver unexported means no other app can make Saku post a notification.
 
