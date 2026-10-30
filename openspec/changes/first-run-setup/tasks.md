@@ -34,8 +34,18 @@
 - [x] 6.6 Categories: "New category" moves from the header to a bottom-end FAB
 - [x] 6.7 Record the rule and decisions in design.md
 
-## 7. Verify
+## 7. Welcome art and result screens
 
-- [x] 7.1 `openspec validate first-run-setup --strict`
-- [x] 7.2 No em dash in touched files; no colour literal outside `ui/theme/`
-- [ ] 7.3 Unit tests and debug build (main session; this branch did not run Gradle)
+- [x] 7.1 Add the six `art*` colour tokens to `SakuColors` (light and dark), `TokenReference` and `SakuColorsTest`, with a test that the art red and yellow keep 15 degrees of hue from `expense` and `warning`
+- [x] 7.2 Add `WelcomeArt`, drawn on a Canvas, hidden from accessibility services, with light and dark previews; it fills the welcome screen's free space above the title
+- [x] 7.3 Add `ResultLayout`: the result centred, one full-width Continue in the bottom bar
+- [x] 7.4 Import, Restore, Import database, Back up and Export results use it, each with a light and dark preview; Import keeps Import history and Choose another file as links
+- [x] 7.5 Wire `onContinue`: Trans for imports and restores in More, the More menu for backup and export, the welcome route (then the gate) in first run
+- [x] 7.6 Robolectric test of where Continue lands from a More result; Maestro asserts "Continue"
+- [x] 7.7 Record the decisions in design.md
+
+## 8. Verify
+
+- [x] 8.1 `openspec validate first-run-setup --strict`
+- [x] 8.2 No em dash in touched files; no colour literal outside `ui/theme/`
+- [ ] 8.3 Unit tests and debug build (main session; this branch did not run Gradle)
