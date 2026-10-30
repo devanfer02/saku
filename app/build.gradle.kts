@@ -80,8 +80,8 @@ android {
             useSupportLibrary = true
         }
         // ML Kit's OCR library is 11 MB on arm64. Release ships arm64 only (owner's call,
-        // 31 Oct 2026: every Android 15 phone is 64-bit); x86_64 is added for debug only, so
-        // the emulator runs it and the release does not carry it.
+        // 31 Oct 2026: one download, Android 8.0 and up on 64-bit ARM); x86_64 is added for
+        // debug only, so the emulator runs it and the release does not carry it.
         ndk {
             abiFilters += "arm64-v8a"
         }

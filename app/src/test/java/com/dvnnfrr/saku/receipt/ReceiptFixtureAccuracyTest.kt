@@ -8,8 +8,9 @@ import org.junit.Test
  * The accuracy bar, over the 100 receipts of the CORD v2 test split.
  *
  * The fixtures are what ML Kit 16.0.1 read from those images on the emulator, so this
- * measures the parser alone, with recognition held fixed. About 80% of these receipts
- * have the true total readable anywhere at all; that is the ceiling. See CORD-NOTICE.md
+ * measures the parser alone, with recognition held fixed. Read strictly, the true total
+ * appears on 80% of them; the rest need the number repairs in `ReceiptRows.kt` (`6B,000`,
+ * `123. 585`) or the cut-short rule in `ReceiptTotal.kt` (`63.00`). See CORD-NOTICE.md
  * for the licence and design.md (receipt-scan) for how the bar was set.
  *
  * Raise the bars as the parser improves. Lowering one needs a reason in design.md.
@@ -46,12 +47,13 @@ class ReceiptFixtureAccuracyTest {
         println(report)
 
         assertTrue("expected 95 labelled receipts, found $n", n >= 95)
-        assertTrue("exact total $exactRate% is under the 70% bar\n$report", exactRate >= EXACT_BAR)
-        assertTrue("pick or chip $offeredRate% is under the 75% bar\n$report", offeredRate >= OFFERED_BAR)
+        assertTrue("exact total $exactRate% is under the $EXACT_BAR% bar\n$report", exactRate >= EXACT_BAR)
+        assertTrue("pick or chip $offeredRate% is under the $OFFERED_BAR% bar\n$report", offeredRate >= OFFERED_BAR)
     }
 
     private companion object {
-        const val EXACT_BAR = 70
-        const val OFFERED_BAR = 75
+        // The owner's minimum (31 Oct 2026): 80% exact on every source. Measured 90% and 95%.
+        const val EXACT_BAR = 80
+        const val OFFERED_BAR = 85
     }
 }
