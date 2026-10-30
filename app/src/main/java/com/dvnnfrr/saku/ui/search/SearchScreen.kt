@@ -83,12 +83,21 @@ fun SearchScreen(
         onClearFilter = viewModel::clearFilter,
         onRowClick = { editing = it },
         modifier = modifier,
+        // Opened on an item's name, the results are the point; a keyboard would cover them.
+        autoFocus = viewModel.initialQuery.isEmpty(),
     )
 
     // After a save or delete the observed rows re-emit, so the results update under the
     // same query without it being retyped.
     if (editing != NOT_OPEN) {
-        EntrySheet(editingId = editing, onDismiss = { editing = NOT_OPEN })
+        EntrySheet(
+            editingId = editing,
+            onDismiss = { editing = NOT_OPEN },
+            onPriceHistory = { item ->
+                editing = NOT_OPEN
+                viewModel.setQuery(item)
+            },
+        )
     }
 }
 
@@ -195,6 +204,7 @@ private fun Results(
     val dailyState = rememberLazyListState()
     val monthlyState = rememberLazyListState()
     val yearlyState = rememberLazyListState()
+    var priceExpanded by rememberSaveable { mutableStateOf(true) }
     val tabs = listOf(
         stringResource(R.string.search_tab_daily),
         stringResource(R.string.search_tab_monthly),
@@ -204,6 +214,16 @@ private fun Results(
     Column(modifier = Modifier.fillMaxSize()) {
         Summary(state)
         if (state.hiddenCount > 0) HiddenLine(state.hiddenCount, onClearFilter)
+        // Between the summary and the tabs, so it stays put whichever tab is open; it
+        // folds to one line when the list needs the room.
+        state.price?.let { price ->
+            PriceCard(
+                price = price,
+                expanded = priceExpanded,
+                onToggle = { priceExpanded = !priceExpanded },
+                modifier = Modifier.padding(top = SakuTheme.spacing.xs),
+            )
+        }
         SegmentedTabs(
             options = tabs,
             selectedIndex = tab.ordinal,

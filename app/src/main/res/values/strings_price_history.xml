@@ -1,0 +1,29 @@
+<resources>
+    <!--
+        Copy for the item-price-history change: the price card in search and the
+        Price history action on an expense row. Kept out of strings.xml so concurrent
+        changes do not collide.
+    -->
+    <string name="price_title">Unit price</string>
+    <string name="price_lowest">Lowest</string>
+    <string name="price_highest">Highest</string>
+    <!-- %1$s is the date of the first point, `12 Jul 2026`. -->
+    <string name="price_since">Since %1$s</string>
+    <string name="price_show">Show the price chart</string>
+    <string name="price_hide">Hide the price chart</string>
+    <string name="price_expanded">Expanded</string>
+    <string name="price_collapsed">Collapsed</string>
+    <!--
+        What TalkBack reads for the whole card. %1$s latest price, %2$s lowest price,
+        %3$s when, %4$s highest price, %5$s when, %6$s one of the price_spoken_* below.
+    -->
+    <string name="price_spoken">Unit price %1$s, lowest %2$s in %3$s, highest %4$s in %5$s, %6$s</string>
+    <!-- %1$d whole percent, %2$s when the first point was. -->
+    <string name="price_spoken_up_percent">up %1$d%% since %2$s</string>
+    <string name="price_spoken_down_percent">down %1$d%% since %2$s</string>
+    <!-- For a change under half a percent, or a first price of zero: %1$s the amount. -->
+    <string name="price_spoken_up_amount">up %1$s since %2$s</string>
+    <string name="price_spoken_down_amount">down %1$s since %2$s</string>
+    <string name="price_spoken_same">the same as in %1$s</string>
+    <string name="entry_price_history">Price history</string>
+</resources>
