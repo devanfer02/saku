@@ -1,7 +1,7 @@
 appId: com.dvnnfrr.saku
 name: Transaction list
 ---
-# Task 7.7. Month navigation, both tabs, and opening a day from the calendar.
+# Task 7.7. Month navigation and both tabs.
 # Runs on a freshly seeded install, so the month is empty — which is the point of
 # the first assertion: an empty month must say so rather than render nothing.
 - clearState
