@@ -148,6 +148,9 @@ class RoomTransactionRepository(
     override fun observeNoteUsage(type: TxnType): Flow<List<NoteUsage>> =
         txnDao.observeNoteUses(type.name).map(::foldNoteUsage)
 
+    override fun observeItemCategories(): Flow<Map<String, Long>> =
+        txnDao.observeNoteUses(TxnType.EXPENSE.name).map(::foldItemCategories)
+
     override suspend fun byId(id: Long): Transaction? =
         txnDao.byId(id)?.toDomain(tagDao.tagIdsFor(id).toSet())
 
@@ -195,6 +198,21 @@ class RoomTransactionRepository(
         tagDao.link(tagIds.map { TxnTagEntity(txnId = id, tagId = it) })
         id
     }
+
+    override suspend fun saveAll(rows: List<NewTransaction>, tagIds: Set<Long>): List<Long> =
+        db.withTransaction {
+            rows.map { row ->
+                record(
+                    occurredAt = row.occurredAt,
+                    type = row.type,
+                    amount = row.amount,
+                    accountId = row.accountId,
+                    categoryId = row.categoryId,
+                    note = row.note,
+                    tagIds = tagIds,
+                )
+            }
+        }
 
     override suspend fun update(transaction: Transaction) {
         db.withTransaction {

@@ -4,6 +4,7 @@ import com.dvnnfrr.saku.data.local.NoteUseRow
 import com.dvnnfrr.saku.domain.Money
 import com.dvnnfrr.saku.domain.NoteUsage
 import com.dvnnfrr.saku.domain.fold
+import com.dvnnfrr.saku.receipt.itemKey
 
 /** Later first by time; the id breaks a same-second tie the way the list orders rows. */
 private val NEWEST: Comparator<NoteUseRow> =
@@ -32,7 +33,7 @@ fun foldNoteUsage(rows: List<NoteUseRow>): List<NoteUsage> =
         }
 
 /** The category used most often, ties to the one used most recently. Null if none was. */
-private fun usualCategory(uses: List<NoteUseRow>): Long? =
+internal fun usualCategory(uses: List<NoteUseRow>): Long? =
     uses.filter { it.categoryId != null }
         .groupBy { requireNotNull(it.categoryId) }
         .maxWithOrNull(
@@ -40,3 +41,14 @@ private fun usualCategory(uses: List<NoteUseRow>): Long? =
                 .thenBy(NEWEST) { it.value.maxWith(NEWEST) },
         )
         ?.key
+
+/**
+ * The receipt item dictionary: noted rows grouped by [itemKey], so `SUSU UHT 1L` and
+ * `susu uht 1l ×2` pool their uses, each key mapped to its usual category by the same
+ * rule as note autocomplete. Keys whose rows carry no category are absent.
+ */
+fun foldItemCategories(rows: List<NoteUseRow>): Map<String, Long> =
+    rows.groupBy { itemKey(it.note) }
+        .filterKeys { it.isNotEmpty() }
+        .mapNotNull { (key, uses) -> usualCategory(uses)?.let { key to it } }
+        .toMap()
