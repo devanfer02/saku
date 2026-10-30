@@ -10,7 +10,9 @@ The task brief asked to respect a pay-cycle month view if one exists. It does no
 
 **Tapping a month or a year picks it at once.** No Done button. The grid is a list of choices, and a second tap to confirm adds nothing. The Weekly date picker keeps Done, because a calendar tap is a day, not a week, and the user may want to look before committing.
 
-**The current period is marked, the selected one highlighted.** Selected uses `accentWash` behind accent text, as the shared picker grid does. Current gets an accent outline. Both are also spoken (`selected` semantics, and a state description "Current"), so neither is colour-only.
+**The current period is marked, the selected one highlighted.** Selected uses `accentWash` behind accent text, as the shared picker grid does. Current gets an accent outline. Both are also spoken (`selected` semantics, and ", Current" after the period's name), so neither is colour-only. The cells are a plain three-across `Column` of `Row`s rather than a lazy grid: at most twelve months, and a lazy grid inside a dialog needs a fixed height.
+
+**The open picker is screen state.** Whether the picker is showing lives in a `remember` in the stateless `StatsScreen`, beside `pickingRange` for the Period range picker and `filtering` for the filter sheet, rather than in the ViewModel. It follows the existing pattern on this screen; moving all three dialogs into the ViewModel is a separate change.
 
 **Today comes from the ViewModel.** Composables never read a `Clock`, so `StatsUiState` carries `today`, set from the ViewModel's clock on every emission. Its default (the range start) exists for previews only.
 

@@ -148,6 +148,15 @@ class StatsViewModelTest {
     }
 
     @Test
+    fun `the state carries today from the clock for the period picker`() = runTest(dispatcher) {
+        seed()
+
+        val state = viewModel().state.first { !it.loading }
+
+        assertEquals(LocalDate(2026, 8, 17), state.today)
+    }
+
+    @Test
     fun `a custom period recomputes every figure for that range`() = runTest(dispatcher) {
         seed()
         record(LocalDateTime(2026, 1, 20, 12, 0), 111_000)

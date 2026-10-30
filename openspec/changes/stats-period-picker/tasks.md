@@ -11,9 +11,9 @@
 
 ## 3. UI
 
-- [ ] 3.1 `PeriodBar`: optional `onLabelClick` and `labelClickDescription`
-- [ ] 3.2 `StatsUiState.today`, set by the ViewModel from its clock
-- [ ] 3.3 `PeriodPicker.kt`: month grid, year grid and week date picker dialogs, each with its "This ..." action
-- [ ] 3.4 Stats wires the label to the picker for the active mode, not in Period mode
-- [ ] 3.5 `PeriodStrip` scrolls the selected column into view
+- [x] 3.1 `PeriodBar`: optional `onLabelClick` and `labelClickDescription`
+- [x] 3.2 `StatsUiState.today`, set by the ViewModel from its clock
+- [x] 3.3 `PeriodPicker.kt`: month grid, year grid and week date picker dialogs, each with its "This ..." action
+- [x] 3.4 Stats wires the label to the picker for the active mode, not in Period mode
+- [x] 3.5 `PeriodStrip` scrolls the selected column into view
 - [x] 3.6 ViewModel tests updated for the strip running past the selection

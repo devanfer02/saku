@@ -8,6 +8,7 @@ import com.dvnnfrr.saku.domain.PeriodTotals
 import com.dvnnfrr.saku.domain.TransactionFilter
 import com.dvnnfrr.saku.domain.TxnType
 import com.dvnnfrr.saku.ui.transactions.TransactionRowUi
+import kotlinx.datetime.LocalDate
 
 /**
  * Which side of the ledger the headline and the ranked bars are reporting on.
@@ -53,6 +54,12 @@ data class StatsUiState(
     /** The filter the figures were computed under, for the bar and the action. */
     val filter: TransactionFilter = TransactionFilter.ALL,
     val loading: Boolean = true,
+    /**
+     * The device's date, from the ViewModel's clock, so the period picker can mark the
+     * current period and offer "This month" without a composable reading a clock. The
+     * default serves previews only; the ViewModel always sets it.
+     */
+    val today: LocalDate = range.start,
 ) {
     /** The headline figure, and the whole the shares are taken against. */
     val sideTotal: Money get() = totals.forSide(side)

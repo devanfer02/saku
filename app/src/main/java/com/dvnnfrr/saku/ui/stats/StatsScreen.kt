@@ -119,6 +119,9 @@ fun StatsScreen(
     onSelectChartStyle: (ChartStyle) -> Unit = {},
 ) {
     var pickingRange by remember { mutableStateOf(false) }
+    var pickingPeriod by remember { mutableStateOf(false) }
+    // Null in Period mode: its label opens nothing, and the Period tab keeps the range picker.
+    val pickerAction = periodPickerActionRes(state.range.mode)?.let { stringResource(it) }
 
     Column(modifier = modifier.fillMaxSize()) {
         PeriodBar(
@@ -128,6 +131,8 @@ fun StatsScreen(
             previousDescription = stringResource(R.string.stats_previous_period),
             nextDescription = stringResource(R.string.stats_next_period),
             trailing = { FilterAction(active = state.filter.isActive, onClick = onOpenFilter) },
+            onLabelClick = pickerAction?.let { { pickingPeriod = true } },
+            labelClickDescription = pickerAction,
         )
         RangeDates(state.range)
         FilterBar(filter = state.filter, onClear = onClearFilter)
@@ -169,6 +174,20 @@ fun StatsScreen(
                 onSelectPeriod = onSelectPeriod,
             )
         }
+    }
+
+    if (pickingPeriod) {
+        PeriodPickerDialog(
+            mode = state.range.mode,
+            selected = state.range,
+            today = state.today,
+            firstDataYear = firstDataYear(state.strip),
+            onPick = { period ->
+                onSelectPeriod(period)
+                pickingPeriod = false
+            },
+            onDismiss = { pickingPeriod = false },
+        )
     }
 
     if (pickingRange) {

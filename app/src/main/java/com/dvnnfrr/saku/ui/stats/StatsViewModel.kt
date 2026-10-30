@@ -220,12 +220,17 @@ class StatsViewModel(
                 filter = period.key.filter,
                 drill = resolveDrill(current.drill, period, drill),
                 loading = false,
+                today = today(),
             )
         }
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(5_000),
-                initialValue = StatsUiState(range = selection.value.range, chartStyle = chartStyleStore.current()),
+                initialValue = StatsUiState(
+                    range = selection.value.range,
+                    chartStyle = chartStyleStore.current(),
+                    today = today(),
+                ),
             )
 
     /**
