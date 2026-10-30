@@ -1,7 +1,9 @@
 package com.dvnnfrr.saku.ui.stats
 
 import com.dvnnfrr.saku.domain.DateRange
+import com.dvnnfrr.saku.ui.shared.paySpanLabel
 import com.dvnnfrr.saku.ui.transactions.dateLabel
+import kotlinx.datetime.LocalDate
 
 /*
  * Date and percentage wording that is the screen's own, kept pure so the strings can be
@@ -22,6 +24,9 @@ private const val EN_DASH = "–"
  * weeks otherwise has to work out which seven days "Weekly" currently means.
  */
 fun explicitRangeLabel(range: DateRange): String {
+    // A pay month's span reads the way the pay cycle spec spells it, the same line the
+    // Trans header shows, so one pay month is not written two ways across the tabs.
+    if (range.payStartDay != null) return paySpanLabel(range)
     val start = range.start.dateLabel()
     if (range.start == range.endInclusive) return start
     return "$start $EN_DASH ${range.endInclusive.dateLabel()}"
