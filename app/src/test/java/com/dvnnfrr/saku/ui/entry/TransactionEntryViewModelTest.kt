@@ -203,6 +203,69 @@ class TransactionEntryViewModelTest {
     }
 
     @Test
+    fun `the saved signal is gone once the sheet closes, so the next sheet opens at once`() = runTest(dispatcher) {
+        seed()
+        val vm = viewModel()
+        vm.open()
+        advanceUntilIdle()
+        type(vm, "25000")
+        vm.selectCategory(makan)
+        advanceUntilIdle()
+        vm.save()
+        advanceUntilIdle()
+        assertTrue(vm.state.value.saved)
+
+        vm.closedAfterSave()
+
+        // What the next sheet's first frame reads, before its own open() has run.
+        assertFalse(vm.state.value.saved)
+    }
+
+    @Test
+    fun `a delete also leaves no saved signal behind for the next sheet`() = runTest(dispatcher) {
+        seed()
+        val august = LocalDateTime(2026, 8, 10, 12, 0).toInstant(zone)
+        val id = transactions.record(august, TxnType.EXPENSE, Money(30_000), bca, categoryId = makan)
+        val vm = viewModel()
+        vm.open(id)
+        advanceUntilIdle()
+
+        vm.delete()
+        advanceUntilIdle()
+        assertTrue(vm.state.value.saved)
+        vm.closedAfterSave()
+
+        assertFalse(vm.state.value.saved)
+        vm.open()
+        advanceUntilIdle()
+        assertFalse(vm.state.value.saved)
+        assertNull(vm.state.value.form.id)
+    }
+
+    @Test
+    fun `after saving an edit, opening another row loads that row and not the last one`() = runTest(dispatcher) {
+        seed()
+        val august = LocalDateTime(2026, 8, 10, 12, 0).toInstant(zone)
+        val first = transactions.record(august, TxnType.EXPENSE, Money(30_000), bca, categoryId = makan, note = "Soto")
+        val second = transactions.record(august, TxnType.EXPENSE, Money(45_000), bca, categoryId = makan, note = "Bakso")
+        val vm = viewModel()
+        vm.open(first)
+        advanceUntilIdle()
+        vm.setNote("Soto ayam")
+        vm.save()
+        advanceUntilIdle()
+        vm.closedAfterSave()
+
+        vm.open(second)
+        advanceUntilIdle()
+
+        val state = vm.state.value
+        assertFalse(state.saved)
+        assertEquals(second, state.form.id)
+        assertEquals("Bakso", state.form.note)
+    }
+
+    @Test
     fun `inline arithmetic saves one transaction of the total`() = runTest(dispatcher) {
         seed()
         val vm = viewModel()

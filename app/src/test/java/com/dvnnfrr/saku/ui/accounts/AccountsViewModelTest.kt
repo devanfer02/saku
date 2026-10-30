@@ -306,6 +306,32 @@ class AccountsViewModelTest {
         assertEquals("BCA", accounts.byId(bca)?.name)
     }
 
+    @Test
+    fun `a dismissed message stays gone and a second refusal shows again`() = runTest(dispatcher) {
+        seed()
+        val vm = viewModel()
+        val before = vm.settled().rows.first { it.id == bca }
+        val blank = AccountFormState(
+            id = bca,
+            name = "   ",
+            type = before.type,
+            colorSlot = before.colorSlot,
+            openingBalance = before.openingBalance,
+            openingAsOf = before.openingAsOf,
+        )
+        vm.save(blank)
+        advanceUntilIdle()
+        assertTrue(vm.state.value.message is AccountsMessage.Refused)
+
+        vm.dismissMessage()
+        advanceUntilIdle()
+        assertNull(vm.state.value.message)
+
+        vm.save(blank)
+        advanceUntilIdle()
+        assertTrue(vm.state.value.message is AccountsMessage.Refused)
+    }
+
     // Requirement: archiving.
 
     @Test

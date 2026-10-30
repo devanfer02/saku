@@ -242,6 +242,13 @@ class TransactionEntryViewModel(
         }
     }
 
+    /**
+     * The sheet has closed on a save or delete. Clearing `saved` here, as the sheet goes,
+     * matters: the next sheet's first frame reads it before [open] can clear it, and a
+     * stale true closed that sheet the moment it appeared, so + needed a second tap.
+     */
+    fun closedAfterSave() = _state.update { it.copy(saved = false) }
+
     fun delete() {
         val id = _state.value.form.id ?: return
         viewModelScope.launch {
