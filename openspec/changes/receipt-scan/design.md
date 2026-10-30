@@ -103,6 +103,36 @@ The gap between 71% and 80% is the picker; the gap above 80% is recognition (blu
 - [Fixture text is ML Kit output from one model version] → Re-record the fixtures when the dependency is upgraded; the accuracy test does that in one run.
 - [A date misread moves a transaction to the wrong month] → Date sanity window (not future, not over a year back) and the date stays visible on the sheet before Save.
 
+## Built (31 Oct 2026)
+
+Notes from implementation, rejected turns included:
+
+- **Accuracy, Kotlin parser.** CORD fixtures: 68 of 95 exact (71%), 75 of 95 pick or chip (78%),
+  equal to the spike. Local set: 41 of 45 (91%). Paper photos 16 of 20, all 4 misses having no
+  readable total. Wallet and banking screenshots 25 of 25 (m-BCA 3, BRImo 3, Livin' 3, wondr 2,
+  GoPay 3, OVO 3, ShopeePay 3, DANA 3, SeaBank 1, Jago 1), none of them used to tune the parser.
+- **Rows anchor on their first line.** The first port compared each line with the last line of the
+  row, so a slanted photo chained three printed rows into one and 2 CORD receipts regressed. The
+  row's first line is the anchor, as in the spike.
+- **Dates are removed before amounts are read.** The emulator run showed `30 Okt 2026` offered as a
+  Rp 2.026 chip. The month pattern takes whole month words only, so `1 DESSERT 25.000` keeps its
+  price; a test pins both.
+- **The photo picker can be missing.** On the Pixel 8 API 35 emulator image, `PICK_IMAGES` has no
+  handler and the launch threw `ActivityNotFoundException`. The sheet falls back to the document
+  picker (`OpenDocument`, `image/*`). A missing camera app does nothing.
+- **ML Kit's logger without the permission.** Each scan logs about 5 `TransportRuntime` warnings
+  ("Neither user nor current process has ACCESS_NETWORK_STATE") and gives up. No crash, no retry
+  loop, recognition unaffected.
+- **Camera path.** Checked by hand on the emulator: the photo is read, `cache/receipts/` is empty
+  afterwards, and a scene with no receipt shows "No total found. Enter the amount yourself."
+- **The no-network test learned removals.** `NoNetworkPermissionTest` matched the permission name
+  anywhere in the manifest, so the removal lines failed it. It now tells a `tools:node="remove"`
+  entry from a declaration, and a new test requires both removals to stay.
+- **APK size.** v1.0 is 13.6 MB. With ML Kit and both ARM ABIs the release is 34.5 MB, over the
+  15 MB growth limit in the risks. The native library is stored uncompressed (11.1 MB arm64,
+  6.8 MB armeabi-v7a; 4.4 and 3.5 MB compressed). Options measured or estimated: compress the
+  libraries (about 24.5 MB), arm64 only (about 27.7 MB), both (about 21.1 MB). Owner to choose.
+
 ## Migration Plan
 
 No data migration. The feature ships with the next release. Rollback is removing the action; nothing is stored that depends on it.
