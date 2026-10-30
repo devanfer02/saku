@@ -6,7 +6,7 @@
 
 ## 2. Assembly
 
-- [ ] 2.1 Add `NoteSuggestion`, `suggestNotes` and `applySuggestion` in `ui/entry/NoteSuggestionAssembly.kt` with unit tests for every ranking and fill rule in design.md
+- [x] 2.1 Add `NoteSuggestion`, `suggestNotes` and `applySuggestion` in `ui/entry/NoteSuggestionAssembly.kt` with unit tests for every ranking and fill rule in design.md
 
 ## 3. ViewModel
 
