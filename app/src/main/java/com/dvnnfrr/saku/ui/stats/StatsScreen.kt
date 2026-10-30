@@ -7,11 +7,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -189,8 +191,18 @@ private fun Overview(
     modifier: Modifier = Modifier,
 ) {
     val otherLabel = stringResource(R.string.stats_other)
+    val listState = rememberLazyListState()
+    val hasStrip = state.strip.isNotEmpty()
 
-    LazyColumn(modifier = modifier.fillMaxSize()) {
+    // The strip's totals arrive after the rest of the overview, and a keyed list stays
+    // anchored on "side", its first item until then, so the strip landed above the
+    // viewport. Reveal it only when the list is still at its top, never mid-scroll.
+    LaunchedEffect(hasStrip) {
+        val stillAtTop = listState.firstVisibleItemIndex == 1 && listState.firstVisibleItemScrollOffset == 0
+        if (hasStrip && stillAtTop) listState.scrollToItem(0)
+    }
+
+    LazyColumn(state = listState, modifier = modifier.fillMaxSize()) {
         if (state.strip.isNotEmpty()) {
             item(key = "strip") {
                 SixMonthStrip(months = state.strip, onSelectMonth = onSelectMonth)
