@@ -11,13 +11,15 @@ data class ReceiptRow(val text: String, val top: Int, val bottom: Int)
  * vertical centres sit within 0.6 of a line height belong to the same row.
  */
 fun receiptRows(lines: List<OcrLine>): List<ReceiptRow> {
+    val kept = withoutVerticalJunk(lines.filter { it.text.isNotBlank() })
+    val slope = skew(kept)
+    fun level(line: OcrLine): Double = line.centreY - slope * (line.left + line.right) / 2.0
+
     val rows = mutableListOf<MutableList<OcrLine>>()
-    for (line in lines.filter { it.text.isNotBlank() }.sortedBy { it.centreY }) {
-        // Measured against the row's first line, not its last, so a slightly slanted
-        // photo cannot chain three printed rows into one, line by line.
+    for (line in kept.sortedBy(::level)) {
         val first = rows.lastOrNull()?.first()
         val sameRow = first != null &&
-            kotlin.math.abs(line.centreY - first.centreY) < maxOf(line.height, first.height) * ROW_TOLERANCE
+            kotlin.math.abs(level(line) - level(first)) < maxOf(line.height, first.height) * ROW_TOLERANCE
         if (sameRow) rows.last().add(line) else rows.add(mutableListOf(line))
     }
     return rows.map { row ->
@@ -28,6 +30,43 @@ fun receiptRows(lines: List<OcrLine>): List<ReceiptRow> {
         )
     }
 }
+
+/*
+ * A photo held at an angle tilts every printed row, so a price at the right edge sits
+ * lower (or higher) than its name at the left and would start a row of its own. The tilt
+ * is the median slope between lines that sit side by side and are each other's closest
+ * neighbour in height (so a two-row item's name does not pair with the price under it);
+ * rows are then grouped on heights with that slope taken out. A flat scan measures about
+ * zero and groups as before.
+ */
+private fun skew(lines: List<OcrLine>): Double {
+    fun dy(a: OcrLine, b: OcrLine) = (b.top + b.bottom - a.top - a.bottom) / 2.0
+    fun near(a: OcrLine, b: OcrLine) = b.left >= a.right && kotlin.math.abs(dy(a, b)) < maxOf(a.height, b.height) * SIDE_BY_SIDE
+    val right = lines.associateWith { a -> lines.filter { near(a, it) }.minByOrNull { kotlin.math.abs(dy(a, it)) } }
+    val left = lines.associateWith { b -> lines.filter { near(it, b) }.minByOrNull { kotlin.math.abs(dy(it, b)) } }
+    val slopes = right.mapNotNull { (a, b) ->
+        if (b == null || left[b] !== a) return@mapNotNull null
+        val dx = (b.left + b.right - a.left - a.right) / 2.0
+        dy(a, b) / dx
+    }
+    if (slopes.size < MIN_PAIRS) return 0.0
+    return slopes.sorted()[slopes.size / 2].coerceIn(-MAX_SLOPE, MAX_SLOPE)
+}
+
+/*
+ * Recognition sometimes reads a column of short text (the quantities) as one tall, narrow
+ * line, `HH H`, which would join whichever row its centre falls on.
+ */
+private fun withoutVerticalJunk(lines: List<OcrLine>): List<OcrLine> {
+    if (lines.isEmpty()) return lines
+    val typical = lines.map { it.height }.sorted()[lines.size / 2]
+    return lines.filterNot { it.height > typical * TALL && it.height > it.right - it.left }
+}
+
+private const val SIDE_BY_SIDE = 0.8
+private const val MIN_PAIRS = 3
+private const val MAX_SLOPE = 0.2
+private const val TALL = 2.5
 
 private const val ROW_TOLERANCE = 0.6
 
