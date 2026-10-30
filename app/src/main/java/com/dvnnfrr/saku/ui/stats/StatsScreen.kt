@@ -5,14 +5,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.vector.ImageVector
 import com.dvnnfrr.saku.domain.ChartStyle
 import com.dvnnfrr.saku.ui.theme.forSlotOrNeutral
 import androidx.compose.foundation.layout.Column
@@ -282,8 +279,8 @@ private fun Overview(
 }
 
 /**
- * Ranked bars or a pie, as two 48 dp icon buttons beside the headline. A radio pair for
- * TalkBack: each option speaks its name and whether it is the one showing.
+ * One 48 dp pie button beside the headline that turns the pie on and off; the ranked
+ * rows stay either way. A switch for TalkBack: it speaks "Pie chart" and on or off.
  */
 @Composable
 private fun ChartStyleToggle(
@@ -291,42 +288,24 @@ private fun ChartStyleToggle(
     onSelect: (ChartStyle) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(modifier = modifier.selectableGroup()) {
-        ChartStyleOption(
-            icon = Icons.Filled.BarChart,
-            label = stringResource(R.string.stats_chart_bars),
-            selected = style == ChartStyle.BARS,
-            onClick = { onSelect(ChartStyle.BARS) },
-        )
-        ChartStyleOption(
-            icon = Icons.Filled.PieChart,
-            label = stringResource(R.string.stats_chart_pie),
-            selected = style == ChartStyle.PIE,
-            onClick = { onSelect(ChartStyle.PIE) },
-        )
-    }
-}
-
-@Composable
-private fun ChartStyleOption(
-    icon: ImageVector,
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-) {
     val colors = SakuTheme.colors
+    val pieOn = style == ChartStyle.PIE
     Box(
-        modifier = Modifier
+        modifier = modifier
             .size(SakuTheme.spacing.touchTarget)
             .clip(CircleShape)
-            .then(if (selected) Modifier.background(colors.surfaceAlt) else Modifier)
-            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick),
+            .then(if (pieOn) Modifier.background(colors.surfaceAlt) else Modifier)
+            .toggleable(
+                value = pieOn,
+                role = Role.Switch,
+                onValueChange = { on -> onSelect(if (on) ChartStyle.PIE else ChartStyle.BARS) },
+            ),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
-            imageVector = icon,
-            contentDescription = label,
-            tint = if (selected) colors.accent else colors.ink2,
+            imageVector = Icons.Filled.PieChart,
+            contentDescription = stringResource(R.string.stats_chart_pie),
+            tint = if (pieOn) colors.accent else colors.ink2,
         )
     }
 }

@@ -109,10 +109,10 @@ The Stats month strip (Monthly mode) SHALL hold every calendar month from the mo
 - **THEN** January 2026 becomes the selected month and the strip ends at January 2026, scrolled so it is the rightmost visible column
 
 ### Requirement: Chart style choice on Stats
-The Stats overview SHALL offer a chart style choice between ranked bars and a pie chart, defaulting to ranked bars. The choice SHALL persist across restarts. The pie SHALL use the category colour slots, cap at eight slices with the rest as "Other" exactly as the ranked rows do, and show the side total in its centre without clipping. The ranked rows SHALL stay below the pie as its legend.
+The Stats overview SHALL offer a single pie toggle beside the headline that shows or hides a pie chart above the ranked rows, defaulting to off. The choice SHALL persist across restarts. The pie SHALL use the category colour slots, cap at eight slices with the rest as "Other" exactly as the ranked rows do, and show the side total in its centre without clipping. The ranked rows SHALL stay below the pie as its legend.
 
 #### Scenario: Switching to pie
-- **WHEN** the user picks the pie style on October 2026 expenses
+- **WHEN** the user turns the pie toggle on for October 2026 expenses
 - **THEN** a pie with Pemberian at 34% and the other slices appears above the ranked rows, and Stats opens in pie style after a restart
 
 ### Requirement: Tappable rows look tappable

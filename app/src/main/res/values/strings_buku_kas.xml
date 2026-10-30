@@ -16,7 +16,6 @@
     <string name="stats_row_opens_other">Opens the categories in Other</string>
 
     <!-- Chart style and the category detail -->
-    <string name="stats_chart_bars">Ranked bars</string>
     <string name="stats_chart_pie">Pie chart</string>
     <string name="stats_pie_spent">Spent</string>
     <string name="stats_pie_earned">Earned</string>
