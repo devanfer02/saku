@@ -1,0 +1,71 @@
+set	name	qty	price	discount
+indomaret-overlap	INDOMIE GRG SPCL	5	15500	0
+indomaret-overlap	AQUA BTL 1500ML	2	12400	0
+indomaret-overlap	TEH BOTOL 450ML	2	9000	0
+indomaret-overlap	ROTI TAWAR GANDUM	1	18900	0
+indomaret-overlap	TELUR AYAM 10	1	23700	0
+indomaret-overlap	GULA PASIR 1KG	1	17500	0
+indomaret-overlap	KECAP MANIS 520ML	1	24900	3000
+indomaret-overlap	SAOS SAMBAL 340ML	1	12400	0
+indomaret-overlap	KOPI SACHET 10S	2	27800	0
+indomaret-overlap	BISKUIT KELAPA	3	24600	0
+indomaret-overlap	MIE KERING 200G	2	11200	0
+indomaret-overlap	SUSU KENTAL MNS	1	11300	0
+indomaret-overlap	SABUN MANDI CAIR	1	27800	0
+indomaret-overlap	SHAMPO 170ML	1	25400	2500
+indomaret-overlap	PASTA GIGI 190G	2	28400	0
+indomaret-overlap	TISU WAJAH 250S	1	16900	0
+indomaret-overlap	PEMBERSIH LANTAI	1	19800	0
+indomaret-overlap	SPONS CUCI 3S	1	9900	0
+indomaret-overlap	KANTONG PLASTIK	1	500	0
+indomaret-gap	INDOMIE GRG SPCL	5	15500	0
+indomaret-gap	AQUA BTL 1500ML	2	12400	0
+indomaret-gap	TEH BOTOL 450ML	2	9000	0
+indomaret-gap	ROTI TAWAR GANDUM	1	18900	0
+indomaret-gap	TELUR AYAM 10	1	23700	0
+indomaret-gap	GULA PASIR 1KG	1	17500	0
+indomaret-gap	KECAP MANIS 520ML	1	24900	3000
+indomaret-gap	SAOS SAMBAL 340ML	1	12400	0
+indomaret-gap	SABUN MANDI CAIR	1	27800	0
+indomaret-gap	SHAMPO 170ML	1	25400	2500
+indomaret-gap	PASTA GIGI 190G	2	28400	0
+indomaret-gap	TISU WAJAH 250S	1	16900	0
+indomaret-gap	PEMBERSIH LANTAI	1	19800	0
+indomaret-gap	SPONS CUCI 3S	1	9900	0
+indomaret-gap	KANTONG PLASTIK	1	500	0
+superindo-overlap	MINYAK GORENG 2L	2	77800	0
+superindo-overlap	BERAS PULEN 5KG	1	69500	0
+superindo-overlap	DAGING AYAM FILLET	1	34750	0
+superindo-overlap	BAWANG MERAH 250G	2	19800	0
+superindo-overlap	TOMAT MERAH 500G	1	7450	0
+superindo-overlap	WORTEL LOKAL 500G	1	6900	0
+superindo-overlap	TAHU PUTIH 10S	2	11000	1000
+superindo-overlap	TEMPE PAPAN	3	18000	0
+superindo-overlap	APEL FUJI 1KG	1	42900	0
+superindo-overlap	PISANG CAVENDISH	1	24800	0
+superindo-overlap	YOGURT STRAWBERRY	4	31600	0
+superindo-overlap	KEJU CHEDDAR 165G	1	21300	0
+superindo-overlap	SOSIS AYAM 500G	1	38400	4000
+superindo-overlap	MENTEGA 200G	1	15600	0
+superindo-gap	MINYAK GORENG 2L	2	77800	0
+superindo-gap	BERAS PULEN 5KG	1	69500	0
+superindo-gap	DAGING AYAM FILLET	1	34750	0
+superindo-gap	BAWANG MERAH 250G	2	19800	0
+superindo-gap	TOMAT MERAH 500G	1	7450	0
+superindo-gap	WORTEL LOKAL 500G	1	6900	0
+superindo-gap	TAHU PUTIH 10S	2	11000	1000
+superindo-gap	TEMPE PAPAN	3	18000	0
+superindo-gap	KEJU CHEDDAR 165G	1	21300	0
+superindo-gap	SOSIS AYAM 500G	1	38400	4000
+superindo-gap	MENTEGA 200G	1	15600	0
+diskon-overlap	INDOMIE GRG SPCL	5	15500	0
+diskon-overlap	MINYAK GORENG 2L	1	38900	0
+diskon-overlap	BERAS PREMIUM 5KG	1	72500	0
+diskon-overlap	SUSU UHT 1L	2	36400	4000
+diskon-overlap	SABUN CUCI 800ML	1	21900	0
+diskon-overlap	DETERJEN 1.8KG	1	44900	0
+diskon-gap	INDOMIE GRG SPCL	5	15500	0
+diskon-gap	MINYAK GORENG 2L	1	38900	0
+diskon-gap	BERAS PREMIUM 5KG	1	72500	0
+diskon-gap	SUSU UHT 1L	2	36400	4000
+diskon-gap	SABUN CUCI 800ML	1	21900	0

@@ -1,0 +1,7 @@
+set	parts	gaps	total	receipt_discount
+indomaret-overlap	3	-	332400	0
+indomaret-gap	2	1	332400	0
+superindo-overlap	3	-	414800	0
+superindo-gap	2	1	414800	0
+diskon-overlap	3	-	206100	20000
+diskon-gap	2	1	206100	20000
