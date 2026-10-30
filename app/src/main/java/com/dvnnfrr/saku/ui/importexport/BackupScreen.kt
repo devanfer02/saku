@@ -9,13 +9,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -26,7 +22,9 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.dvnnfrr.saku.R
+import com.dvnnfrr.saku.ui.shared.PickCard
 import com.dvnnfrr.saku.ui.shared.ScreenHeader
+import com.dvnnfrr.saku.ui.shared.ThumbZonePane
 import com.dvnnfrr.saku.ui.theme.SakuPreview
 import com.dvnnfrr.saku.ui.theme.SakuPreviewSurface
 import com.dvnnfrr.saku.ui.theme.SakuTheme
@@ -72,46 +70,33 @@ fun BackupScreen(
 
     Column(modifier = modifier.fillMaxSize().background(colors.background)) {
         ScreenHeader(title = stringResource(R.string.more_backup), onBack = onBack, backLabel = stringResource(R.string.screen_back))
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .verticalScroll(rememberScrollState())
-                .padding(spacing.screen),
-            verticalArrangement = Arrangement.spacedBy(spacing.lg),
-        ) {
-            Text(
-                text = stringResource(R.string.backup_intro),
-                style = SakuTheme.typography.body,
-                color = colors.ink2,
+        ThumbZonePane(modifier = Modifier.weight(1f)) {
+            PickCard(
+                title = stringResource(R.string.backup_pick_title),
+                message = stringResource(R.string.backup_intro),
+                icon = Icons.Outlined.FolderOpen,
+                actionLabel = stringResource(R.string.backup_action),
+                onAction = onChooseDestination,
+                zoneLabel = if (state is BackupUiState.Writing) {
+                    stringResource(R.string.backup_writing, state.fileName)
+                } else {
+                    stringResource(R.string.backup_pick_zone)
+                },
+                busy = state is BackupUiState.Writing,
+                actionModifier = Modifier.testTag(BACKUP_ACTION_TAG),
+                notes = {
+                    PrivacyNote(stringResource(R.string.backup_not_encrypted))
+                    PrivacyNote(stringResource(R.string.export_local_only))
+                },
             )
 
-            Button(
-                onClick = onChooseDestination,
-                enabled = state !is BackupUiState.Writing,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = colors.accent,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                    disabledContainerColor = colors.surfaceAlt,
-                    disabledContentColor = colors.inkDisabled,
-                ),
-                modifier = Modifier.fillMaxWidth().testTag(BACKUP_ACTION_TAG),
-            ) {
-                Text(text = stringResource(R.string.backup_action), style = SakuTheme.typography.bodyStrong)
-            }
-
             when (state) {
-                BackupUiState.Idle -> Unit
+                BackupUiState.Idle, is BackupUiState.Writing -> Unit
 
-                is BackupUiState.Writing -> Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
-                    CircularProgressIndicator(color = colors.accent)
-                    Text(
-                        text = stringResource(R.string.backup_writing, state.fileName),
-                        style = SakuTheme.typography.body,
-                        color = colors.ink2,
-                    )
-                }
-
-                is BackupUiState.Written -> Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+                is BackupUiState.Written -> Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(spacing.sm),
+                ) {
                     Text(
                         text = stringResource(R.string.backup_done, state.fileName),
                         style = SakuTheme.typography.bodyStrong,
@@ -126,28 +111,31 @@ fun BackupScreen(
                     )
                 }
 
-                is BackupUiState.Failed -> Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
-                    Text(
-                        text = stringResource(R.string.backup_failed, state.fileName),
-                        style = SakuTheme.typography.bodyStrong,
-                        color = colors.expense,
-                    )
-                    state.detail?.let {
-                        Text(text = it, style = SakuTheme.typography.caption, color = colors.ink2)
-                    }
-                }
+                is BackupUiState.Failed -> WriteFailure(
+                    message = stringResource(R.string.backup_failed, state.fileName),
+                    detail = state.detail,
+                )
             }
+        }
+    }
+}
 
-            Text(
-                text = stringResource(R.string.backup_not_encrypted),
-                style = SakuTheme.typography.caption,
-                color = colors.ink2,
-            )
-            Text(
-                text = stringResource(R.string.export_local_only),
-                style = SakuTheme.typography.caption,
-                color = colors.ink2,
-            )
+/** A caption under a save card's button: what happens to the file once it is written. */
+@Composable
+internal fun PrivacyNote(text: String) {
+    Text(text = text, style = SakuTheme.typography.caption, color = SakuTheme.colors.ink2)
+}
+
+/** A write that did not finish, under the save card. Shared by backup and export. */
+@Composable
+internal fun WriteFailure(message: String, detail: String?) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(SakuTheme.spacing.xs),
+    ) {
+        Text(text = message, style = SakuTheme.typography.bodyStrong, color = SakuTheme.colors.expense)
+        detail?.let {
+            Text(text = it, style = SakuTheme.typography.caption, color = SakuTheme.colors.ink2)
         }
     }
 }
@@ -189,5 +177,19 @@ private fun BackupWrittenPreview() {
                 counts = BackupCounts(accounts = 6, categories = 19, transactions = 1_300),
             ),
         )
+    }
+}
+
+@SakuPreview
+@Composable
+private fun BackupIdlePreview() {
+    SakuPreviewSurface(padded = false) { BackupScreen(state = BackupUiState.Idle) }
+}
+
+@SakuPreview
+@Composable
+private fun BackupWritingPreview() {
+    SakuPreviewSurface(padded = false) {
+        BackupScreen(state = BackupUiState.Writing(fileName = "Saku backup 2026-10-30.xlsx"))
     }
 }

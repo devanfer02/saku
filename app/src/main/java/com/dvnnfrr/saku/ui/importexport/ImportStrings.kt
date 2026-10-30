@@ -35,6 +35,13 @@ fun TxnType.addedRes(): Int = when (this) {
     TxnType.ADJUSTMENT -> R.string.import_done_adjustments
 }
 
+/** The bold title on the pick card. */
+@StringRes
+fun ImportEntryPoint.pickTitleRes(): Int = when (this) {
+    ImportEntryPoint.MONEY_MANAGER -> R.string.import_pick_title_money_manager
+    ImportEntryPoint.EXCEL -> R.string.import_pick_title_excel
+}
+
 @StringRes
 fun ImportEntryPoint.introRes(): Int = when (this) {
     ImportEntryPoint.MONEY_MANAGER -> R.string.import_intro_money_manager

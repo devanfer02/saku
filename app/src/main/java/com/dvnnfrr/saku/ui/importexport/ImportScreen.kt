@@ -17,14 +17,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.FileUpload
+import androidx.compose.material.icons.outlined.UploadFile
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -44,8 +43,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.dvnnfrr.saku.R
 import com.dvnnfrr.saku.ui.shared.AccountPicker
-import com.dvnnfrr.saku.ui.shared.EmptyState
+import com.dvnnfrr.saku.ui.shared.PickCard
 import com.dvnnfrr.saku.ui.shared.ScreenHeader
+import com.dvnnfrr.saku.ui.shared.ThumbZonePane
+import com.dvnnfrr.saku.ui.theme.SakuPreview
+import com.dvnnfrr.saku.ui.theme.SakuPreviewSurface
 import com.dvnnfrr.saku.ui.theme.SakuTheme
 import com.dvnnfrr.saku.ui.theme.formatIdr
 
@@ -113,16 +115,13 @@ fun ImportScreenBody(
     Column(modifier = modifier.fillMaxSize().background(colors.background)) {
         ScreenHeader(title = stringResource(state.entryPoint.titleRes()), onBack = onBack, backLabel = stringResource(R.string.screen_back))
         when (state) {
-            is ImportUiState.Idle -> IdleBody(state.entryPoint, onPickFile)
+            is ImportUiState.Idle -> PickStep(state.entryPoint, onPickFile)
 
-            is ImportUiState.Reading -> Centered {
-                CircularProgressIndicator(color = colors.accent)
-                Text(
-                    text = stringResource(R.string.import_reading, state.fileName),
-                    style = SakuTheme.typography.body,
-                    color = colors.ink2,
-                )
-            }
+            is ImportUiState.Reading -> PickStep(
+                entryPoint = state.entryPoint,
+                onPickFile = onPickFile,
+                busyLabel = stringResource(R.string.import_reading, state.fileName),
+            )
 
             is ImportUiState.Refused -> RefusedBody(state, onPickFile)
 
@@ -146,49 +145,53 @@ fun ImportScreenBody(
     }
 }
 
+/**
+ * Idle and reading are one card in the thumb zone; the file being read shows in the drop
+ * zone, so the button does not jump when the picker returns.
+ */
 @Composable
-private fun IdleBody(entryPoint: ImportEntryPoint, onPickFile: () -> Unit) {
-    EmptyState(
-        icon = Icons.Outlined.FileUpload,
-        message = stringResource(entryPoint.introRes()),
-        modifier = Modifier.fillMaxWidth(),
-        action = {
-            TextButton(onClick = onPickFile) {
-                Text(
-                    text = stringResource(R.string.import_choose_file),
-                    color = SakuTheme.colors.accent,
-                    style = SakuTheme.typography.bodyStrong,
-                )
-            }
-        },
-    )
+private fun ColumnScope.PickStep(
+    entryPoint: ImportEntryPoint,
+    onPickFile: () -> Unit,
+    busyLabel: String? = null,
+) {
+    ThumbZonePane(modifier = Modifier.weight(1f)) {
+        PickCard(
+            title = stringResource(entryPoint.pickTitleRes()),
+            message = stringResource(entryPoint.introRes()),
+            icon = Icons.Outlined.UploadFile,
+            actionLabel = stringResource(R.string.import_choose_file),
+            onAction = onPickFile,
+            zoneLabel = busyLabel ?: stringResource(R.string.import_pick_zone),
+            busy = busyLabel != null,
+        )
+    }
 }
 
+/**
+ * The same card, refused: the reason replaces the short line and "Choose another file"
+ * stays where "Choose a file" was.
+ */
 @Composable
-private fun RefusedBody(state: ImportUiState.Refused, onPickFile: () -> Unit) {
-    val spacing = SakuTheme.spacing
-    Column(
-        modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(spacing.screen),
-        verticalArrangement = Arrangement.spacedBy(spacing.md),
-    ) {
-        SectionTitle(stringResource(R.string.import_refused_title))
-        Body(state.reason.message(state.fileName))
-
-        // Naming both column lists is the difference between "wrong file" and a user who
-        // can see that one header was renamed.
-        (state.reason as? ReadFailure.UnrecognisedLayout)?.let { layout ->
-            val (expected, found) = layout.expectedAndFound()
-            Caption(expected)
-            Caption(found)
-        }
-
-        TextButton(onClick = onPickFile) {
-            Text(
-                text = stringResource(R.string.import_choose_another),
-                color = SakuTheme.colors.accent,
-                style = SakuTheme.typography.bodyStrong,
-            )
-        }
+private fun ColumnScope.RefusedBody(state: ImportUiState.Refused, onPickFile: () -> Unit) {
+    ThumbZonePane(modifier = Modifier.weight(1f)) {
+        PickCard(
+            title = stringResource(R.string.import_refused_title),
+            message = state.reason.message(state.fileName),
+            icon = Icons.Outlined.UploadFile,
+            actionLabel = stringResource(R.string.import_choose_another),
+            onAction = onPickFile,
+            isError = true,
+            details = {
+                // Naming both column lists is the difference between "wrong file" and a
+                // user who can see that one header was renamed.
+                (state.reason as? ReadFailure.UnrecognisedLayout)?.let { layout ->
+                    val (expected, found) = layout.expectedAndFound()
+                    Text(text = expected, style = SakuTheme.typography.caption, color = SakuTheme.colors.ink2)
+                    Text(text = found, style = SakuTheme.typography.caption, color = SakuTheme.colors.ink2)
+                }
+            },
+        )
     }
 }
 
@@ -270,15 +273,7 @@ private fun ColumnScope.DoneBody(
         }
     }
 
-    HorizontalDivider(color = SakuTheme.colors.line)
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(SakuTheme.colors.surface)
-            .padding(horizontal = spacing.screen, vertical = spacing.md),
-        horizontalArrangement = Arrangement.spacedBy(spacing.md),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+    BottomActionBar {
         TextButton(onClick = onDone) {
             Text(
                 text = stringResource(R.string.action_done),
@@ -624,17 +619,8 @@ private fun FailureSection(message: String) {
 }
 
 @Composable
-private fun ActionRow(preview: ImportPreview, onConfirm: () -> Unit, onDiscard: () -> Unit) {
-    val spacing = SakuTheme.spacing
-    HorizontalDivider(color = SakuTheme.colors.line)
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(SakuTheme.colors.surface)
-            .padding(horizontal = spacing.screen, vertical = spacing.md),
-        horizontalArrangement = Arrangement.spacedBy(spacing.md),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+private fun ColumnScope.ActionRow(preview: ImportPreview, onConfirm: () -> Unit, onDiscard: () -> Unit) {
+    BottomActionBar {
         TextButton(onClick = onDiscard) {
             Text(
                 text = stringResource(R.string.import_discard),
@@ -776,20 +762,6 @@ private fun Caption(text: String) {
     )
 }
 
-@Composable
-private fun Centered(content: @Composable () -> Unit) {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(
-            SakuTheme.spacing.md,
-            Alignment.CenterVertically,
-        ),
-    ) {
-        content()
-    }
-}
-
 /**
  * For instrumentation, which should not depend on a label that carries a row count.
  * Maestro matches on the visible text instead — Compose test tags are not exposed as
@@ -801,3 +773,34 @@ const val IMPORT_ACTION_TAG = "import_confirm"
  *  name can contain one, so this key cannot collide with a real one. */
 private const val UNCATEGORISED_KEY = "\u0000uncategorised"
 private const val HELD_BACK_SHOWN = 20
+
+@SakuPreview
+@Composable
+private fun ImportIdlePreview() {
+    SakuPreviewSurface(padded = false) {
+        ImportScreenBody(state = ImportUiState.Idle(ImportEntryPoint.MONEY_MANAGER), onBack = {})
+    }
+}
+
+@SakuPreview
+@Composable
+private fun ImportReadingPreview() {
+    SakuPreviewSurface(padded = false) {
+        ImportScreenBody(state = ImportUiState.Reading(ImportEntryPoint.EXCEL, "mock-money-manager.xlsx"), onBack = {})
+    }
+}
+
+@SakuPreview
+@Composable
+private fun ImportRefusedPreview() {
+    SakuPreviewSurface(padded = false) {
+        ImportScreenBody(
+            state = ImportUiState.Refused(
+                entryPoint = ImportEntryPoint.MONEY_MANAGER,
+                fileName = "notes.xlsx",
+                reason = ReadFailure.Unreadable(detail = null),
+            ),
+            onBack = {},
+        )
+    }
+}

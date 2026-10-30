@@ -192,8 +192,11 @@
     <!-- Import: choosing a file -->
     <string name="import_choose_file">Choose a file</string>
     <string name="import_choose_another">Choose another file</string>
-    <string name="import_intro_money_manager">Pick an .xlsx export from Money Manager. Saku shows you a preview first and writes nothing until you confirm it.</string>
-    <string name="import_intro_excel">Pick an .xlsx file. Saku works the layout out from the header row, so a Money Manager export and a Saku export both land here.</string>
+    <string name="import_pick_title_money_manager">Pick a Money Manager export</string>
+    <string name="import_intro_money_manager">Saku shows you a preview first and writes nothing until you confirm it.</string>
+    <string name="import_pick_title_excel">Pick an Excel file</string>
+    <string name="import_intro_excel">A Money Manager or Saku export. Saku reads the header row and shows a preview first.</string>
+    <string name="import_pick_zone">An .xlsx file</string>
     <string name="import_reading">Reading %1$s…</string>
 
     <!-- Import: a file that never reached the preview -->
@@ -296,7 +299,9 @@
     <string name="import_history_reverse_body">Only the transactions this import added are removed. Anything entered by hand, or added by another import, is left alone.</string>
 
     <!-- Export -->
-    <string name="export_intro">Writes every transaction to an .xlsx file you choose: date, type, amount, both accounts on a transfer, category and note. Importing that file into an empty Saku rebuilds what you have now.</string>
+    <string name="export_pick_title">Save your transactions</string>
+    <string name="export_intro">Every transaction in one .xlsx file. Importing it into an empty Saku rebuilds what you have now.</string>
+    <string name="export_pick_zone">Saved as .xlsx, wherever you choose</string>
     <string name="export_action">Choose where to save</string>
     <string name="export_empty">There is nothing to export yet</string>
     <string name="export_writing">Writing %1$s…</string>

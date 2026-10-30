@@ -5,16 +5,21 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.UploadFile
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -30,7 +35,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.dvnnfrr.saku.R
 import com.dvnnfrr.saku.excel.AccountConflict
 import com.dvnnfrr.saku.excel.AccountSetting
+import com.dvnnfrr.saku.ui.shared.PickCard
 import com.dvnnfrr.saku.ui.shared.ScreenHeader
+import com.dvnnfrr.saku.ui.shared.ThumbZonePane
 import com.dvnnfrr.saku.ui.theme.SakuPreview
 import com.dvnnfrr.saku.ui.theme.SakuPreviewSurface
 import com.dvnnfrr.saku.ui.theme.SakuTheme
@@ -80,72 +87,105 @@ fun RestoreScreen(
 
     Column(modifier = modifier.fillMaxSize().background(colors.background)) {
         ScreenHeader(title = stringResource(R.string.more_restore), onBack = onBack, backLabel = stringResource(R.string.screen_back))
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .verticalScroll(rememberScrollState())
-                .padding(spacing.screen),
-            verticalArrangement = Arrangement.spacedBy(spacing.lg),
-        ) {
-            Text(
-                text = stringResource(R.string.restore_intro),
-                style = SakuTheme.typography.body,
-                color = colors.ink2,
+        when (state) {
+            RestoreUiState.Idle -> PickStep(onPickFile = onPickFile)
+
+            is RestoreUiState.Reading -> PickStep(
+                onPickFile = onPickFile,
+                busyLabel = stringResource(R.string.restore_reading, state.fileName),
             )
 
-            when (state) {
-                RestoreUiState.Idle -> PrimaryButton(
-                    label = stringResource(R.string.restore_choose_file),
-                    onClick = onPickFile,
-                    modifier = Modifier.testTag(RESTORE_PICK_TAG),
+            is RestoreUiState.Refused -> PickStep(
+                onPickFile = onPickFile,
+                refusal = state.refusal.message(state.fileName),
+            )
+
+            is RestoreUiState.Ready -> {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
+                        .padding(spacing.screen),
+                    verticalArrangement = Arrangement.spacedBy(spacing.lg),
+                ) {
+                    Preview(state)
+                }
+                BottomActionBar {
+                    if (state.committing) CircularProgressIndicator(color = colors.accent)
+                    TextButton(onClick = onDiscard, enabled = !state.committing) {
+                        Text(
+                            text = stringResource(R.string.restore_discard),
+                            style = SakuTheme.typography.bodyStrong,
+                            color = colors.ink2,
+                        )
+                    }
+                    PrimaryButton(
+                        label = stringResource(R.string.restore_action),
+                        onClick = onConfirm,
+                        enabled = state.preview.hasAnythingNew && !state.committing,
+                        modifier = Modifier.weight(1f).testTag(RESTORE_CONFIRM_TAG),
+                    )
+                }
+            }
+
+            is RestoreUiState.Restored -> Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+                    .padding(spacing.screen),
+                verticalArrangement = Arrangement.spacedBy(spacing.lg),
+            ) {
+                Text(
+                    text = stringResource(R.string.restore_done, state.fileName),
+                    style = SakuTheme.typography.bodyStrong,
+                    color = colors.income,
                 )
-
-                is RestoreUiState.Reading -> Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
-                    CircularProgressIndicator(color = colors.accent)
-                    Text(
-                        text = stringResource(R.string.restore_reading, state.fileName),
-                        style = SakuTheme.typography.body,
-                        color = colors.ink2,
-                    )
-                }
-
-                is RestoreUiState.Refused -> {
-                    Text(
-                        text = state.refusal.message(state.fileName),
-                        style = SakuTheme.typography.bodyStrong,
-                        color = colors.expense,
-                    )
-                    ChooseAnother(onPickFile)
-                }
-
-                is RestoreUiState.Ready -> Preview(state, onConfirm = onConfirm, onDiscard = onDiscard)
-
-                is RestoreUiState.Restored -> {
-                    Text(
-                        text = stringResource(R.string.restore_done, state.fileName),
-                        style = SakuTheme.typography.bodyStrong,
-                        color = colors.income,
-                    )
-                    CountCard(
-                        listOf(
-                            stringResource(R.string.restore_new_accounts) to state.result.accountsCreated,
-                            stringResource(R.string.restore_new_categories) to state.result.categoriesCreated,
-                            stringResource(R.string.restore_new_transactions) to state.result.batch.insertedCount,
-                        ),
-                    )
-                    Text(
-                        text = stringResource(R.string.restore_done_note),
-                        style = SakuTheme.typography.caption,
-                        color = colors.ink2,
-                    )
-                }
+                CountCard(
+                    listOf(
+                        stringResource(R.string.restore_new_accounts) to state.result.accountsCreated,
+                        stringResource(R.string.restore_new_categories) to state.result.categoriesCreated,
+                        stringResource(R.string.restore_new_transactions) to state.result.batch.insertedCount,
+                    ),
+                )
+                Text(
+                    text = stringResource(R.string.restore_done_note),
+                    style = SakuTheme.typography.caption,
+                    color = colors.ink2,
+                )
             }
         }
     }
 }
 
+/**
+ * Idle, reading and refused are one card in the thumb zone: the file being read shows in
+ * the drop zone, and a refusal replaces the short line, so the button never moves.
+ */
 @Composable
-private fun Preview(state: RestoreUiState.Ready, onConfirm: () -> Unit, onDiscard: () -> Unit) {
+private fun ColumnScope.PickStep(
+    onPickFile: () -> Unit,
+    busyLabel: String? = null,
+    refusal: String? = null,
+) {
+    ThumbZonePane(modifier = Modifier.weight(1f)) {
+        PickCard(
+            title = stringResource(if (refusal == null) R.string.restore_pick_title else R.string.restore_refused_title),
+            message = refusal ?: stringResource(R.string.restore_intro),
+            icon = Icons.Outlined.UploadFile,
+            actionLabel = stringResource(
+                if (refusal == null) R.string.restore_choose_file else R.string.restore_choose_another,
+            ),
+            onAction = onPickFile,
+            zoneLabel = busyLabel ?: stringResource(R.string.restore_pick_zone),
+            busy = busyLabel != null,
+            isError = refusal != null,
+            actionModifier = Modifier.testTag(RESTORE_PICK_TAG),
+        )
+    }
+}
+
+@Composable
+private fun Preview(state: RestoreUiState.Ready) {
     val preview = state.preview
     val colors = SakuTheme.colors
     val spacing = SakuTheme.spacing
@@ -208,27 +248,6 @@ private fun Preview(state: RestoreUiState.Ready, onConfirm: () -> Unit, onDiscar
             color = colors.expense,
         )
     }
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(spacing.sm, Alignment.End),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (state.committing) CircularProgressIndicator(color = colors.accent)
-        TextButton(onClick = onDiscard, enabled = !state.committing) {
-            Text(
-                text = stringResource(R.string.restore_discard),
-                style = SakuTheme.typography.bodyStrong,
-                color = colors.ink2,
-            )
-        }
-        PrimaryButton(
-            label = stringResource(R.string.restore_action),
-            onClick = onConfirm,
-            enabled = preview.hasAnythingNew && !state.committing,
-            modifier = Modifier.testTag(RESTORE_CONFIRM_TAG),
-        )
-    }
 }
 
 @Composable
@@ -270,15 +289,23 @@ internal fun PrimaryButton(
     }
 }
 
+/**
+ * The confirm-or-cancel bar pinned under a preview, in the thumb's reach whatever the
+ * preview's length. Import's preview set the pattern; restore and database import share it.
+ */
 @Composable
-internal fun ChooseAnother(onPickFile: () -> Unit) {
-    TextButton(onClick = onPickFile) {
-        Text(
-            text = stringResource(R.string.restore_choose_another),
-            color = SakuTheme.colors.accent,
-            style = SakuTheme.typography.bodyStrong,
-        )
-    }
+internal fun ColumnScope.BottomActionBar(content: @Composable RowScope.() -> Unit) {
+    val spacing = SakuTheme.spacing
+    HorizontalDivider(color = SakuTheme.colors.line)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(SakuTheme.colors.surface)
+            .padding(horizontal = spacing.screen, vertical = spacing.md),
+        horizontalArrangement = Arrangement.spacedBy(spacing.md),
+        verticalAlignment = Alignment.CenterVertically,
+        content = content,
+    )
 }
 
 /** For instrumentation, as IMPORT_ACTION_TAG. */
@@ -307,6 +334,30 @@ private fun RestorePreviewPreview() {
                     ),
                 ),
             ),
+        )
+    }
+}
+
+@SakuPreview
+@Composable
+private fun RestoreIdlePreview() {
+    SakuPreviewSurface(padded = false) { RestoreScreen(state = RestoreUiState.Idle) }
+}
+
+@SakuPreview
+@Composable
+private fun RestoreReadingPreview() {
+    SakuPreviewSurface(padded = false) {
+        RestoreScreen(state = RestoreUiState.Reading("Saku backup 2026-10-30.xlsx"))
+    }
+}
+
+@SakuPreview
+@Composable
+private fun RestoreRefusedPreview() {
+    SakuPreviewSurface(padded = false) {
+        RestoreScreen(
+            state = RestoreUiState.Refused("notes.xlsx", RestoreRefusal.Unreadable(detail = null)),
         )
     }
 }

@@ -4,7 +4,10 @@
     <string name="more_import_database">Import database (.db)</string>
     <string name="more_import_database_subtitle">Merge a Saku database file into what is here</string>
 
-    <string name="database_import_intro">Reads a database file made for Saku and adds what this phone does not have yet. Your own data is not replaced, nothing is deleted or changed, and the transactions arrive as one entry in Import history, so they can be reversed.</string>
+    <string name="database_import_pick_title">Pick a Saku database file</string>
+    <string name="database_import_intro">Adds only what this phone lacks. Your own data is not replaced, nothing is deleted, and Import history can reverse it.</string>
+    <string name="database_import_pick_zone">A Saku database, saved as .db</string>
+    <string name="database_import_refused_title">That file was not imported</string>
     <string name="database_import_choose_file">Choose a database file</string>
     <string name="database_import_reading">Reading %1$s…</string>
     <string name="database_import_preview_file">File</string>
