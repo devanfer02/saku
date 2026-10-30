@@ -11,72 +11,47 @@ If there is no `.codegraph/` directory, skip CodeGraph entirely. Indexing is the
 
 ## Workflow
 
-Rules, not suggestions. Architecture rules live in the root `CLAUDE.md`; this file is how you work, not what you build.
+How to work here. What to build lives in the root `CLAUDE.md`.
 
 ### Commits
 
-**One sentence. No body.** `<type>(<domain>): <subject>`
+One line, no body: `<type>(<domain>): <subject>`. Imperative, no trailing period, under ~72 characters. An "and" in the subject means two commits.
 
-Types: `feat` · `fix` · `refactor` · `test` · `chore` · `doc`. Domain is the area, not a directory path: `transactions`, `entry`, `stats`, `accounts`, `categories`, `excel`, `nav`, `theme`, `data`, `ci`, `claude`. `doc` takes no domain.
+Types: `feat` `fix` `refactor` `test` `chore` `doc`. Domain is the area: `transactions`, `entry`, `stats`, `accounts`, `categories`, `search`, `excel`, `nav`, `theme`, `data`, `ci`, `claude`. `doc` takes no domain.
 
 ```
-feat(stats): add the subcategory drill-down
 fix(accounts): keep a back-dated transfer on both legs
-refactor(nav): resolve a pushed route back to its parent tab
-test(excel): cover the transfer rows with no destination
-chore(ci): sign the release build from repository secrets
 doc: write the architecture rules down
 ```
 
-Imperative mood, no trailing period, under ~72 characters. If the subject needs an "and", it is two commits. Reasoning that does not fit belongs in the OpenSpec design doc or a code comment, where it stays next to the thing it explains, not in a commit body nobody greps.
+No em dashes anywhere written for this repo: commits, PRs, comments, docs. Reasoning goes in the OpenSpec `design.md` or a code comment, not a commit body. Always commit `openspec/`.
 
-**No em dashes.** Not in commit messages, not in PR titles or bodies, not in code comments, not in anything written for this repo. Use a comma, a full stop, or parentheses. This applies to prose written in chat too.
+### OpenSpec first for large changes
 
-Always commit `openspec/`. It is the versioned "why".
+Large means any one of: a new domain or package; a move or rename with more than a couple of call sites; UI work across more than one feature directory or a new screen; a change to a repository interface, a Room entity or a migration.
 
-### When a change needs OpenSpec first
+Large: `/opsx:propose` before code, then `/opsx:apply` task by task, ticking `tasks.md`. Small work (a bug fix, a string, one function) goes straight to code. Decisions made while building, rejected ones included, go in the change's `design.md`.
 
-**Large** means any one of:
+### Branches, PRs and CI
 
-- bootstrapping a new domain or package
-- a refactor that moves or renames anything with more than a couple of call sites
-- UI work that scatters, meaning more than one feature directory, or adding a screen
-- anything that changes a repository interface, a Room entity, or a migration
+Never commit a feature to `master`. Branch as `feat/`, `fix/`, `refactor/` or `chore/` plus a slug, push, open the PR against `master`, run `/humanizer` over the title and body, then merge.
 
-Any of those: `/opsx:propose` **before** writing code, then `/opsx:apply` task by task. Small and well-scoped work (a bug fix, a string, one function) goes straight to code.
+CI: a PR runs unit tests, lint, the debug build and the no-network-permission gate. A push to `master` builds the signed release and uploads one artifact, `saku-release-apk`. Maestro is not in CI; run it locally against the emulator.
 
-The workflow is `/opsx:explore` (unknowns) → `/opsx:propose` (proposal, design, specs, tasks) → `/opsx:apply` (implement, ticking `tasks.md` as you go) → `/opsx:sync` → `/opsx:archive`. `openspec/changes/` is in flight; `openspec/specs/` is synced capability. Audit with `openspec list` and `openspec status --change <name>`.
-
-Decisions made while building go in the change's `design.md`, including the ones that were rejected and why. That file is the record of what was considered, not a summary of what shipped.
-
-### Branching and pull requests
-
-**Never commit a feature to `master`.** One branch per feature, PR into `master`.
-
-```
-feat/<slug>      new capability          feat/budget-caps
-fix/<slug>       bug fix                 fix/transfer-opening-date
-refactor/<slug>  no behaviour change     refactor/assembly-extraction
-chore/<slug>     build, CI, tooling      chore/release-signing
-```
-
-Then:
-
-1. Push the branch and open the PR against `master`.
-2. **Run `/humanizer` over the title and body before posting.** Default model prose is a tell; the PR is read by a person.
-3. Comment `@copilot review` on the PR.
-4. Address the review, then merge.
-
-Do not merge your own PR before the review comment has been posted and answered.
-
-CI has two lanes. A pull request into `master` runs unit tests, lint, the debug build and the no-network-permission gate. A push to `master` builds the signed release and uploads exactly one artifact, `saku-release-apk`. Maestro is not in CI (decided 30 Oct 2026); run the flows locally against the emulator.
-
-### Before calling a session done
+### Done means
 
 ```bash
-ANDROID_HOME=/home/dvnnfrr/Android/Sdk ./gradlew :app:testDebugUnitTest :app:assembleDebug
+ANDROID_HOME=/home/dvnnfrr/Android/Sdk ./gradlew --no-daemon \
+  -Pkotlin.compiler.execution.strategy=in-process -Dorg.gradle.jvmargs=-Xmx1536m \
+  :app:testDebugUnitTest :app:assembleDebug
 ```
 
-Both green, every time, including for a change with no test of its own. A worktree has no `local.properties`, which is why `ANDROID_HOME` is set inline.
+Both green, even for a change with no test of its own. The flags keep the build inside a 14 GB machine; never run two builds at once. A worktree has no `local.properties`, hence the inline `ANDROID_HOME`.
 
-A test that passes both before and after a fix proves nothing. When fixing a bug, confirm the new test fails against the old behaviour before keeping it.
+A bug-fix test must fail against the old behaviour, or it proves nothing.
+
+### Local gotchas
+
+- Plain `git` is rewritten by a token-saving hook; use `/usr/bin/git` when exact output matters.
+- Emulator: `Pixel_8_API_35`, started with `-memory 2048`. Stop it with `adb emu kill`; check for it with `ps -C qemu-system-x86_64`, not `pgrep -f`, which matches its own shell.
+- `.claude/.claude/` holds a stray TelNetQuiz `CLAUDE.md` and Android skills; it does not describe this project.
