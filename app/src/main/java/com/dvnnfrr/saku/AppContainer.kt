@@ -28,6 +28,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
+import java.io.File
 
 /**
  * The one place repositories are constructed.
@@ -59,6 +60,9 @@ interface AppContainer {
 
     /** Arms the weekly reminder's alarm from [reminders]. */
     val reminderScheduler: ReminderScheduler
+
+    /** Where a picked file is copied to be read once, as the database import does. */
+    val cacheDir: File
 }
 
 class RoomAppContainer(context: Context) : AppContainer {
@@ -86,6 +90,8 @@ class RoomAppContainer(context: Context) : AppContainer {
     override val reminders: ReminderStore by lazy { ReminderStore(context) }
 
     override val reminderScheduler: ReminderScheduler by lazy { ReminderScheduler(context) }
+
+    override val cacheDir: File = context.cacheDir
 }
 
 /**
