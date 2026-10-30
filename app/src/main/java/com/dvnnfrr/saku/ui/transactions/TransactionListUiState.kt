@@ -62,7 +62,6 @@ data class TransactionRowUi(
     val type: TxnType,
     val amount: Money,
     val categoryName: String?,
-    val subcategoryName: String?,
     val note: String?,
     val account: AccountRef,
     /** Present only on a transfer, which shows both ends. */

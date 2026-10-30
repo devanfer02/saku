@@ -17,7 +17,7 @@ import org.junit.Test
 class SearchAssemblyTest {
 
     private val zone = TimeZone.of("Asia/Jakarta")
-    private val index = DisplayIndex(emptyList(), emptyList(), emptyList())
+    private val index = DisplayIndex(emptyList(), emptyList())
     private var nextId = 1L
 
     private fun txn(

@@ -68,7 +68,6 @@ class SearchViewModel(
     private val index = combine(
         accountRepository.observeAll(),
         categoryRepository.observeAll(),
-        categoryRepository.observeAllSubcategories(),
         ::DisplayIndex,
     )
 

@@ -6,7 +6,6 @@ import com.dvnnfrr.saku.domain.ColorSlot
 import com.dvnnfrr.saku.domain.DateRange
 import com.dvnnfrr.saku.domain.Money
 import com.dvnnfrr.saku.domain.PeriodTotals
-import com.dvnnfrr.saku.domain.Subcategory
 import com.dvnnfrr.saku.domain.Transaction
 import com.dvnnfrr.saku.domain.TxnType
 import kotlinx.datetime.DateTimeUnit
@@ -34,12 +33,10 @@ import kotlinx.datetime.toLocalDateTime
 class DisplayIndex(
     accounts: List<Account>,
     categories: List<Category>,
-    subcategories: List<Subcategory>,
 ) {
     private val accountsById = accounts.associateBy { it.id }
     private val categoryNames = categories.associate { it.id to it.name }
     private val categorySlots = categories.associate { it.id to it.colorSlot }
-    private val subcategoryNames = subcategories.associate { it.id to it.name }
 
     /**
      * A deleted account would otherwise crash a row mid-scroll. Accounts referenced by
@@ -54,8 +51,6 @@ class DisplayIndex(
     fun categoryName(id: Long?): String? = id?.let { categoryNames[it] }
 
     fun categorySlot(id: Long?): ColorSlot? = id?.let { categorySlots[it] }
-
-    fun subcategoryName(id: Long?): String? = id?.let { subcategoryNames[it] }
 }
 
 private val UNKNOWN_ACCOUNT = AccountRef(id = -1L, name = "Unknown account", colorSlot = ColorSlot.FIRST)
@@ -65,7 +60,6 @@ fun Transaction.toRowUi(index: DisplayIndex): TransactionRowUi = TransactionRowU
     type = type,
     amount = amount,
     categoryName = index.categoryName(categoryId),
-    subcategoryName = index.subcategoryName(subcategoryId),
     note = note?.takeIf { it.isNotBlank() },
     account = index.account(accountId) ?: UNKNOWN_ACCOUNT,
     toAccount = index.account(toAccountId),

@@ -154,7 +154,6 @@ class MonthlyAssemblyTest {
                 type = com.dvnnfrr.saku.domain.TxnType.EXPENSE,
                 amount = Money(1),
                 categoryName = null,
-                subcategoryName = null,
                 note = null,
                 account = AccountRef(1, "BCA", com.dvnnfrr.saku.domain.ColorSlot.FIRST),
                 toAccount = null,

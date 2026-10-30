@@ -170,11 +170,7 @@ class StatsViewModel(
     ) { transactions, subcategories, categories, accounts, strip ->
         val category = categories.firstOrNull { it.id == categoryId }
         val slot = category?.colorSlot ?: ColorSlot.FIRST
-        val index = DisplayIndex(
-            accounts = accounts,
-            categories = categories,
-            subcategories = subcategories,
-        )
+        val index = DisplayIndex(accounts = accounts, categories = categories)
         // Summed from the rows the list is rendering anyway. Bounded to one category in
         // one period, so this is not the memory fold the screen avoids elsewhere, and it
         // cannot disagree with the list beneath it.

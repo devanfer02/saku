@@ -33,7 +33,7 @@ class CalendarRangeAssemblyTest {
     private val makan = Category(3, "Makan & Minum", CategoryKind.EXPENSE, ColorSlot(2), 0, false)
     private val gaji = Category(4, "Gaji", CategoryKind.INCOME, ColorSlot(3), 0, false)
 
-    private val index = DisplayIndex(listOf(bca, rdpu), listOf(makan, gaji), emptyList())
+    private val index = DisplayIndex(listOf(bca, rdpu), listOf(makan, gaji))
 
     private var nextId = 100L
 

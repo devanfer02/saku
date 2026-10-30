@@ -90,9 +90,8 @@ class TransactionListViewModel(
                     transactionRepository.observeInRange(range, zone, filter),
                     accountRepository.observeAll(),
                     categoryRepository.observeAll(),
-                    categoryRepository.observeAllSubcategories(),
-                ) { transactions, accounts, categories, subcategories ->
-                    val index = DisplayIndex(accounts, categories, subcategories)
+                ) { transactions, accounts, categories ->
+                    val index = DisplayIndex(accounts, categories)
                     MonthData(
                         range = range,
                         filter = filter,
