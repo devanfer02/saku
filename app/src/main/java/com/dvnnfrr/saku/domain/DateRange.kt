@@ -33,9 +33,19 @@ data class DateRange(
     val start: LocalDate,
     val endInclusive: LocalDate,
     val mode: PeriodMode = PeriodMode.CUSTOM,
+    /**
+     * Set on a pay month: the day of the month it starts on, before clamping. Carried
+     * because the clamped [start] cannot give it back (28 Feb is where 28, 29, 30 and 31
+     * all land), and stepping needs the unclamped day. Null on every other range,
+     * including a calendar month.
+     */
+    val payStartDay: Int? = null,
 ) {
     init {
         require(start <= endInclusive) { "Range start $start is after end $endInclusive" }
+        require(payStartDay == null || (mode == PeriodMode.MONTHLY && payStartDay in 2..31)) {
+            "Pay start day $payStartDay on a $mode range"
+        }
     }
 
     operator fun contains(date: LocalDate): Boolean = date in start..endInclusive
@@ -52,11 +62,18 @@ data class DateRange(
 
     /**
      * Steps the range by whole periods. A [PeriodMode.CUSTOM] range shifts by its own
-     * length, which keeps the arrows useful for an arbitrary span.
+     * length, which keeps the arrows useful for an arbitrary span. A pay month steps from
+     * its calendar month rather than from its clamped start, so a 31st start that fell on
+     * 28 Feb comes back to 31 Mar instead of drifting to the 28th.
      */
-    private fun shift(periods: Int): DateRange = when (mode) {
+    fun shift(periods: Int): DateRange = when (mode) {
         PeriodMode.WEEKLY -> ofWeek(start.plus(periods, DateTimeUnit.WEEK))
-        PeriodMode.MONTHLY -> ofMonth(start.plus(periods, DateTimeUnit.MONTH))
+        PeriodMode.MONTHLY -> if (payStartDay == null) {
+            ofMonth(start.plus(periods, DateTimeUnit.MONTH))
+        } else {
+            val month = start.firstOfMonth().plus(periods, DateTimeUnit.MONTH)
+            ofPayMonth(payStartIn(month, payStartDay), payStartDay)
+        }
         PeriodMode.ANNUALLY -> ofYear(start.plus(periods, DateTimeUnit.YEAR).year)
         PeriodMode.CUSTOM -> {
             val length = start.daysUntilInclusive(endInclusive)
@@ -66,6 +83,28 @@ data class DateRange(
                 mode = PeriodMode.CUSTOM,
             )
         }
+    }
+
+    /**
+     * The first day of the calendar month holding most of this range's days, which is
+     * what a pay month is named after: 25 Oct to 24 Nov is November. A tie goes to the
+     * later month, because the salary that opens the period pays for the month ahead. A
+     * calendar month is its own majority, and a year of pay months lands inside its year.
+     */
+    fun majorityMonth(): LocalDate {
+        var best = start.firstOfMonth()
+        var bestDays = 0
+        var month = best
+        while (month <= endInclusive) {
+            val last = month.plus(1, DateTimeUnit.MONTH).minus(1, DateTimeUnit.DAY)
+            val days = maxOf(month, start).daysUntilInclusive(minOf(last, endInclusive))
+            if (days >= bestDays) {
+                best = month
+                bestDays = days
+            }
+            month = month.plus(1, DateTimeUnit.MONTH)
+        }
+        return best
     }
 
     companion object {
@@ -84,6 +123,31 @@ data class DateRange(
             return DateRange(first, last, PeriodMode.MONTHLY)
         }
 
+        /**
+         * The pay month holding [anyDay], for pay months starting on day [startDay].
+         *
+         * Each start is computed from its own calendar month and clamped to that month's
+         * last day, and a pay month ends the day before the next start, so consecutive
+         * pay months never gap or overlap. A start day of 1 is the calendar month, and is
+         * returned as one so the two compare equal.
+         */
+        fun ofPayMonth(anyDay: LocalDate, startDay: Int): DateRange {
+            require(startDay in 1..31) { "Pay start day $startDay is not a day of the month" }
+            if (startDay == 1) return ofMonth(anyDay)
+            val inThisMonth = payStartIn(anyDay.firstOfMonth(), startDay)
+            val start = if (anyDay >= inThisMonth) {
+                inThisMonth
+            } else {
+                payStartIn(anyDay.firstOfMonth().minus(1, DateTimeUnit.MONTH), startDay)
+            }
+            val nextStart = payStartIn(start.firstOfMonth().plus(1, DateTimeUnit.MONTH), startDay)
+            return DateRange(start, nextStart.minus(1, DateTimeUnit.DAY), PeriodMode.MONTHLY, startDay)
+        }
+
+        /** The calendar month when [payStartDay] is null, otherwise the pay month. */
+        fun monthOf(anyDay: LocalDate, payStartDay: Int?): DateRange =
+            if (payStartDay == null) ofMonth(anyDay) else ofPayMonth(anyDay, payStartDay)
+
         fun ofYear(year: Int): DateRange =
             DateRange(LocalDate(year, 1, 1), LocalDate(year, 12, 31), PeriodMode.ANNUALLY)
 
@@ -96,6 +160,14 @@ data class DateRange(
 }
 
 private fun LocalDate.daysUntilInclusive(other: LocalDate): Int = daysUntil(other) + 1
+
+private fun LocalDate.firstOfMonth(): LocalDate = LocalDate(year, month, 1)
+
+/** Day [startDay] of [firstOfMonth]'s month, or that month's last day when it is shorter. */
+private fun payStartIn(firstOfMonth: LocalDate, startDay: Int): LocalDate {
+    val length = firstOfMonth.plus(1, DateTimeUnit.MONTH).minus(1, DateTimeUnit.DAY).dayOfMonth
+    return LocalDate(firstOfMonth.year, firstOfMonth.month, minOf(startDay, length))
+}
 
 /** Truncates to whole seconds, discarding the microsecond tail the export carries. */
 fun Instant.truncatedToSeconds(): Instant = Instant.fromEpochSeconds(epochSeconds)
