@@ -29,9 +29,8 @@ import com.dvnnfrr.saku.ui.theme.forDirection
  * One figure as a part of a whole: an arc on a track, the percentage inside, the figure
  * and its label beneath.
  *
- * Not a [Donut]. The donut is a composition chart with a segment per item, colour slots,
- * gaps and hit-testing, and it must ship with a legend list; this is a single share with
- * the number written out, so the colour is never the only cue. [percent] null draws the
+ * Not a composition chart: there is one share here, with the number written out, so the
+ * colour is never the only cue. Compositions are ranked bars ([RankedRow]). [percent] null draws the
  * bare track and no percentage, for a share of nothing.
  *
  * [contentDescription] replaces the parts for a screen reader, because "80%" heard on its
@@ -98,7 +97,6 @@ fun ShareRing(
             money = amount,
             type = type,
             style = SakuTheme.typography.amountSmall,
-            withPrefix = false,
         )
     }
 }

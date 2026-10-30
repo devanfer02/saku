@@ -24,6 +24,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import com.dvnnfrr.saku.domain.Money
 import com.dvnnfrr.saku.ui.theme.SakuTheme
+import com.dvnnfrr.saku.ui.theme.formatIdrCell
 import com.dvnnfrr.saku.ui.theme.formatIdrSigned
 import androidx.compose.ui.unit.dp
 import kotlinx.datetime.LocalDate
@@ -49,7 +50,7 @@ fun CalendarTab(
                 Text(
                     text = heading,
                     style = SakuTheme.typography.caption,
-                    color = SakuTheme.colors.ink3,
+                    color = SakuTheme.colors.ink2,
                     textAlign = TextAlign.Center,
                     maxLines = 1,
                     modifier = Modifier.weight(1f).padding(vertical = spacing.sm),
@@ -109,12 +110,12 @@ private fun DayCell(cell: CalendarCell, onClick: () -> Unit) {
         Text(
             text = cell.date.dayOfMonth.toString(),
             style = SakuTheme.typography.caption,
-            color = if (cell.hasTransactions) colors.ink else colors.ink3,
+            color = if (cell.hasTransactions) colors.ink else colors.ink2,
             maxLines = 1,
         )
         if (net != null) {
             Text(
-                text = compactNet(net),
+                text = formatIdrCell(net),
                 style = SakuTheme.typography.caption,
                 color = netColor(net),
                 textAlign = TextAlign.Center,
@@ -128,28 +129,7 @@ private fun DayCell(cell: CalendarCell, onClick: () -> Unit) {
 private fun netColor(net: Money) = when {
     net.isPositive -> SakuTheme.colors.income
     net.isNegative -> SakuTheme.colors.expense
-    else -> SakuTheme.colors.ink3
-}
-
-/**
- * A cell is about a seventh of the screen wide, so `Rp 5.061.400` cannot fit. Rounds
- * to the nearest thousand or million, which is enough for a glance; the exact figure
- * is one tap away in the Daily tab.
- */
-internal fun compactNet(net: Money): String {
-    val rupiah = net.rupiah
-    if (rupiah == 0L) return "0"
-    // Rounded, not truncated. 1.999.000 truncates to "1m", which reads as half the
-    // value on a cell whose whole job is a glance.
-    val thousands = roundedDiv(rupiah, 1_000)
-    if (thousands == 0L) return if (rupiah > 0) "<1k" else "-<1k"
-    val millions = roundedDiv(thousands, 1_000)
-    return if (millions != 0L) "${millions}m" else "${thousands}k"
-}
-
-private fun roundedDiv(value: Long, by: Long): Long {
-    val half = by / 2
-    return if (value < 0) (value - half) / by else (value + half) / by
+    else -> SakuTheme.colors.ink2
 }
 
 /** Room for the floating add button, which is 56dp plus its 16dp margin. */

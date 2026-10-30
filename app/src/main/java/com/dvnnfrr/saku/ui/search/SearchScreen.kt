@@ -44,6 +44,7 @@ import com.dvnnfrr.saku.ui.entry.EntrySheet
 import com.dvnnfrr.saku.ui.filter.FilterBar
 import com.dvnnfrr.saku.ui.shared.EmptyState
 import com.dvnnfrr.saku.ui.shared.MoneyText
+import com.dvnnfrr.saku.ui.theme.MoneySign
 import com.dvnnfrr.saku.ui.theme.SakuPreview
 import com.dvnnfrr.saku.ui.theme.SakuPreviewSurface
 import com.dvnnfrr.saku.ui.theme.SakuTheme
@@ -123,7 +124,7 @@ fun SearchScreen(
                 value = query,
                 onValueChange = onQueryChange,
                 singleLine = true,
-                placeholder = { Text(stringResource(R.string.search_hint), color = colors.ink3) },
+                placeholder = { Text(stringResource(R.string.search_hint), color = colors.ink2) },
                 leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null, tint = colors.ink3) },
                 trailingIcon = {
                     if (query.isNotEmpty()) {
@@ -185,8 +186,8 @@ private fun Summary(state: SearchUiState) {
             color = SakuTheme.colors.ink2,
             modifier = Modifier.weight(1f),
         )
-        MoneyText(state.totals.income, type = TxnType.INCOME, style = SakuTheme.typography.amountSmall, withPrefix = false)
-        MoneyText(state.totals.expense, type = TxnType.EXPENSE, style = SakuTheme.typography.amountSmall, withPrefix = false)
+        MoneyText(state.totals.income, type = TxnType.INCOME, style = SakuTheme.typography.amountSmall, sign = MoneySign.FLOW)
+        MoneyText(state.totals.expense, type = TxnType.EXPENSE, style = SakuTheme.typography.amountSmall, sign = MoneySign.FLOW)
     }
 }
 

@@ -44,6 +44,7 @@ import com.dvnnfrr.saku.ui.shared.MoneyText
 import com.dvnnfrr.saku.ui.shared.SegmentedTabs
 import com.dvnnfrr.saku.ui.shared.ShareRing
 import com.dvnnfrr.saku.ui.shared.periodLabel
+import com.dvnnfrr.saku.ui.theme.MoneySign
 import com.dvnnfrr.saku.ui.theme.SakuPreview
 import com.dvnnfrr.saku.ui.theme.SakuPreviewSurface
 import com.dvnnfrr.saku.ui.theme.SakuTheme
@@ -175,8 +176,7 @@ private fun SheetHeader(state: FilterSheetUiState) {
                 MoneyText(
                     money = state.total,
                     style = SakuTheme.typography.amountMedium,
-                    withPrefix = false,
-                    signed = true,
+                    sign = MoneySign.NET,
                 )
             }
         }
@@ -361,7 +361,6 @@ private fun LabelledFigure(label: String, amount: Money, type: TxnType, modifier
             money = amount,
             type = type,
             style = SakuTheme.typography.amountSmall,
-            withPrefix = false,
             spokenType = label,
         )
     }

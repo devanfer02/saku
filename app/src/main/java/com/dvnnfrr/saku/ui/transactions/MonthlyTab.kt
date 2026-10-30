@@ -33,6 +33,7 @@ import com.dvnnfrr.saku.domain.TxnType
 import com.dvnnfrr.saku.ui.filter.FilteredEmptyState
 import com.dvnnfrr.saku.ui.shared.EmptyState
 import com.dvnnfrr.saku.ui.shared.MoneyText
+import com.dvnnfrr.saku.ui.theme.MoneySign
 import com.dvnnfrr.saku.ui.theme.SakuPreview
 import com.dvnnfrr.saku.ui.theme.SakuPreviewSurface
 import com.dvnnfrr.saku.ui.theme.SakuTheme
@@ -114,7 +115,7 @@ private fun MonthLine(month: MonthRow, onClick: () -> Unit) {
             Text(
                 text = month.range.dottedSpanLabel(),
                 style = SakuTheme.typography.caption,
-                color = colors.ink3,
+                color = colors.ink2,
                 maxLines = 1,
             )
         }
@@ -172,18 +173,18 @@ private fun Figures(totals: PeriodTotals?) {
         Text(
             text = stringResource(R.string.monthly_nothing),
             style = SakuTheme.typography.caption,
-            color = SakuTheme.colors.ink3,
+            color = SakuTheme.colors.ink2,
             maxLines = 1,
         )
         return
     }
     Column(horizontalAlignment = Alignment.End) {
         Row(horizontalArrangement = Arrangement.spacedBy(SakuTheme.spacing.sm)) {
-            MoneyText(totals.income, type = TxnType.INCOME, style = SakuTheme.typography.amountSmall, withPrefix = false)
-            MoneyText(totals.expense, type = TxnType.EXPENSE, style = SakuTheme.typography.amountSmall, withPrefix = false)
+            MoneyText(totals.income, type = TxnType.INCOME, style = SakuTheme.typography.amountSmall, sign = MoneySign.FLOW)
+            MoneyText(totals.expense, type = TxnType.EXPENSE, style = SakuTheme.typography.amountSmall, sign = MoneySign.FLOW)
         }
         // A net, not a direction: signed and neutral, as in the period header.
-        MoneyText(totals.net, style = SakuTheme.typography.amountSmall, withPrefix = false, signed = true)
+        MoneyText(totals.net, style = SakuTheme.typography.amountSmall, sign = MoneySign.NET)
     }
 }
 
