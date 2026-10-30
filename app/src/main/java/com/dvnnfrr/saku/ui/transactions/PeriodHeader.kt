@@ -3,6 +3,8 @@ package com.dvnnfrr.saku.ui.transactions
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -18,21 +20,27 @@ import com.dvnnfrr.saku.domain.DateRange
 import com.dvnnfrr.saku.domain.Money
 import com.dvnnfrr.saku.domain.PeriodTotals
 import com.dvnnfrr.saku.domain.TxnType
+import com.dvnnfrr.saku.ui.shared.MoneyText
 import com.dvnnfrr.saku.ui.shared.PeriodBar
+import com.dvnnfrr.saku.ui.theme.MoneySign
 import com.dvnnfrr.saku.ui.theme.SakuPreview
 import com.dvnnfrr.saku.ui.theme.SakuPreviewSurface
 import com.dvnnfrr.saku.ui.theme.SakuTheme
-import com.dvnnfrr.saku.ui.theme.forDirection
 import com.dvnnfrr.saku.ui.theme.formatIdr
 import com.dvnnfrr.saku.ui.theme.formatIdrSigned
 
 /**
- * Month navigation over the three figures for that month.
+ * Period navigation over what is left over, with what came in and went out beside it.
  *
- * The Total is signed and takes a neutral ink rather than the income or expense
- * colour. It is a net, not a direction — colouring a negative net in the expense red
- * would say "you spent this", which is not what the number means.
+ * "Left over" is the largest figure on the screen because it is the question a cashbook
+ * answers first. It is a net, so it is signed and in neutral ink: colouring a negative
+ * one in the expense colour would say "you spent this", which is not what it means.
+ * In and Out are labelled, so they read unsigned in their direction's colour.
+ *
+ * In and Out sit beside the figure when they fit and wrap beneath it when they do not,
+ * which is what a large font scale on a narrow phone needs.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun PeriodHeader(
     range: DateRange,
@@ -47,6 +55,7 @@ fun PeriodHeader(
 ) {
     val colors = SakuTheme.colors
     val spacing = SakuTheme.spacing
+    val leftOverLabel = stringResource(R.string.label_left_over)
 
     Column(modifier = modifier.fillMaxWidth().background(colors.surface)) {
         PeriodBar(
@@ -58,29 +67,29 @@ fun PeriodHeader(
             trailing = trailing,
         )
 
-        Row(
+        FlowRow(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = spacing.screen, vertical = spacing.md),
-            horizontalArrangement = Arrangement.spacedBy(spacing.md),
+                .padding(start = spacing.screen, end = spacing.screen, bottom = spacing.md),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalArrangement = Arrangement.spacedBy(spacing.sm),
         ) {
-            Figure(
-                label = stringResource(R.string.label_income),
-                amount = totals.income,
-                type = TxnType.INCOME,
-                modifier = Modifier.weight(1f),
-            )
-            Figure(
-                label = stringResource(R.string.label_expenses),
-                amount = totals.expense,
-                type = TxnType.EXPENSE,
-                modifier = Modifier.weight(1f),
-            )
-            NetFigure(
-                label = stringResource(R.string.label_total),
-                amount = totals.net,
-                modifier = Modifier.weight(1f),
-            )
+            Column(modifier = Modifier.padding(end = spacing.lg)) {
+                Caption(leftOverLabel)
+                MoneyText(
+                    money = totals.net,
+                    sign = MoneySign.NET,
+                    style = SakuTheme.typography.amountLarge,
+                    contentDescription = "$leftOverLabel ${formatIdrSigned(totals.net)}",
+                )
+            }
+            Column(
+                modifier = Modifier.align(Alignment.Bottom),
+                verticalArrangement = Arrangement.spacedBy(spacing.xs),
+            ) {
+                Figure(stringResource(R.string.label_in), totals.income, TxnType.INCOME)
+                Figure(stringResource(R.string.label_out), totals.expense, TxnType.EXPENSE)
+            }
         }
 
         HorizontalDivider(thickness = 1.dp, color = colors.line)
@@ -88,29 +97,17 @@ fun PeriodHeader(
 }
 
 @Composable
-private fun Figure(label: String, amount: Money, type: TxnType, modifier: Modifier = Modifier) {
-    Column(modifier = modifier, horizontalAlignment = Alignment.Start) {
+private fun Figure(label: String, amount: Money, type: TxnType) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(SakuTheme.spacing.sm),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         Caption(label)
-        // Unsigned: the label already says which direction it is, and a "+" on the
-        // Income figure beside an unsigned Expenses figure reads as inconsistent.
-        Text(
-            text = formatIdr(amount, withPrefix = false),
+        MoneyText(
+            money = amount,
+            type = type,
             style = SakuTheme.typography.amountSmall,
-            color = SakuTheme.colors.forDirection(type),
-            maxLines = 1,
-        )
-    }
-}
-
-@Composable
-private fun NetFigure(label: String, amount: Money, modifier: Modifier = Modifier) {
-    Column(modifier = modifier, horizontalAlignment = Alignment.Start) {
-        Caption(label)
-        Text(
-            text = formatIdrSigned(amount, withPrefix = false),
-            style = SakuTheme.typography.amountSmall,
-            color = SakuTheme.colors.ink,
-            maxLines = 1,
+            contentDescription = "$label ${formatIdr(amount)}",
         )
     }
 }
@@ -130,8 +127,8 @@ private fun Caption(text: String) {
 private fun PeriodHeaderPreview() {
     SakuPreviewSurface(padded = false) {
         PeriodHeader(
-            range = DateRange.ofMonth(kotlinx.datetime.LocalDate(2026, 8, 1)),
-            totals = PeriodTotals(income = Money(8_000_000), expense = Money(5_061_400)),
+            range = DateRange.ofMonth(kotlinx.datetime.LocalDate(2026, 10, 1)),
+            totals = PeriodTotals(income = Money(16_500_000), expense = Money(14_026_400)),
             onPrevious = {},
             onNext = {},
         )

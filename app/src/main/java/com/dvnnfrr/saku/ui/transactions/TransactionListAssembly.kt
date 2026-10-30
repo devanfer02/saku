@@ -38,6 +38,7 @@ class DisplayIndex(
 ) {
     private val accountsById = accounts.associateBy { it.id }
     private val categoryNames = categories.associate { it.id to it.name }
+    private val categorySlots = categories.associate { it.id to it.colorSlot }
     private val subcategoryNames = subcategories.associate { it.id to it.name }
 
     /**
@@ -51,6 +52,8 @@ class DisplayIndex(
     }
 
     fun categoryName(id: Long?): String? = id?.let { categoryNames[it] }
+
+    fun categorySlot(id: Long?): ColorSlot? = id?.let { categorySlots[it] }
 
     fun subcategoryName(id: Long?): String? = id?.let { subcategoryNames[it] }
 }
@@ -66,6 +69,7 @@ fun Transaction.toRowUi(index: DisplayIndex): TransactionRowUi = TransactionRowU
     note = note?.takeIf { it.isNotBlank() },
     account = index.account(accountId) ?: UNKNOWN_ACCOUNT,
     toAccount = index.account(toAccountId),
+    categorySlot = index.categorySlot(categoryId),
 )
 
 /**

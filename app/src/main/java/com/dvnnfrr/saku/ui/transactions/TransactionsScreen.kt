@@ -32,6 +32,7 @@ import com.dvnnfrr.saku.ui.filter.FilterAction
 import com.dvnnfrr.saku.ui.filter.FilterBar
 import com.dvnnfrr.saku.ui.filter.FilterSheet
 import com.dvnnfrr.saku.ui.shared.SegmentedTabs
+import com.dvnnfrr.saku.ui.shared.periodName
 import com.dvnnfrr.saku.ui.theme.SakuPreview
 import com.dvnnfrr.saku.ui.theme.SakuPreviewSurface
 import com.dvnnfrr.saku.ui.theme.SakuTheme
@@ -171,6 +172,7 @@ fun TransactionsScreen(
                 onScrollHandled = onScrollHandled,
                 onRowClick = onRowClick,
                 onClearFilter = onClearFilter.takeIf { filtered },
+                emptyMessage = stringResource(R.string.transactions_empty, periodName(state.range)),
             )
 
             TransactionTab.CALENDAR -> state.calendar?.let { month ->

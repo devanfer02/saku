@@ -20,9 +20,15 @@ internal fun Month.shortLabel(): String = name.take(3).titleCase()
 
 private fun String.titleCase(): String = first() + drop(1).lowercase()
 
-/** Day header: `14 Fri Aug 2026`, as the spec spells it out. */
+/**
+ * Day header: `Thu 29 Oct`. No year, because the month header above the list already
+ * names it, and the weekday first because that is how a day gets remembered.
+ */
 fun LocalDate.dayHeaderLabel(): String =
-    "$dayOfMonth ${dayOfWeek.shortLabel()} ${month.shortLabel()} $year"
+    "${dayOfWeek.shortLabel()} $dayOfMonth ${month.shortLabel()}"
+
+/** A date standing on its own, where no header supplies the year: `29 Oct 2026`. */
+fun LocalDate.dateLabel(): String = "$dayOfMonth ${month.shortLabel()} $year"
 
 /**
  * A Monthly row's span: `28.09 ~ 04.10`, the full week even across a month edge, so a

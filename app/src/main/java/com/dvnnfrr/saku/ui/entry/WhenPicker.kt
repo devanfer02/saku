@@ -13,7 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.window.Dialog
 import com.dvnnfrr.saku.R
-import com.dvnnfrr.saku.ui.transactions.dayHeaderLabel
+import com.dvnnfrr.saku.ui.transactions.dateLabel
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
@@ -28,7 +28,7 @@ import kotlinx.datetime.toLocalDateTime
  * that can only record "now" would reproduce the gap it is meant to close.
  */
 fun LocalDateTime.whenLabel(): String =
-    "${date.dayHeaderLabel()}  ${hour.pad()}:${minute.pad()}"
+    "${date.dateLabel()}  ${hour.pad()}:${minute.pad()}"
 
 private fun Int.pad(): String = toString().padStart(2, '0')
 

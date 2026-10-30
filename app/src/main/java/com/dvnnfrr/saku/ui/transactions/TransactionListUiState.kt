@@ -65,6 +65,8 @@ data class TransactionRowUi(
     val account: AccountRef,
     /** Present only on a transfer, which shows both ends. */
     val toAccount: AccountRef?,
+    /** The category's colour for the row's dot. Null on a row with no category. */
+    val categorySlot: ColorSlot? = null,
 )
 
 /** An account reduced to what a row draws: a name and a swatch. */

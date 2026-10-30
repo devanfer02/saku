@@ -21,14 +21,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.dvnnfrr.saku.R
-import com.dvnnfrr.saku.domain.Money
-import com.dvnnfrr.saku.domain.TxnType
 import com.dvnnfrr.saku.ui.filter.FilteredEmptyState
 import com.dvnnfrr.saku.ui.shared.EmptyState
+import com.dvnnfrr.saku.ui.shared.MoneyText
 import com.dvnnfrr.saku.ui.shared.TransactionRow
 import com.dvnnfrr.saku.ui.theme.SakuTheme
-import com.dvnnfrr.saku.ui.theme.forDirection
-import com.dvnnfrr.saku.ui.theme.formatIdr
+import com.dvnnfrr.saku.ui.theme.MoneySign
 import kotlinx.datetime.LocalDate
 
 /**
@@ -48,6 +46,8 @@ fun DailyTab(
     listState: LazyListState = rememberLazyListState(),
     /** Set while a filter is active, so an empty month says the filter is why. */
     onClearFilter: (() -> Unit)? = null,
+    /** What an empty, unfiltered month says. It names the month, so the caller supplies it. */
+    emptyMessage: String = "",
 ) {
     LaunchedEffect(scrollTo, days) {
         val target = scrollTo ?: return@LaunchedEffect
@@ -67,7 +67,7 @@ fun DailyTab(
     if (days.isEmpty()) {
         EmptyState(
             icon = Icons.AutoMirrored.Filled.ReceiptLong,
-            message = stringResource(R.string.transactions_empty),
+            message = emptyMessage,
             modifier = modifier.fillMaxSize(),
         )
         return
@@ -91,12 +91,11 @@ fun DailyTab(
                     amount = row.amount,
                     type = row.type,
                     accountName = row.account.name,
-                    accountSlot = row.account.colorSlot,
+                    categorySlot = row.categorySlot,
                     category = row.categoryName,
                     subcategory = row.subcategoryName,
                     note = row.note,
                     toAccountName = row.toAccount?.name,
-                    toAccountSlot = row.toAccount?.colorSlot,
                     onClick = { onRowClick(row.id) },
                 )
             }
@@ -123,26 +122,19 @@ private fun DayHeader(section: DaySection) {
             color = colors.ink2,
             modifier = Modifier.weight(1f),
         )
-        // Zero subtotals are omitted rather than shown as 0, so a day of pure
-        // spending does not carry a meaningless "0" income figure beside it.
-        if (!section.income.isZero) {
-            Subtotal(section.income, TxnType.INCOME)
-        }
-        if (!section.expense.isZero) {
-            Subtotal(section.expense, TxnType.EXPENSE)
+        // The day's net, signed. A day of nothing but transfers has no flow to net, and
+        // a "Rp 0" beside it would read as a day that cancelled out.
+        val hasFlow = !section.income.isZero || !section.expense.isZero
+        if (hasFlow) {
+            MoneyText(
+                money = section.net,
+                sign = MoneySign.NET,
+                style = SakuTheme.typography.amountSmall,
+                color = colors.ink2,
+            )
         }
     }
     HorizontalDivider(thickness = 1.dp, color = colors.line)
-}
-
-@Composable
-private fun Subtotal(amount: Money, type: TxnType) {
-    Text(
-        text = formatIdr(amount, withPrefix = false),
-        style = SakuTheme.typography.amountSmall,
-        color = SakuTheme.colors.forDirection(type),
-        maxLines = 1,
-    )
 }
 
 /** Room for the floating add button, which is 56dp plus its 16dp margin. */
