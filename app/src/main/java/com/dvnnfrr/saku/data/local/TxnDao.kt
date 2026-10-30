@@ -291,4 +291,18 @@ interface TxnDao {
 
     @Query("DELETE FROM txn WHERE importBatchId = :batchId")
     suspend fun deleteByImportBatch(batchId: Long): Int
+
+    /**
+     * When the user last logged something, for the weekly reminder. A typed row counts
+     * from when it was saved; an imported row from its own timestamp, because the moment
+     * of import says nothing about logging. Adjustments are reconciling, not logging.
+     */
+    @Query(
+        """
+        SELECT MAX(CASE WHEN importBatchId IS NULL THEN createdAtEpochSec ELSE occurredAtEpochSec END)
+        FROM txn
+        WHERE type != 'ADJUSTMENT'
+        """,
+    )
+    suspend fun lastEnteredAtEpochSec(): Long?
 }

@@ -104,6 +104,9 @@ interface TransactionRepository {
     /** Every transaction, oldest first. For export, which cannot be range-scoped. */
     suspend fun all(): List<Transaction>
 
+    /** When the user last logged a transaction, or null for an empty ledger. See `TxnDao`. */
+    suspend fun lastEnteredAt(): Instant?
+
     suspend fun record(
         occurredAt: Instant,
         type: TxnType,

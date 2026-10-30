@@ -135,6 +135,9 @@ class RoomTransactionRepository(
 
     override suspend fun all(): List<Transaction> = txnDao.all().map { it.toDomain() }
 
+    override suspend fun lastEnteredAt(): Instant? =
+        txnDao.lastEnteredAtEpochSec()?.let(Instant::fromEpochSeconds)
+
     override suspend fun record(
         occurredAt: Instant,
         type: TxnType,
