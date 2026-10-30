@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Database import copy. Kept apart from strings.xml so the feature merges cleanly. -->
+<resources>
+    <string name="more_import_database">Import database (.db)</string>
+    <string name="more_import_database_subtitle">Merge a Saku database file into what is here</string>
+
+    <string name="database_import_intro">Reads a database file made for Saku and adds what this phone does not have yet. Your own data is not replaced, nothing is deleted or changed, and the transactions arrive as one entry in Import history, so they can be reversed.</string>
+    <string name="database_import_choose_file">Choose a database file</string>
+    <string name="database_import_reading">Reading %1$s…</string>
+    <string name="database_import_preview_file">File</string>
+    <string name="database_import_in_file_accounts">Accounts in file</string>
+    <string name="database_import_in_file_categories">Categories in file</string>
+    <string name="database_import_in_file_transactions">Transactions in file</string>
+    <string name="database_import_dates">Dates</string>
+    <string name="database_import_dates_value">%1$s to %2$s</string>
+    <string name="database_import_dates_none">No transactions</string>
+    <string name="database_import_nothing_new">Everything in this file is already here.</string>
+    <string name="database_import_action">Import</string>
+    <string name="database_import_failed">Nothing was imported: %1$s</string>
+    <string name="database_import_done">Imported %1$s</string>
+    <string name="database_import_done_note">To undo the transactions, reverse this import in Import history. Accounts and categories it created stay and can be archived.</string>
+
+    <string name="database_import_refused_unreadable">%1$s could not be read as a database.</string>
+    <string name="database_import_refused_not_saku">%1$s is not a Saku database.</string>
+    <string name="database_import_refused_version">This database was made for a different version of Saku (version %2$d; this Saku reads version %3$d), so %1$s was not imported.</string>
+    <string name="database_import_refused_layout">%1$s does not match Saku\'s database layout. It was built from a different schema.</string>
+    <string name="database_import_refused_invalid">%1$s has an unreadable %3$s on row %4$d of its %2$s table.</string>
+    <string name="database_import_refused_missing">%1$s has a %3$s on row %4$d of its %2$s table that points at nothing.</string>
+    <string name="database_import_refused_duplicate">%1$s lists \"%3$s\" twice in its %2$s table, so Saku cannot tell which one the transactions mean.</string>
+    <string name="database_import_refused_kind">%1$s has a transaction (row %2$d) whose category is of the wrong kind for its type.</string>
+</resources>

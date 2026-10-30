@@ -226,7 +226,7 @@ private fun Preview(state: RestoreUiState.Ready, onConfirm: () -> Unit, onDiscar
 }
 
 @Composable
-private fun Fact(label: String, value: String) {
+internal fun Fact(label: String, value: String) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(SakuTheme.spacing.md),
@@ -242,7 +242,7 @@ private fun Fact(label: String, value: String) {
 }
 
 @Composable
-private fun PrimaryButton(
+internal fun PrimaryButton(
     label: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -265,7 +265,7 @@ private fun PrimaryButton(
 }
 
 @Composable
-private fun ChooseAnother(onPickFile: () -> Unit) {
+internal fun ChooseAnother(onPickFile: () -> Unit) {
     TextButton(onClick = onPickFile) {
         Text(
             text = stringResource(R.string.restore_choose_another),
