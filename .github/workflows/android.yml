@@ -3,7 +3,8 @@ name: Android
 # Two lanes, deliberately not the same work twice.
 #
 #   pull_request -> verify. Tests, lint, debug build. This is the gate.
-#   push: master -> ship.   Signed release, no tests.
+#   push: master -> ship.   Signed release, no tests. One artifact: saku-release-apk.
+#   workflow_dispatch -> ship plus Maestro e2e.
 #
 # A squash merge produces a new SHA over content the PR already proved, so
 # re-running the suite on master buys nothing and delays the artifact. The
@@ -124,9 +125,10 @@ jobs:
 
   e2e:
     name: Maestro e2e
-    # Emulator runs are slow, so keep them off pull requests. They run on master
-    # after a merge, and on demand.
-    if: github.event_name != 'pull_request'
+    # On demand only. On master it failed the whole run (the runner's emulator never
+    # reached adb) and uploaded a second artifact, so a push to master read red and
+    # shipped two files. A push to master now yields one artifact, the release APK.
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

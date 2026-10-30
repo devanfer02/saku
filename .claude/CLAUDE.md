@@ -69,7 +69,7 @@ Then:
 
 Do not merge your own PR before the review comment has been posted and answered.
 
-CI runs unit tests, lint, both assembles, and the no-network-permission gate on every push and PR. Maestro e2e runs only on `master` and `workflow_dispatch`, so a flow that has never been executed will first run at merge time.
+CI has two lanes. A pull request into `master` runs unit tests, lint, the debug build and the no-network-permission gate. A push to `master` builds the signed release and uploads exactly one artifact, `saku-release-apk`. Maestro e2e runs only on `workflow_dispatch`; on push it failed on the runner's emulator and turned every master run red.
 
 ### Before calling a session done
 
