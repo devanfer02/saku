@@ -294,8 +294,8 @@ class ImportViewModelTest {
             mapOf(TxnType.EXPENSE to 1_160, TxnType.INCOME to 35, TxnType.TRANSFER to 6),
             summary.byType,
         )
-        assertEquals(listOf("BCA", "Cash", "Gopay", "RDPU SucorInvest", "Saham"), summary.accounts)
-        // Makan & Minum was seeded, so it was matched rather than created.
+        assertEquals(listOf("Card", "Cash", "Gopay", "RDPU SucorInvest", "Saham"), summary.accounts)
+        // Makan & Minum already existed, so it was matched rather than created.
         assertFalse("Makan & Minum" in summary.createdCategories)
         assertTrue("Pemberian" in summary.createdCategories)
     }

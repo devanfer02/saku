@@ -155,7 +155,7 @@ class TransactionEntryViewModelTest {
 
             vm.save()
             advanceUntilIdle()
-            val stored = transactions.observeInRange(august, zone).first().single()
+            val stored = transactions.observeInRange(august, zone, TransactionFilter.ALL).first().single()
             assertEquals(Money(25_000), stored.amount)
             assertEquals(created.form.categoryId, stored.categoryId)
             assertTrue(vm.state.value.saved)
