@@ -16,7 +16,7 @@ Your change is done when this passes:
 
 ```bash
 ./gradlew --no-daemon -Pkotlin.compiler.execution.strategy=in-process \
-  -Dorg.gradle.jvmargs=-Xmx1536m :app:testDebugUnitTest :app:assembleDebug
+  -Dorg.gradle.jvmargs=-Xmx1536m :app:lintDebug :app:testDebugUnitTest :app:assembleDebug
 ```
 
 The flags keep Gradle within reach of a 14 GB laptop. Plain `./gradlew testDebugUnitTest
