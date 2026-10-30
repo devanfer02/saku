@@ -6,6 +6,7 @@ import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,11 +25,12 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
@@ -97,65 +99,80 @@ fun CategoriesScreen(
     val listState = rememberLazyListState()
     val drag = rememberCategoryDrag(listState, actions)
 
-    Column(modifier = modifier.fillMaxSize()) {
-        Header(onBack = onBack, onCreate = actions.onCreateCategory)
-
-        SegmentedTabs(
-            options = listOf(
-                stringResource(R.string.categories_tab_expense),
-                stringResource(R.string.categories_tab_income),
-            ),
-            selectedIndex = state.kind.ordinal,
-            onSelect = { actions.onSelectKind(CategoryKind.entries[it]) },
-            modifier = Modifier.padding(horizontal = spacing.screen, vertical = spacing.sm),
-        )
-
-        when {
-            state.loading -> Unit
-
-            state.isEmpty -> EmptyState(
-                icon = Icons.Outlined.Category,
-                message = stringResource(R.string.categories_empty),
-                action = {
-                    TextButton(onClick = actions.onCreateCategory) {
-                        Text(
-                            text = stringResource(R.string.categories_new_category),
-                            color = SakuTheme.colors.accent,
-                            style = SakuTheme.typography.bodyStrong,
-                        )
-                    }
-                },
+    Box(modifier = modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            ScreenHeader(
+                title = stringResource(R.string.categories_title),
+                onBack = onBack,
+                backLabel = stringResource(R.string.screen_back),
             )
 
-            else -> LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
-                categoryRows(
-                    rows = state.active,
-                    state = state,
-                    actions = actions,
-                    drag = drag,
-                    reorderable = state.active.size > 1,
+            SegmentedTabs(
+                options = listOf(
+                    stringResource(R.string.categories_tab_expense),
+                    stringResource(R.string.categories_tab_income),
+                ),
+                selectedIndex = state.kind.ordinal,
+                onSelect = { actions.onSelectKind(CategoryKind.entries[it]) },
+                modifier = Modifier.padding(horizontal = spacing.screen, vertical = spacing.sm),
+            )
+
+            when {
+                state.loading -> Unit
+
+                state.isEmpty -> EmptyState(
+                    icon = Icons.Outlined.Category,
+                    message = stringResource(R.string.categories_empty),
                 )
 
-                if (state.archived.isNotEmpty()) {
-                    item(key = "archived-toggle") {
-                        ArchivedToggle(
-                            count = state.archived.size,
-                            expanded = state.showArchived,
-                            onToggle = { actions.onSetShowArchived(!state.showArchived) },
-                        )
-                    }
-                }
-
-                if (state.showArchived) {
+                else -> LazyColumn(
+                    state = listState,
+                    // Room under the last row, so the button never covers its menu.
+                    contentPadding = PaddingValues(bottom = FAB_CLEARANCE),
+                    modifier = Modifier.fillMaxSize(),
+                ) {
                     categoryRows(
-                        rows = state.archived,
+                        rows = state.active,
                         state = state,
                         actions = actions,
                         drag = drag,
-                        reorderable = false,
+                        reorderable = state.active.size > 1,
                     )
+
+                    if (state.archived.isNotEmpty()) {
+                        item(key = "archived-toggle") {
+                            ArchivedToggle(
+                                count = state.archived.size,
+                                expanded = state.showArchived,
+                                onToggle = { actions.onSetShowArchived(!state.showArchived) },
+                            )
+                        }
+                    }
+
+                    if (state.showArchived) {
+                        categoryRows(
+                            rows = state.archived,
+                            state = state,
+                            actions = actions,
+                            drag = drag,
+                            reorderable = false,
+                        )
+                    }
                 }
             }
+        }
+
+        // Create sits bottom-end, in the thumb's reach, as on Accounts; the header's top-right
+        // corner is the hardest place on the screen to reach one-handed.
+        FloatingActionButton(
+            onClick = actions.onCreateCategory,
+            containerColor = SakuTheme.colors.accent,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(spacing.lg),
+        ) {
+            Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.categories_new_category))
         }
     }
 
@@ -191,19 +208,6 @@ private fun LazyListScope.categoryRows(
 
         item(key = "divider-${row.id}") {
             HorizontalDivider(color = SakuTheme.colors.line)
-        }
-    }
-}
-
-@Composable
-private fun Header(onBack: (() -> Unit)?, onCreate: () -> Unit) {
-    ScreenHeader(title = stringResource(R.string.categories_title), onBack = onBack, backLabel = stringResource(R.string.screen_back)) {
-        IconButton(onClick = onCreate) {
-            Icon(
-                imageVector = Icons.Filled.Add,
-                contentDescription = stringResource(R.string.categories_new_category),
-                tint = SakuTheme.colors.accent,
-            )
         }
     }
 }
@@ -600,3 +604,6 @@ private fun CategoriesScreenEmptyPreview() {
         )
     }
 }
+
+/** A FAB is 56dp, inset 16dp from the edge; the list scrolls clear of it. */
+private val FAB_CLEARANCE = 88.dp
