@@ -132,7 +132,7 @@ fun RestoreScreen(
                 Text(
                     text = stringResource(R.string.restore_done_note),
                     style = SakuTheme.typography.caption,
-                    color = colors.ink3,
+                    color = colors.ink2,
                 )
             }
         }
@@ -184,7 +184,7 @@ private fun Preview(state: RestoreUiState.Ready, onConfirm: () -> Unit, onDiscar
             Text(
                 text = stringResource(R.string.restore_conflicts_note),
                 style = SakuTheme.typography.caption,
-                color = colors.ink3,
+                color = colors.ink2,
             )
         }
     }

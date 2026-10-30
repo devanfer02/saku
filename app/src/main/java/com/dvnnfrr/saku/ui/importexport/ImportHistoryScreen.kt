@@ -110,14 +110,14 @@ private fun BatchRow(batch: ImportBatch, zone: TimeZone, onReverse: () -> Unit) 
             Text(
                 text = batch.fileName,
                 style = SakuTheme.typography.bodyStrong,
-                color = if (batch.isReversed) colors.ink3 else colors.ink,
+                color = if (batch.isReversed) colors.ink2 else colors.ink,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
                 text = imported.readable(),
                 style = SakuTheme.typography.caption,
-                color = colors.ink3,
+                color = colors.ink2,
             )
             Text(
                 text = stringResource(

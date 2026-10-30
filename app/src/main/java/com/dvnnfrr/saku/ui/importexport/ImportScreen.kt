@@ -730,7 +730,7 @@ private fun MappingRow(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = title, style = SakuTheme.typography.bodyStrong, color = colors.ink)
-                Text(text = subtitle, style = SakuTheme.typography.caption, color = colors.ink3)
+                Text(text = subtitle, style = SakuTheme.typography.caption, color = colors.ink2)
                 hint?.let {
                     Text(text = it, style = SakuTheme.typography.caption, color = colors.warning)
                 }
@@ -803,7 +803,7 @@ private fun Caption(text: String) {
     Text(
         text = text,
         style = SakuTheme.typography.caption,
-        color = SakuTheme.colors.ink3,
+        color = SakuTheme.colors.ink2,
         modifier = Modifier.padding(horizontal = SakuTheme.spacing.md),
     )
 }

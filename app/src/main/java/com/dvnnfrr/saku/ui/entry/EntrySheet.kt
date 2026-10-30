@@ -302,7 +302,7 @@ private fun AmountDisplay(state: EntryUiState) {
                     append(if (form.amount.pendingOperator == AmountOperator.PLUS) " + " else " − ")
                 },
                 style = SakuTheme.typography.caption,
-                color = SakuTheme.colors.ink3,
+                color = SakuTheme.colors.ink2,
             )
         }
         // The running total, not the operand being typed. Showing the operand meant
@@ -344,7 +344,7 @@ private fun FieldRow(
             Text(
                 text = value ?: unsetLabel,
                 style = SakuTheme.typography.body,
-                color = if (value == null) SakuTheme.colors.ink3 else SakuTheme.colors.ink,
+                color = if (value == null) SakuTheme.colors.ink2 else SakuTheme.colors.ink,
             )
         }
         problem?.let { Problem(it) }

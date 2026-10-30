@@ -477,7 +477,7 @@ private fun SubcategoryRowItem(
             Text(
                 text = row.name,
                 style = SakuTheme.typography.body,
-                color = if (row.archived) colors.ink3 else colors.ink,
+                color = if (row.archived) colors.ink2 else colors.ink,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )

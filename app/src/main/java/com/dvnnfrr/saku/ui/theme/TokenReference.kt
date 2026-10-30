@@ -73,7 +73,7 @@ fun TokenReference(modifier: Modifier = Modifier) {
         Text("Body 15", style = SakuTheme.typography.body, color = colors.ink)
         Text("Body strong 15", style = SakuTheme.typography.bodyStrong, color = colors.ink)
         Text("Label 13", style = SakuTheme.typography.label, color = colors.ink2)
-        Text("Caption 12", style = SakuTheme.typography.caption, color = colors.ink3)
+        Text("Caption 12", style = SakuTheme.typography.caption, color = colors.ink2)
 
         Text("Amounts", style = SakuTheme.typography.title, color = colors.ink)
         Text(

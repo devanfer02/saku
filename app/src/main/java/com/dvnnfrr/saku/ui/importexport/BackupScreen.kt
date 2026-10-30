@@ -129,7 +129,7 @@ fun BackupScreen(
                     color = colors.expense,
                 )
                 state.detail?.let {
-                    Text(text = it, style = SakuTheme.typography.caption, color = colors.ink3)
+                    Text(text = it, style = SakuTheme.typography.caption, color = colors.ink2)
                 }
             }
         }
@@ -137,12 +137,12 @@ fun BackupScreen(
         Text(
             text = stringResource(R.string.backup_not_encrypted),
             style = SakuTheme.typography.caption,
-            color = colors.ink3,
+            color = colors.ink2,
         )
         Text(
             text = stringResource(R.string.export_local_only),
             style = SakuTheme.typography.caption,
-            color = colors.ink3,
+            color = colors.ink2,
         )
     }
 }
