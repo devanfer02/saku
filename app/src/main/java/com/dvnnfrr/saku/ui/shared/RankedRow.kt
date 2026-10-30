@@ -86,7 +86,9 @@ fun RankedRow(
                         text = it,
                         style = SakuTheme.typography.caption,
                         color = supportingColor ?: colors.ink2,
-                        maxLines = 1,
+                        // Two lines: at a large font scale the warning's instruction was
+                        // the part an ellipsis cut ("Set an opening ba…").
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
