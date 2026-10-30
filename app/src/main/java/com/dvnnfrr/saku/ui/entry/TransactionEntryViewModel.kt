@@ -1,5 +1,6 @@
 package com.dvnnfrr.saku.ui.entry
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dvnnfrr.saku.data.repository.AccountRepository
@@ -12,8 +13,12 @@ import com.dvnnfrr.saku.domain.CategoryKind
 import com.dvnnfrr.saku.domain.Transaction
 import com.dvnnfrr.saku.domain.TxnType
 import com.dvnnfrr.saku.sakuViewModelFactory
+import com.dvnnfrr.saku.domain.Money
 import com.dvnnfrr.saku.domain.NoteUsage
+import com.dvnnfrr.saku.receipt.OcrLine
+import com.dvnnfrr.saku.receipt.ReceiptParser
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -52,7 +57,14 @@ data class EntryUiState(
      * or editing a transaction with a note would pop suggestions nobody asked for.
      */
     val noteSuggestionsOpen: Boolean = false,
+    /** True from a scan's start until its reading arrives. */
+    val readingReceipt: Boolean = false,
+    /** What the last scan left to pick from. Null until a scan, and after the sheet reopens. */
+    val receipt: ReceiptPanel? = null,
 ) {
+    /** Scanning is for recording a new expense, the only entry a receipt describes. */
+    val canScanReceipt: Boolean get() = !form.isEditing && form.type == TxnType.EXPENSE
+
     val problems: List<EntryProblem> get() = if (showProblems) form.problems() else emptyList()
 
     fun problemFor(field: EntryField): EntryProblem? = problems.firstOrNull { it.field == field }
@@ -64,6 +76,9 @@ class TransactionEntryViewModel(
     private val accountRepository: AccountRepository,
     private val zone: TimeZone = TimeZone.currentSystemDefault(),
     private val clock: Clock = Clock.System,
+    /** Reads a receipt image's text on the device; see `data/receipt/ReceiptRecognizer`. */
+    private val readReceipt: suspend (Uri) -> List<OcrLine> = { emptyList() },
+    private val newCameraUri: () -> Uri = { Uri.EMPTY },
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(
@@ -130,6 +145,8 @@ class TransactionEntryViewModel(
         // effect that calls this. Reloading would discard everything typed so far,
         // even though the ViewModel survived and still holds it.
         if (opened && openedFor == editingId) return
+        // A reading still in flight belongs to the sheet that closed, not to this one.
+        scanJob?.cancel()
         opened = true
         openedFor = editingId
 
@@ -214,6 +231,40 @@ class TransactionEntryViewModel(
 
     fun dismissDuplicateNotice() = _state.update { it.copy(duplicateName = null) }
 
+    private var scanJob: Job? = null
+
+    /** Where the system camera should write the next receipt photo. */
+    fun cameraUri(): Uri = newCameraUri()
+
+    /**
+     * Reads the receipt at [uri] and fills the sheet by the rules in [applyReceipt].
+     *
+     * The fill is applied to the form as it is when the reading lands, not as it was when
+     * the scan began, so an amount typed while Saku was reading is kept.
+     */
+    fun scanReceipt(uri: Uri) {
+        _state.update { it.copy(readingReceipt = true) }
+        scanJob?.cancel()
+        scanJob = viewModelScope.launch {
+            val lines = runCatching { readReceipt(uri) }.getOrDefault(emptyList())
+            val reading = ReceiptParser.read(lines, now().date)
+            _state.update { current ->
+                val fill = applyReceipt(current.form, reading)
+                current.copy(form = fill.form, receipt = fill.panel, readingReceipt = false, noteSuggestionsOpen = false)
+            }
+        }
+    }
+
+    fun pickReceiptAmount(amount: Money) = updateForm { it.copy(amount = AmountInput.of(amount)) }
+
+    /** Adds a line Saku could not place to the note, and takes it off the list. */
+    fun addReceiptLine(line: String) = _state.update {
+        it.copy(
+            form = it.form.copy(note = appendToNote(it.form.note, line)),
+            receipt = it.receipt?.withoutLine(line),
+        )
+    }
+
     fun save() {
         val form = _state.value.form
         if (!form.canSave) {
@@ -271,7 +322,13 @@ class TransactionEntryViewModel(
 
     companion object {
         val Factory = sakuViewModelFactory {
-            TransactionEntryViewModel(transactions, categories, accounts)
+            TransactionEntryViewModel(
+                transactions,
+                categories,
+                accounts,
+                readReceipt = receipts::read,
+                newCameraUri = receipts::newCameraUri,
+            )
         }
     }
 }
