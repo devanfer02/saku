@@ -1,5 +1,6 @@
 package com.dvnnfrr.saku.ui.entry
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -15,8 +16,10 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalBottomSheet
@@ -50,8 +53,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.dvnnfrr.saku.R
 import com.dvnnfrr.saku.domain.TxnType
-import com.dvnnfrr.saku.ui.shared.AccountPicker
-import com.dvnnfrr.saku.ui.shared.CategoryPicker
+import com.dvnnfrr.saku.ui.shared.AccountPickerGrid
+import com.dvnnfrr.saku.ui.shared.CategoryPickerGrid
 import com.dvnnfrr.saku.ui.shared.ConfirmDialog
 import com.dvnnfrr.saku.ui.shared.SegmentedTabs
 import com.dvnnfrr.saku.ui.theme.SakuTheme
@@ -188,23 +191,27 @@ private fun EntrySheetBody(
                 )
             }
         }
-
-        ExpandedPicker(
-            open = openPicker,
-            state = state,
-            viewModel = viewModel,
-            onClose = { openPicker = OpenPicker.NONE },
-            onCreateCategory = { creatingCategory = true },
-        )
         }
 
-        Keypad(
-            onDigit = viewModel::onDigit,
-            onTripleZero = viewModel::onTripleZero,
-            onBackspace = viewModel::onBackspace,
-            onOperator = viewModel::onOperator,
-            onSave = viewModel::save,
-        )
+        // An open picker takes the keypad's place, as a grid, so the choices sit where
+        // the thumb already is and a long list needs little or no scrolling.
+        if (openPicker == OpenPicker.NONE) {
+            Keypad(
+                onDigit = viewModel::onDigit,
+                onTripleZero = viewModel::onTripleZero,
+                onBackspace = viewModel::onBackspace,
+                onOperator = viewModel::onOperator,
+                onSave = viewModel::save,
+            )
+        } else {
+            ExpandedPicker(
+                open = openPicker,
+                state = state,
+                viewModel = viewModel,
+                onClose = { openPicker = OpenPicker.NONE },
+                onCreateCategory = { creatingCategory = true },
+            )
+        }
     }
 
     if (creatingCategory) {
@@ -455,38 +462,73 @@ private fun ExpandedPicker(
     onCreateCategory: () -> Unit,
 ) {
     if (open == OpenPicker.NONE) return
-    val maxHeight = 260.dp
+    val colors = SakuTheme.colors
+    val titleRes = when (open) {
+        OpenPicker.ACCOUNT -> R.string.entry_field_account
+        OpenPicker.DESTINATION -> R.string.entry_field_destination
+        else -> R.string.entry_field_category
+    }
 
-    Column(modifier = Modifier.fillMaxWidth().heightIn(max = maxHeight)) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        HorizontalDivider(color = colors.lineStrong)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(colors.surfaceAlt)
+                .padding(start = SakuTheme.spacing.screen),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(titleRes),
+                style = SakuTheme.typography.bodyStrong,
+                color = colors.ink2,
+                modifier = Modifier.weight(1f),
+            )
+            IconButton(onClick = onClose) {
+                Icon(
+                    imageVector = Icons.Filled.Close,
+                    contentDescription = stringResource(R.string.entry_picker_close),
+                    tint = colors.ink2,
+                )
+            }
+        }
+        HorizontalDivider(color = colors.lineStrong)
+
+        val gridModifier = Modifier.heightIn(max = PICKER_MAX_HEIGHT)
         when (open) {
             // No create action on either account picker. Accounts are made on the
             // Accounts screen; wiring this to the shared NameDialog created a
             // *subcategory* named after the account the user thought they were adding.
-            OpenPicker.ACCOUNT -> AccountPicker(
+            OpenPicker.ACCOUNT -> AccountPickerGrid(
                 accounts = state.accounts,
                 selectedId = state.form.accountId,
                 onSelect = { viewModel.setAccount(it.id); onClose() },
-                onCreateNew = null,
+                modifier = gridModifier,
             )
 
-            OpenPicker.DESTINATION -> AccountPicker(
+            OpenPicker.DESTINATION -> AccountPickerGrid(
                 accounts = state.accounts.filterNot { it.id == state.form.accountId },
                 selectedId = state.form.toAccountId,
                 onSelect = { viewModel.setDestination(it.id); onClose() },
-                onCreateNew = null,
+                modifier = gridModifier,
             )
 
-            OpenPicker.CATEGORY -> CategoryPicker(
+            OpenPicker.CATEGORY -> CategoryPickerGrid(
                 categories = state.categories,
                 selectedId = state.form.categoryId,
                 onSelect = { viewModel.selectCategory(it.id); onClose() },
                 onCreateNew = onCreateCategory,
+                createLabel = stringResource(R.string.entry_new_category),
+                modifier = gridModifier,
             )
 
             OpenPicker.NONE -> Unit
         }
     }
 }
+
+/** Seven rows of cells; a longer list scrolls inside the grid, not the whole sheet. */
+private val PICKER_MAX_HEIGHT = 400.dp
 
 @Composable
 private fun NameDialog(
