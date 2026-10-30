@@ -1,6 +1,7 @@
 package com.dvnnfrr.saku.ui.stats
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,13 +12,18 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -34,11 +40,21 @@ import com.dvnnfrr.saku.ui.theme.SakuPreviewSurface
 import com.dvnnfrr.saku.ui.theme.SakuTheme
 import com.dvnnfrr.saku.ui.theme.forSlotOrNeutral
 import com.dvnnfrr.saku.ui.theme.formatIdr
+import kotlin.math.atan2
 import kotlin.math.sqrt
 
-/** One slice: its colour, already resolved, and its sweep from `pieSweeps`. */
+/**
+ * One slice: its colour, already resolved, its sweep from `pieSweeps`, and what the hole
+ * says about it once it is tapped.
+ */
 @Immutable
-data class PieSlice(val color: Color, val sweepTenths: Int)
+data class PieSlice(
+    val color: Color,
+    val sweepTenths: Int,
+    val name: String = "",
+    val percent: Int = 0,
+    val amount: Money = Money.ZERO,
+)
 
 /**
  * A ring of slices with a total in its hole, drawn above the ranked rows that are its
@@ -52,6 +68,12 @@ data class PieSlice(val color: Color, val sweepTenths: Int)
  * than the hole, and the old account donut showed only "Rp" when it was left to wrap, so
  * each line is shrunk until it fits the chord of the hole at that height. It never wraps
  * and never clips.
+ *
+ * Tapping a slice highlights it: it draws thicker, the rest fade, and the hole names it
+ * with its whole percent large and its amount small. Tapping it again, or the hole,
+ * returns to the total. The highlight is a passing view state, like a pressed row, so it
+ * lives here rather than in the ViewModel; it survives a theme change and resets when the
+ * slices change.
  */
 @Composable
 fun StatsPie(
@@ -72,6 +94,9 @@ fun StatsPie(
     val centerline = diameterPx - strokePx
     val gapDegrees = if (drawn.size < 2) 0f else gapPx / (Math.PI.toFloat() * centerline) * FULL_TURN
 
+    var highlighted by rememberSaveable(drawn) { mutableStateOf<Int?>(null) }
+    val focus = highlighted?.let(drawn::getOrNull)
+
     val textMeasurer = rememberTextMeasurer()
     val lineWidthPx = with(density) {
         val blockHeight = typography.label.lineHeight.toPx() + spacing.xs.toPx() +
@@ -84,6 +109,21 @@ fun StatsPie(
     val valueStyle = remember(centerValue, typography.amountLarge, lineWidthPx, textMeasurer) {
         textMeasurer.fitOnOneLine(centerValue, typography.amountLarge, lineWidthPx)
     }
+    // Three lines when a slice is focused, so the hole is narrower where they sit.
+    val focusWidthPx = with(density) {
+        val blockHeight = typography.label.lineHeight.toPx() + typography.amountLarge.lineHeight.toPx() +
+            typography.caption.lineHeight.toPx() + 2 * spacing.xs.toPx()
+        holeTextWidth(diameterPx - 2 * strokePx, blockHeight) - 2 * spacing.xs.toPx()
+    }
+    val focusName = focus?.name.orEmpty()
+    val focusNameStyle = remember(focusName, typography.label, focusWidthPx, textMeasurer) {
+        textMeasurer.fitOnOneLine(focusName, typography.label, focusWidthPx)
+    }
+    val focusAmount = focus?.let { formatIdr(it.amount) }.orEmpty()
+    val focusAmountStyle = remember(focusAmount, typography.caption, focusWidthPx, textMeasurer) {
+        textMeasurer.fitOnOneLine(focusAmount, typography.caption, focusWidthPx)
+    }
+    val description = focus?.let { "${it.name}, ${it.percent}%, $focusAmount" } ?: "$centerLabel $centerValue"
 
     Row(
         modifier = modifier
@@ -94,8 +134,15 @@ fun StatsPie(
         Box(
             modifier = Modifier
                 .size(PIE_SIZE)
-                // The rows below speak every slice; the pie itself speaks the total once.
-                .clearAndSetSemantics { contentDescription = "$centerLabel $centerValue" },
+                // The rows below speak every slice; the pie speaks the total, or the slice
+                // a sighted user has tapped.
+                .clearAndSetSemantics { contentDescription = description }
+                .pointerInput(drawn) {
+                    detectTapGestures { tap ->
+                        val index = sliceAt(tap, diameterPx, strokePx, drawn.map { it.sweepTenths })
+                        highlighted = if (index == null || index == highlighted) null else index
+                    }
+                },
             contentAlignment = Alignment.Center,
         ) {
             Canvas(modifier = Modifier.size(PIE_SIZE)) {
@@ -105,13 +152,36 @@ fun StatsPie(
                 val stroke = Stroke(width = strokePx)
                 drawArc(colors.surfaceAlt, 0f, FULL_TURN, useCenter = false, topLeft = topLeft, size = arcSize, style = stroke)
 
+                val focusStroke = Stroke(width = strokePx * FOCUS_STROKE_SCALE)
                 var start = START_DEGREES
-                for (slice in drawn) {
+                drawn.forEachIndexed { index, slice ->
                     val sweep = slice.sweepTenths / TENTHS
                     val visible = (sweep - gapDegrees).coerceAtLeast(MIN_VISIBLE_DEGREES)
-                    drawArc(slice.color, start, visible, useCenter = false, topLeft = topLeft, size = arcSize, style = stroke)
+                    val isFocus = index == highlighted
+                    val color = if (highlighted == null || isFocus) slice.color else slice.color.copy(alpha = FADED_ALPHA)
+                    drawArc(
+                        color, start, visible, useCenter = false, topLeft = topLeft, size = arcSize,
+                        style = if (isFocus) focusStroke else stroke,
+                    )
                     start += sweep
                 }
+            }
+            if (focus != null) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(spacing.xs),
+                ) {
+                    Text(focusName, style = focusNameStyle, color = colors.ink2, softWrap = false, maxLines = 1)
+                    Text(
+                        text = "${focus.percent}%",
+                        style = typography.amountLarge,
+                        color = colors.ink,
+                        softWrap = false,
+                        maxLines = 1,
+                    )
+                    Text(focusAmount, style = focusAmountStyle, color = colors.ink2, softWrap = false, maxLines = 1)
+                }
+                return@Box
             }
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -136,6 +206,28 @@ fun StatsPie(
             }
         }
     }
+}
+
+/**
+ * The index of the slice under [tap], or null for the hole or outside the ring. Angles
+ * run clockwise from twelve o'clock, as the slices are drawn. Half a ring's width of
+ * slack either side, so a thin slice is still a target.
+ */
+internal fun sliceAt(tap: Offset, diameterPx: Float, strokePx: Float, sweepTenths: List<Int>): Int? {
+    val radius = diameterPx / 2f
+    val dx = tap.x - radius
+    val dy = tap.y - radius
+    val distance = sqrt(dx * dx + dy * dy)
+    val outsideRing = distance < radius - strokePx * (1f + TAP_SLACK) || distance > radius + strokePx * TAP_SLACK
+    if (outsideRing || sweepTenths.isEmpty()) return null
+    val degrees = (Math.toDegrees(atan2(dy, dx).toDouble()) - START_DEGREES + FULL_TURN) % FULL_TURN
+    val tenths = (degrees * TENTHS).toInt()
+    var end = 0
+    sweepTenths.forEachIndexed { index, sweep ->
+        end += sweep
+        if (tenths < end) return index
+    }
+    return sweepTenths.lastIndex
 }
 
 /**
@@ -187,6 +279,10 @@ private const val START_DEGREES = -90f
 
 /** A sliver below the gap still shows as a tick rather than vanishing. */
 private const val MIN_VISIBLE_DEGREES = 0.5f
+
+private const val FOCUS_STROKE_SCALE = 1.3f
+private const val FADED_ALPHA = 0.3f
+private const val TAP_SLACK = 0.5f
 
 private val PIE_SIZE = 184.dp
 private val PIE_STROKE = 28.dp

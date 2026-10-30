@@ -222,7 +222,7 @@ private fun CategoryBody(
                 item(key = "sub-pie") {
                     StatsPie(
                         slices = drill.subcategories.mapIndexed { index, slice ->
-                            PieSlice(sliceColors[index], slice.sweepTenths)
+                            PieSlice(sliceColors[index], slice.sweepTenths, slice.name ?: unassigned, slice.percent, slice.total)
                         },
                         centerLabel = drill.title.orEmpty(),
                         centerValue = formatIdr(drill.total),

@@ -262,7 +262,9 @@ private fun Overview(
             item(key = "pie") {
                 val colors = SakuTheme.colors
                 StatsPie(
-                    slices = state.composition.rows.map { PieSlice(colors.forSlotOrNeutral(it.colorSlot), it.sweepTenths) },
+                    slices = state.composition.rows.map {
+                        PieSlice(colors.forSlotOrNeutral(it.colorSlot), it.sweepTenths, it.name ?: otherLabel, it.percent, it.total)
+                    },
                     centerLabel = stringResource(
                         when (state.side) {
                             StatsSide.EXPENSES -> R.string.stats_pie_spent
