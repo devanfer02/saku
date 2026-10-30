@@ -57,7 +57,8 @@ object XlsxReader {
      * workbook: whoever asked for it by name decides whether that is an error.
      */
     fun readAll(input: InputStream): List<SheetTable> = ReadableWorkbook(input, OPTIONS).use { workbook ->
-        workbook.sheets.toList().map { sheet ->
+        // Not Stream.toList(): that is API 34, and Saku runs from API 26.
+        workbook.sheets.iterator().asSequence().toList().map { sheet ->
             val rows = sheet.read()
             if (rows.isEmpty()) SheetTable(sheet.name, emptyList(), emptyList()) else toTable(sheet.name, rows)
         }
