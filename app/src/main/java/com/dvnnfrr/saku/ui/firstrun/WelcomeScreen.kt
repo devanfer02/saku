@@ -4,21 +4,18 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -29,8 +26,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
 import com.dvnnfrr.saku.R
 import com.dvnnfrr.saku.ui.shared.ScreenHeader
+import com.dvnnfrr.saku.ui.shared.ThumbZonePane
 import com.dvnnfrr.saku.ui.shell.MoreEntry
 import com.dvnnfrr.saku.ui.theme.SakuPreview
 import com.dvnnfrr.saku.ui.theme.SakuPreviewSurface
@@ -57,23 +56,20 @@ fun WelcomeScreen(
     val colors = SakuTheme.colors
     val spacing = SakuTheme.spacing
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = spacing.screen, vertical = spacing.xxl),
-        verticalArrangement = Arrangement.spacedBy(spacing.lg),
-    ) {
+    // Below centre on purpose: the three choices land around the middle of the screen,
+    // where a thumb reaches, and Skip sits under them rather than out of reach above.
+    ThumbZonePane(modifier = modifier, verticalBias = CHOICES_BIAS) {
         Text(
             text = stringResource(R.string.first_run_title),
             style = SakuTheme.typography.display,
             color = colors.ink,
-            modifier = Modifier.semantics { heading() },
+            modifier = Modifier.fillMaxWidth().semantics { heading() },
         )
         Text(
             text = stringResource(R.string.first_run_intro),
             style = SakuTheme.typography.body,
             color = colors.ink2,
+            modifier = Modifier.fillMaxWidth(),
         )
 
         ChoiceList(
@@ -130,26 +126,32 @@ fun SakuImportChooser(
     onBack: () -> Unit = {},
     onOpen: (MoreEntry) -> Unit = {},
 ) {
-    val spacing = SakuTheme.spacing
     Column(modifier = modifier.fillMaxSize()) {
         ScreenHeader(
             title = stringResource(R.string.first_run_saku_title),
             onBack = onBack,
             backLabel = stringResource(R.string.screen_back),
         )
-        ChoiceList(
-            choices = SAKU_IMPORTS.map { entry ->
-                Choice(
-                    icon = entry.icon,
-                    title = stringResource(entry.labelRes),
-                    subtitle = stringResource(entry.subtitleRes),
-                    onClick = { onOpen(entry) },
-                )
-            },
-            modifier = Modifier.padding(horizontal = spacing.screen, vertical = spacing.sm),
-        )
+        ThumbZonePane(modifier = Modifier.weight(1f), verticalBias = CHOICES_BIAS) {
+            ChoiceList(
+                choices = SAKU_IMPORTS.map { entry ->
+                    Choice(
+                        icon = entry.icon,
+                        title = stringResource(entry.labelRes),
+                        subtitle = stringResource(entry.subtitleRes),
+                        onClick = { onOpen(entry) },
+                    )
+                },
+            )
+        }
     }
 }
+
+/**
+ * Pushes the choices below centre, into the lower-middle of the screen. Tuned so the
+ * welcome screen's three rows straddle the midline on a Pixel 8 at the default font size.
+ */
+private const val CHOICES_BIAS = 0.35f
 
 /** What Import from Saku offers, in the order More lists them. */
 val SAKU_IMPORTS: List<MoreEntry> =
@@ -173,30 +175,46 @@ private fun ChoiceList(choices: List<Choice>, modifier: Modifier = Modifier) {
             .background(colors.surface),
     ) {
         choices.forEachIndexed { index, choice ->
-            ListItem(
-                headlineContent = {
-                    Text(choice.title, style = SakuTheme.typography.bodyStrong, color = colors.ink)
-                },
-                supportingContent = {
-                    Text(choice.subtitle, style = SakuTheme.typography.caption, color = colors.ink2)
-                },
-                leadingContent = { Icon(choice.icon, contentDescription = null, tint = colors.accent) },
-                trailingContent = {
-                    Icon(
-                        Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                        contentDescription = null,
-                        tint = colors.ink3,
-                    )
-                },
-                colors = ListItemDefaults.colors(containerColor = colors.surface),
-                modifier = Modifier
-                    .heightIn(min = SakuTheme.spacing.rowMinHeight)
-                    .clickable(onClick = choice.onClick),
-            )
+            ChoiceRow(choice)
             if (index != choices.lastIndex) HorizontalDivider(color = colors.line)
         }
     }
 }
+
+/**
+ * One row of a choice list. Not Material's ListItem: that one switches to its three-line
+ * layout, with a taller minimum and top-aligned content, whenever a subtitle wraps, so one
+ * row came out taller than its neighbours with empty space under its text. Here every row
+ * has the same minimum and padding, and the icon and arrow stay centred on the text.
+ */
+@Composable
+private fun ChoiceRow(choice: Choice) {
+    val colors = SakuTheme.colors
+    val spacing = SakuTheme.spacing
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = CHOICE_ROW_MIN_HEIGHT)
+            .clickable(onClick = choice.onClick)
+            .padding(horizontal = spacing.lg, vertical = spacing.md),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(spacing.lg),
+    ) {
+        Icon(choice.icon, contentDescription = null, tint = colors.accent)
+        Column(modifier = Modifier.weight(1f)) {
+            Text(choice.title, style = SakuTheme.typography.bodyStrong, color = colors.ink)
+            Text(choice.subtitle, style = SakuTheme.typography.caption, color = colors.ink2)
+        }
+        Icon(
+            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = colors.ink3,
+        )
+    }
+}
+
+/** Fits a title and a two-line subtitle, so a row whose subtitle wraps is no taller. */
+private val CHOICE_ROW_MIN_HEIGHT = 80.dp
 
 @SakuPreview
 @Composable
