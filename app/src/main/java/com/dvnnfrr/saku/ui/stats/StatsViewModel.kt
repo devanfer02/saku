@@ -2,12 +2,14 @@ package com.dvnnfrr.saku.ui.stats
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.dvnnfrr.saku.data.PeriodStore
 import com.dvnnfrr.saku.data.repository.AccountRepository
 import com.dvnnfrr.saku.data.repository.CategoryRepository
 import com.dvnnfrr.saku.data.repository.TransactionRepository
 import com.dvnnfrr.saku.domain.ColorSlot
 import com.dvnnfrr.saku.domain.DateRange
 import com.dvnnfrr.saku.domain.Money
+import com.dvnnfrr.saku.domain.MonthView
 import com.dvnnfrr.saku.domain.PeriodMode
 import com.dvnnfrr.saku.domain.PeriodTotals
 import com.dvnnfrr.saku.sakuViewModelFactory
@@ -45,6 +47,7 @@ class StatsViewModel(
     private val accountRepository: AccountRepository,
     private val categoryRepository: CategoryRepository,
     private val sharedFilter: SharedFilter,
+    private val periodStore: PeriodStore,
     private val zone: TimeZone = TimeZone.currentSystemDefault(),
     private val clock: Clock = Clock.System,
 ) : ViewModel() {
@@ -57,7 +60,7 @@ class StatsViewModel(
 
     private val selection = MutableStateFlow(
         Selection(
-            range = DateRange.currentMonth(today()),
+            range = DateRange.monthOf(today(), periodStore.current().activeStartDay),
             side = StatsSide.EXPENSES,
             drill = null,
         ),
@@ -184,7 +187,9 @@ class StatsViewModel(
     }
 
     val state: StateFlow<StatsUiState> =
-        combine(selection, periodData, drillData, stripData, stripExpanded) { current, period, drill, strip, expanded ->
+        combine(selection, periodData, drillData, stripData.combine(stripExpanded, ::Pair), periodStore.settings) {
+                current, period, drill, (strip, expanded), cycle ->
+            val monthly = period.key.range.mode == PeriodMode.MONTHLY
             StatsUiState(
                 // The period the data is for, not the one just selected — otherwise the
                 // header flips before its figures arrive.
@@ -196,10 +201,12 @@ class StatsViewModel(
                 // The previous month's strip stays up for the frame it takes the new one
                 // to land, rather than the strip vanishing and the list jumping under it.
                 // Leaving Monthly hides it at once.
-                strip = strip.takeIf { period.key.range.mode == PeriodMode.MONTHLY }.orEmpty(),
+                strip = strip.takeIf { monthly }.orEmpty(),
                 stripExpanded = expanded,
                 filter = period.key.filter,
                 drill = resolveDrill(current.drill, period, drill),
+                monthView = cycle.switchView.takeIf { monthly },
+                monthWindow = monthWindow(period.key.range),
                 loading = false,
             )
         }
@@ -233,8 +240,12 @@ class StatsViewModel(
 
     fun nextPeriod() = selection.update { it.copy(range = it.range.next()) }
 
-    /** A strip tap. Behaves as stepping does, so an open category drill stays open. */
-    fun selectMonth(month: DateRange) = selection.update { it.copy(range = DateRange.ofMonth(month.start)) }
+    /**
+     * A strip tap. Behaves as stepping does, so an open category drill stays open. The
+     * strip's ranges are already on the screen's month basis, calendar or pay month, so
+     * the tapped range is taken as it is rather than rebuilt from its start date.
+     */
+    fun selectMonth(month: DateRange) = selection.update { it.copy(range = month) }
 
     /**
      * Switching mode closes an open drill. The category is still there, but the figure
@@ -243,10 +254,13 @@ class StatsViewModel(
      */
     fun selectMode(mode: PeriodMode) = selection.update {
         if (it.range.mode == mode) it else it.copy(
-            range = rangeForMode(it.range, mode, today()),
+            range = rangeForMode(it.range, mode, today(), periodStore.current().activeStartDay),
             drill = null,
         )
     }
+
+    /** The switch writes to the store; the collector in `init` moves the range. */
+    fun selectMonthView(view: MonthView) = periodStore.setView(view)
 
     fun selectRange(start: LocalDate, endInclusive: LocalDate) = selection.update {
         // Reversed picks are straightened rather than rejected; DateRange requires
@@ -285,11 +299,22 @@ class StatsViewModel(
                 }
             }
         }
+        // A changed pay cycle or month view moves a Monthly range to the same month under
+        // the new basis. Weekly, Annually and Period ranges are not months and stay put. An
+        // open drill survives, as it does an arrow step: it is the same category, re-queried.
+        viewModelScope.launch {
+            periodStore.settings.collect { cycle ->
+                selection.update { current ->
+                    if (current.range.mode != PeriodMode.MONTHLY) return@update current
+                    current.copy(range = current.range.rebased(cycle.activeStartDay, today()))
+                }
+            }
+        }
     }
 
     companion object {
         val Factory = sakuViewModelFactory {
-            StatsViewModel(transactions, accounts, categories, filter)
+            StatsViewModel(transactions, accounts, categories, filter, period)
         }
     }
 }

@@ -30,12 +30,14 @@ import com.dvnnfrr.saku.R
 import com.dvnnfrr.saku.domain.ColorSlot
 import com.dvnnfrr.saku.domain.DateRange
 import com.dvnnfrr.saku.domain.Money
+import com.dvnnfrr.saku.domain.MonthView
 import com.dvnnfrr.saku.domain.PeriodMode
 import com.dvnnfrr.saku.domain.PeriodTotals
 import com.dvnnfrr.saku.ui.filter.FilterAction
 import com.dvnnfrr.saku.ui.filter.FilterBar
 import com.dvnnfrr.saku.ui.filter.FilterSheet
 import com.dvnnfrr.saku.ui.filter.FilteredEmptyState
+import com.dvnnfrr.saku.ui.paycycle.MonthViewSwitch
 import com.dvnnfrr.saku.ui.shared.EmptyState
 import com.dvnnfrr.saku.ui.shared.PeriodBar
 import com.dvnnfrr.saku.ui.shared.RankedRow
@@ -76,6 +78,7 @@ fun StatsScreen(
         onClearFilter = viewModel::clearFilter,
         onSelectMonth = viewModel::selectMonth,
         onToggleStrip = viewModel::toggleStrip,
+        onSelectMonthView = viewModel::selectMonthView,
         modifier = modifier,
     )
 
@@ -100,6 +103,7 @@ fun StatsScreen(
     onClearFilter: () -> Unit = {},
     onSelectMonth: (DateRange) -> Unit = {},
     onToggleStrip: () -> Unit = {},
+    onSelectMonthView: (MonthView) -> Unit = {},
 ) {
     var pickingRange by remember { mutableStateOf(false) }
 
@@ -113,6 +117,7 @@ fun StatsScreen(
             trailing = { FilterAction(active = state.filter.isActive, onClick = onOpenFilter) },
         )
         RangeDates(state.range)
+        MonthViewSwitch(view = state.monthView, onSelect = onSelectMonthView)
         FilterBar(filter = state.filter, onClear = onClearFilter)
 
         SegmentedTabs(
