@@ -2,6 +2,8 @@ package com.dvnnfrr.saku.ui.filter
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -134,6 +136,7 @@ fun FilterSheet(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SheetHeader(state: FilterSheetUiState) {
     val colors = SakuTheme.colors
@@ -148,10 +151,12 @@ private fun SheetHeader(state: FilterSheetUiState) {
         verticalArrangement = Arrangement.spacedBy(spacing.sm),
     ) {
         Text(text = period, style = SakuTheme.typography.heading, color = colors.ink, maxLines = 1)
-        Row(
+        // Flows, so at large font sizes the total moves under the rings instead of the
+        // three running into each other.
+        FlowRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.Top,
+            verticalArrangement = Arrangement.spacedBy(spacing.sm),
         ) {
             ShareRing(
                 label = incomeLabel,
