@@ -17,7 +17,7 @@
 
 ## 3. Fixtures and the accuracy bar
 
-- [ ] 3.1 (deferred: the spike's `OcrSpikeTest` produced the dumps; port it into androidTest when the fixtures are re-recorded) Instrumented `ReceiptAccuracyTest` (androidTest, not in CI): reads every image in `/data/local/tmp/receipts/` through `ReceiptRecognizer`, writes OCR lines and the reading per image, prints exact-total and pick-or-chip rates
+- [x] 3.1 (built during receipt-items, 1 Nov 2026, as androidTest `data/receipt/ReceiptAccuracyTest`, run with `am instrument`; earlier note: the spike's `OcrSpikeTest` produced the dumps; port it into androidTest when the fixtures are re-recorded) Instrumented `ReceiptAccuracyTest` (androidTest, not in CI): reads every image in `/data/local/tmp/receipts/` through `ReceiptRecognizer`, writes OCR lines and the reading per image, prints exact-total and pick-or-chip rates
 - [x] 3.2 Run it on the emulator over the CORD v2 test split (done with the spike's identical `OcrSpikeTest` output, ML Kit 16.0.1); save the OCR-line files as `app/src/test/resources/receipt/cord/*.txt` with `totals.tsv`, and add `CORD-NOTICE.md` (CC BY 4.0 credit to NAVER CLOVA, link, "OCR text derived from the images")
 - [x] 3.3 `ReceiptFixtureAccuracyTest` (JVM): fails below 70% exact or 75% pick-or-chip on the CORD fixtures and prints both rates (raised to 80% and 85% in 8.2)
 - [x] 3.4 Run the accuracy test over the local web sets: paper (Indomaret, Alfamart, Solaria, Waroeng Steak & Shake and others) and screenshots (m-BCA, BRImo, Livin', BNI, GoPay, OVO, ShopeePay, DANA); record per-store and per-app rates for the PR; commit nothing from either set
@@ -32,11 +32,11 @@
 
 ## 5. Entry sheet UI
 
-- [ ] 5.1 (copy done with `better-writing`; `impeccable` critique of the screenshots still to do) Load `impeccable` (Android) and `better-writing`; place Scan receipt in the lower half of the sheet for a new Expense only; write copy for the action, reading state, no-total message, chips and the Lines Saku could not place list
+- [x] 5.1 (superseded 1 Nov 2026: receipt-items removes the entry-sheet action; its Receipt screen had the impeccable, better-writing and accessibility review; earlier note: copy done with `better-writing`; `impeccable` critique of the screenshots still to do) Load `impeccable` (Android) and `better-writing`; place Scan receipt in the lower half of the sheet for a new Expense only; write copy for the action, reading state, no-total message, chips and the Lines Saku could not place list
 - [x] 5.2 ViewModel: scan events, reading state, result handling that never overwrites a typed amount; ViewModel tests with a fake recognizer
 - [x] 5.3 Stateless composables for the chips and the lines list; tapping a line appends `, <line>` to the note
 - [x] 5.4 Camera (`TakePicture`) and photo picker (`PickVisualMedia`) launchers; cancel leaves the sheet unchanged
-- [ ] 5.5 (labels added; the `android-accessibility` check is not run yet) TalkBack labels for the action, chips and lines; check with `android-accessibility`
+- [x] 5.5 (superseded 1 Nov 2026, see 5.1; the chips moved to the Receipt screen and were checked there; earlier note: labels added; the `android-accessibility` check is not run yet) TalkBack labels for the action, chips and lines; check with `android-accessibility`
 
 ## 6. End-to-end
 
@@ -50,7 +50,7 @@
 
 - [x] 7.1 Full build: `:app:lintDebug :app:testDebugUnitTest :app:assembleDebug` green
 - [x] 7.2 Update `README.md` features and the root `CLAUDE.md` package map with `receipt/`
-- [ ] 7.3 PR with APK sizes, CORD and web-set accuracy, and the e2e result; wait for checks
+- [ ] 7.3 (ships in one PR with transaction-tags, receipt-items, item-price-history and search-result-tabs) PR with APK sizes, CORD and web-set accuracy, and the e2e result; wait for checks
 
 ## 8. Accuracy to the owner's 80% minimum
 
