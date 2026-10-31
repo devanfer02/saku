@@ -43,6 +43,16 @@
 - **TalkBack wording found on the emulator.** "highest Rp 18.200 in 25 Oct 2026" read wrong; a date in the latest point's month is now spoken "on 25 Oct 2026", a month "in July".
 - **E2E rows by hand.** The Receipt screen is not on this branch, so tasks 3.x used rows typed in the entry sheet rather than scans; `adb input text` cannot type `×`, so the quantity row used ` x2`, which the same key reads.
 
+### 6. Item counter and the owner's notes (1 Nov 2026)
+- The owner: "exact lowercase matching would solve most issues", plus a counter. Matching stays exact; what changed is what counts as the same text.
+- Checked on the owner's own Money Manager export (1,553 expenses, local only, `LocalPriceItemsTest` with `SAKU_LOCAL_NOTES`, never committed). Before: 186 items bought twice or more covering 704 rows. After: 187 items covering 745 rows.
+  - The owner writes the count first (`Indomie 2X`, `Es Teh 2X`, `Dimsum 3 biji`, `20PCS`), so `itemKey` now drops those as quantities and `itemQuantity` reads them. `Es Teh` grew from 14 to 26 rows; `Indomie` now shows a price per pack.
+  - Spaces split words either way (`Esteh`, `Es Teh`), so the price key also drops spaces. Only price history does; the category dictionary keeps word keys, since learned names are stored by them.
+  - Notes are compared in their readable form, so `INDOMIE GRG SPCL` and "Indomie goreng special" meet.
+  - Near misses in the owner's data are different foods (`Nasi Goreng`, `Nasi Uduk`; `Bakso`, `Bakso Malang`), which is why nothing fuzzier (prefix, edit distance) joins keys.
+- The counter: search counts expense rows per key; items with 2 rows or more become chips, most rows first, and the first one's card shows. The chosen chip is ViewModel state, reset by a new query.
+- Price history from a row searches the note without its quantity, case kept, not the key.
+
 ## Risks / Trade-offs
 
 - [Misread item names split one item into two] → the user sees two items in search; renaming a note fixes it. Accepted.
