@@ -65,4 +65,14 @@ class ReceiptParserTest {
     fun `no lines gives an empty reading`() {
         assertTrue(ReceiptParser.read(emptyList(), TODAY).isEmpty)
     }
+
+    @Test
+    fun `a total misread by a look-alike digit is confirmed by the items`() {
+        val reading = ReceiptParser.read(
+            linesOf("INDOMARET", "BERAS PREMIUM 5KG 1 72.500 72.500", "SUSU UHT 1L 2 18.200 36.400", "TOTAL 108.988"),
+            TODAY,
+        )
+        assertEquals(Money(108_900), reading.total)
+        assertTrue(Money(108_988) in reading.otherAmounts)
+    }
 }

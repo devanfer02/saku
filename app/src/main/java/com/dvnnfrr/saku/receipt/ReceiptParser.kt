@@ -1,5 +1,6 @@
 package com.dvnnfrr.saku.receipt
 
+import com.dvnnfrr.saku.domain.Money
 import kotlinx.datetime.LocalDate
 
 object ReceiptParser {
@@ -27,9 +28,17 @@ object ReceiptParser {
             .filter { it.length >= 2 }
             .take(MAX_UNPLACED)
 
+        // The items confirm a total misread by a look-alike digit (`206.108` for 206.100):
+        // the till's rounder figure wins and the reading as printed stays a chip.
+        val net = ReceiptReading.EMPTY.copy(items = items.items, receiptDiscounts = items.receiptDiscounts, additions = items.additions).itemsNet
+        val read = total.total
+        val confirmed = read?.takeIf { items.items.isNotEmpty() && it != net && lookAlike(it.rupiah, net.rupiah) }
+            ?.let { Money(rounder(net.rupiah, it.rupiah)) }
+        val others = if (confirmed != null && confirmed != read) listOfNotNull(read) + total.others else total.others
+
         return ReceiptReading(
-            total = total.total,
-            otherAmounts = total.others,
+            total = confirmed ?: read,
+            otherAmounts = others,
             date = date?.date,
             store = store?.name,
             unplaced = unplaced,
