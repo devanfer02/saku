@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -83,10 +84,13 @@ fun PriceCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(spacing.md),
         ) {
+            // Which item, since search may hold several: "Unit price, Indomie Goreng Special".
             Text(
-                text = stringResource(R.string.price_title),
+                text = stringResource(R.string.price_title_of, price.name),
                 style = typography.label,
                 color = colors.ink2,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
             MoneyText(price.latest.unitPrice, style = typography.amountMedium)
@@ -190,6 +194,7 @@ private fun spokenSummary(price: PriceHistory): String {
     }
     return stringResource(
         R.string.price_spoken,
+        price.name,
         formatIdr(price.latest.unitPrice),
         formatIdr(price.lowest.unitPrice),
         spokenAt(price.lowest.date, latest),
@@ -230,7 +235,8 @@ private fun PriceCardPreview() {
     SakuPreviewSurface(padded = false) {
         PriceCard(
             price = PriceHistory(
-                itemKey = "MINYAK GORENG 2L",
+                itemKey = "MINYAKGORENG2L",
+                name = "Minyak Goreng 2L",
                 points = points,
                 lowest = points[0],
                 highest = points[2],

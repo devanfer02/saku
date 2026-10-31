@@ -4,7 +4,8 @@
         Price history action on an expense row. Kept out of strings.xml so concurrent
         changes do not collide.
     -->
-    <string name="price_title">Unit price</string>
+    <!-- The card header; %1$s is the item, such as Indomie Goreng Special. -->
+    <string name="price_title_of">Unit price, %1$s</string>
     <!-- An item chip above the price card: the item name and how many times it was bought. -->
     <plurals name="price_item_chip">
         <item quantity="one">%1$s · %2$d</item>
@@ -19,11 +20,11 @@
     <string name="price_expanded">Expanded</string>
     <string name="price_collapsed">Collapsed</string>
     <!--
-        What TalkBack reads for the whole card. %1$s latest price, %2$s lowest price,
-        %3$s when (price_in_month or price_on_day), %4$s highest price, %5$s when,
-        %6$s one of the price_spoken_* below.
+        What TalkBack reads for the whole card. %1$s the item, %2$s latest price, %3$s lowest
+        price, %4$s when (price_in_month or price_on_day), %5$s highest price, %6$s when,
+        %7$s one of the price_spoken_* below.
     -->
-    <string name="price_spoken">Unit price %1$s, lowest %2$s %3$s, highest %4$s %5$s, %6$s</string>
+    <string name="price_spoken">%1$s, unit price %2$s, lowest %3$s %4$s, highest %5$s %6$s, %7$s</string>
     <!-- %1$s a month, `July` or `December 2025`. -->
     <string name="price_in_month">in %1$s</string>
     <!-- %1$s a date in the latest point's month, `25 Oct 2026`. -->

@@ -69,6 +69,8 @@ data class PricePoint(val date: LocalDate, val unitPrice: Money)
  */
 data class PriceHistory(
     val itemKey: String,
+    /** The item as shown: the readable form of its newest note, without the quantity. */
+    val name: String,
     val points: List<PricePoint>,
     val lowest: PricePoint,
     val highest: PricePoint,
@@ -110,6 +112,7 @@ fun List<Transaction>.priceHistory(
     val change = latest.unitPrice - first.unitPrice
     return PriceHistory(
         itemKey = chosen.key,
+        name = chosen.name,
         points = points,
         // The most recent day at the extreme: "lowest in October" says when it was last that cheap.
         lowest = points.reversed().minBy { it.unitPrice },
