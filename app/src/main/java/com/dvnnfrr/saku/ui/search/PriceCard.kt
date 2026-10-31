@@ -192,20 +192,29 @@ private fun spokenSummary(price: PriceHistory): String {
         R.string.price_spoken,
         formatIdr(price.latest.unitPrice),
         formatIdr(price.lowest.unitPrice),
-        spokenWhen(price.lowest.date, latest),
+        spokenAt(price.lowest.date, latest),
         formatIdr(price.highest.unitPrice),
-        spokenWhen(price.highest.date, latest),
+        spokenAt(price.highest.date, latest),
         change,
     )
 }
+
+/** `in July`, or `on 25 Oct 2026` within the latest point's month. */
+@Composable
+private fun spokenAt(date: LocalDate, latest: LocalDate): String =
+    stringResource(
+        if (isSameMonth(date, latest)) R.string.price_on_day else R.string.price_in_month,
+        spokenWhen(date, latest),
+    )
+
+private fun isSameMonth(a: LocalDate, b: LocalDate): Boolean = a.year == b.year && a.month == b.month
 
 /**
  * The month of [date], with its year only when that differs from [latest]'s. Within the
  * latest point's own month a month name says nothing, so the day is spoken instead.
  */
 private fun spokenWhen(date: LocalDate, latest: LocalDate): String {
-    val sameMonth = date.year == latest.year && date.month == latest.month
-    if (sameMonth) return date.dateLabel()
+    if (isSameMonth(date, latest)) return date.dateLabel()
     return periodName(DateRange.ofMonth(date), reference = DateRange.ofMonth(latest))
 }
 
