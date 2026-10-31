@@ -60,6 +60,6 @@ Photos are pushed into the emulator's gallery from `data/`; the owner's own file
 
 ## 7. Done
 
-- [ ] 7.1 Run the local real set; at least 80% items right per source; record the rates here
+- [ ] 7.1 Run the local real set; at least 80% items right per source; record the rates here. Second pass: Indomaret 51/56 (91%), Gelael 36/44 (81%), Superindo 35/46 (76%), Giant 2/14 (14%); overlaps joined 9/10, gaps flagged 10/10. Superindo and Giant still under the bar; see design.md, "Real photos, second pass"
   - 1 Nov 2026: Indomaret 91%, Gelael 65%, Superindo 43%, Giant 14% (whole photos and overlap sets); overlaps clean 8/10, gaps flagged 10/10. Under the bar on three sources; what was tried is in design.md, "Real photos". Left open for the owner.
 - [x] 7.2 `lintDebug`, `testDebugUnitTest`, `assembleDebug` green; README, CLAUDE.md and the `receipt-scan` design updated
