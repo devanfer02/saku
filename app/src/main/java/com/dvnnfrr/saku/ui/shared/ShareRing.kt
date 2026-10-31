@@ -86,7 +86,7 @@ fun ShareRing(
             if (percent != null) {
                 Text(
                     text = "$percent%",
-                    style = SakuTheme.typography.label,
+                    style = SakuTheme.typography.label.cappedForSlot(),
                     color = colors.ink,
                     maxLines = 1,
                 )

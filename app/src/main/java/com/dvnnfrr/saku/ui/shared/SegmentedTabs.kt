@@ -89,7 +89,7 @@ fun SegmentedTabs(
             ) {
                 Text(
                     text = option,
-                    style = SakuTheme.typography.label,
+                    style = SakuTheme.typography.label.cappedForSlot(),
                     color = content,
                     textAlign = TextAlign.Center,
                     maxLines = 1,

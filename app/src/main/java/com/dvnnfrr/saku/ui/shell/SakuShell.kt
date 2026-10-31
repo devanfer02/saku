@@ -14,7 +14,6 @@ import androidx.compose.ui.Modifier
 import com.dvnnfrr.saku.R
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -24,6 +23,7 @@ import androidx.navigation.compose.rememberNavController
 import com.dvnnfrr.saku.domain.ThemePreference
 import com.dvnnfrr.saku.ui.navigation.SakuDestination
 import com.dvnnfrr.saku.ui.navigation.SakuNavHost
+import com.dvnnfrr.saku.ui.shared.cappedFontSize
 import com.dvnnfrr.saku.ui.navigation.navigateTo
 import com.dvnnfrr.saku.ui.theme.SakuPreview
 import com.dvnnfrr.saku.ui.theme.SakuPreviewSurface
@@ -101,9 +101,7 @@ private fun SakuShellPreview() {
  */
 @Composable
 private fun NavLabel(destination: SakuDestination) {
-    val scale = LocalDensity.current.fontScale
-    val base = MaterialTheme.typography.labelMedium.fontSize
-    val size = if (scale > NAV_LABEL_MAX_SCALE) base * (NAV_LABEL_MAX_SCALE / scale) else base
+    val size = cappedFontSize(MaterialTheme.typography.labelMedium.fontSize)
     val spoken = if (destination == SakuDestination.TRANSACTIONS) stringResource(R.string.nav_transactions_spoken) else null
     Text(
         text = stringResource(destination.labelRes),
@@ -113,5 +111,3 @@ private fun NavLabel(destination: SakuDestination) {
         modifier = if (spoken != null) Modifier.semantics { contentDescription = spoken } else Modifier,
     )
 }
-
-private const val NAV_LABEL_MAX_SCALE = 1.3f
