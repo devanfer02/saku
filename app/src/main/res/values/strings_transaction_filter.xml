@@ -13,9 +13,9 @@
     <string name="filter_clear_description">Clear the filter</string>
 
     <!-- Filter sheet -->
-    <string name="filter_tab_income">INCOME</string>
-    <string name="filter_tab_expenses">EXPENSES</string>
-    <string name="filter_tab_account">ACCOUNT</string>
+    <string name="filter_tab_income">Income</string>
+    <string name="filter_tab_expenses">Expenses</string>
+    <string name="filter_tab_account">Account</string>
     <string name="filter_all">All</string>
     <string name="filter_transfer_in">Transfer-In</string>
     <string name="filter_transfer_out">Transfer-Out</string>

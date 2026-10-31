@@ -83,7 +83,7 @@ fun SegmentedTabs(
                         role = Role.Tab,
                         onClick = { onSelect(index) },
                     )
-                    .defaultMinSize(minHeight = 40.dp)
+                    .defaultMinSize(minHeight = spacing.touchTarget)
                     .padding(horizontal = spacing.sm, vertical = spacing.sm),
                 contentAlignment = Alignment.Center,
             ) {
