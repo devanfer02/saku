@@ -11,13 +11,13 @@ Depends on `receipt-items`.
 
 ## 3. End-to-end on the emulator (mock data only, run by adb, screenshot per step)
 
-- [ ] 3.1 After 3 synthetic scans in different months, search `minyak goreng 2l`: card with 3 points, latest, lowest, highest, change
-- [ ] 3.2 `susu uht 1l` with a `×2` row: unit price halves that row
-- [ ] 3.3 Search `minyak` across two items: no card, results as before
-- [ ] 3.4 One matching row: no card
-- [ ] 3.5 Open an item row, tap Price history: search opens on its item name with the card
-- [ ] 3.6 Dark theme and font size 200%: card readable, nothing clipped
+- [x] 3.1 After 3 synthetic scans in different months, search `minyak goreng 2l`: card with 3 points, latest, lowest, highest, change
+- [x] 3.2 `susu uht 1l` with a `×2` row: unit price halves that row
+- [x] 3.3 Search `minyak` across two items: no card, results as before
+- [x] 3.4 One matching row: no card
+- [x] 3.5 Open an item row, tap Price history: search opens on its item name with the card
+- [x] 3.6 Dark theme and font size 200%: card readable, nothing clipped
 
 ## 4. Done
 
-- [ ] 4.1 `lintDebug`, `testDebugUnitTest`, `assembleDebug` green; README lists the feature
+- [x] 4.1 `lintDebug`, `testDebugUnitTest`, `assembleDebug` green; README lists the feature

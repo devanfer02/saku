@@ -36,6 +36,9 @@ money.
   across them and you get the total for that range plus every row, grouped by day.
 - **Search**: type "kopi" and you get the count, the totals, a month-by-month breakdown and the rows
   themselves. This replaces subcategories, which Saku does not ask for.
+- **Price history**: search one item, say "minyak goreng 2l", and a card shows its unit price on each
+  trip as a line, with the lowest, the highest and the change since the first. A note ending in `×2`
+  counts as two units. Price history on a saved expense opens the same search.
 - **Entry**: amount keypad with `+` and `-` for quick sums, note suggestions from what you typed
   before, and category and account pickers laid out as a grid.
 - **Tags**: optional labels that cut across categories. Mark the rice under Makan & Minum and the soap
