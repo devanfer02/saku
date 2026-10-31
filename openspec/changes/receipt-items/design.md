@@ -128,6 +128,58 @@ Calls made while building task groups 1 and 2, rejected options included.
 - CORD test split: 66% of 230 priced items right (price exact, name at least 80% alike), the price found for 82%. Printed, not held to a bar: CORD bills print modifiers, set menus and unit prices the labels treat differently, and the owner's case is a grocery receipt.
 - Totals: CORD 90% exact, 95% pick or chip, as before.
 
+## Built: saving and the Receipt screen (31 Oct to 1 Nov 2026)
+
+Calls made while building task groups 3 to 7, rejected options included.
+
+### Saving
+- `TransactionRepository.saveAll(rows, tagIds, words)` runs `record` per row inside one `withTransaction`, so every row gets the same validation as a typed entry and a failure rolls back the rows, their tag links and the learned words. Test: a third row with no category leaves nothing.
+- The dictionary is `observeItemCategories()`: expense note uses grouped by `itemKey`, then the usual category by the note-autocomplete rule (most used, ties to the latest). A new repository read rather than a second fold over `observeNoteUsage`, because pooling needs per-use rows, which `NoteUsage` has already folded away.
+- The account and tags of the last receipt save live in `ReceiptDefaultsStore` (SharedPreferences, like `ChartStyleStore`). An archived default falls back to the first active account; a deleted tag simply drops out.
+
+### Receipt screen
+- The ViewModel holds the read lines per photo and `ReceiptChoices`; everything shown comes from `assembleReceipt`. Choices for an item are keyed by the printed name's item key, not its position, so they survive Add next part, which reads the items again.
+- Photos are read one at a time behind a mutex, so parts join in the order taken. A photo with no text adds no part and says so. Only lines are kept; a camera photo's file is deleted by the recognizer once read.
+- Trans launches the camera or picker itself (a `ReceiptCameraViewModel` lends the file URI) and passes the first photo's URI as the route argument, so backing out of the picker never shows an empty Receipt screen. Add next part uses the same launchers, including the OpenDocument fallback.
+- After Save the Receipt screen sets the receipt's day on the Trans back stack entry's `SavedStateHandle`; Trans calls `openDay`, which opens Daily on that month scrolled to the day.
+- Item rows are not removable on this screen. A wrong row is fixed after saving, like any row. Fewer controls per row kept each row one target (name and category sheet).
+- One row with no total read saves the items' sum; with neither, Save is disabled and the screen says to add a photo or use +.
+- The missing-category sheet's pick fills every unset row and saves in the same tap ("Use for all unset"). Closing it leaves the rows to choose one by one.
+- The date is the receipt's when it lies within the last year and not in the future, else today, at the scan's time of day.
+- Lines Saku could not place show in One row mode and add to the note in a tap, as v1 did on the sheet. Item rows are no longer among them (`ReceiptParser` marks them used).
+- The other amounts (chips) sit under the total and replace it in one tap in both modes, so a misread total can be fixed before the check is trusted.
+- Accepted risk: the photo lines live in the ViewModel only. Rotation and backgrounding keep them (checked on the emulator); process death drops them and the route reads the first photo again.
+
+### Totals confirmed by the items
+- Found on the emulator: the synthetic receipts' dotted zero made totals read `332.408` and `206.108`, so the check showed "Rp 8 not found". When the items' net and the read total are look-alike readings of each other (`lookAlike`), the rounder one wins and the reading as printed stays a chip. CORD and the synthetic bars are unchanged.
+
+### Readable item names (owner, 1 Nov 2026)
+- `receipt/ItemName.kt`: `readableItemName(printed, learned)` expands whole tokens from a small built-in map of Indonesian till abbreviations (GRG to Goreng, SPCL to Special, and the rest the owner listed), then title-cases. Added from the test receipts only where certain: MKRONI, RMPT, HZLNT, SHRMP, JMB, and UHT kept as an acronym. Tokens with a digit keep their form upper case (2L, 1.8KG, 6X8GR). A trailing `x2`/`X2`/`×2` becomes ` ×2`. Unknown tokens are title-cased, never guessed. Readable names come back unchanged (tested).
+- Title case restarts after a separator other than an apostrophe: `G/F` stays, `EXT.MINYAK` reads `Ext.Minyak`.
+- The Receipt screen shows and saves readable names; the item sheet has a Name field with "Printed as ..." under it. Category lookup tries the readable name's key, then the printed name's, so rows saved before readable names still match. Past rows are never renamed.
+
+### Learned words (owner, 1 Nov 2026)
+- Lookup order per token: learned, built-in, title case. An edit is learned at Save, per item renamed and only when saving per item: equal word counts learn each changed word under its printed token (`BRS` to `Buris`), never a token with a digit; different counts learn the whole name under the printed name's item key. A later edit of the same token overwrites; editing back to the built-in word stores that.
+- Storage: `item_word(printed PK, readable, isWholeName, updatedAtEpochSec)`, added to schema 2 itself because version 2 has not shipped (tags are in the same PR). `MIGRATION_1_2` stays create-only; 2.json re-exported; identity hash `1248a98cbd015c80c4fc3fe4ee0fec3b`. Writes are upserts by key; nothing deletes.
+- Backup format 2 gains a `Words` sheet (Printed, Readable, Whole name). Read when present, so a format 2 file written before it still restores. Restore inserts missing words and never overwrites (insert-only, like tags). Database import reads `item_word` when the file has the table.
+- Emulator note: a device that ran an earlier v2 build has the old identity hash and would refuse to open. `/tmp/claude-1000/saku-v2/emu-db/set-hash.sh` adds the table (create only) and switches the hash; no shipped install is affected.
+
+### Layout and accessibility (checked against `android-accessibility`, impeccable `reference/android.md`, uiautomator dumps)
+- Thumb reach: Record as, Account, Tags, Add next part and Save sit in a bar at the bottom; the item list scrolls above it. Every choice opens as a bottom sheet. On a screen 600 dp wide or more (landscape) the bar is one row: three stacked rows left the list about 70 dp in landscape on the emulator.
+- The Scan button is a small FAB left of +. Material 3 says one FAB per screen; the owner chose option B, so the owner's brief wins. It uses the quiet surface colour so + stays the primary action.
+- Item rows are one node: "Indomie Goreng Special ×5, Rp 15.500, Makanan" (or "no category"), role Button, click label "Change name or category"; 56 dp minimum. Bar fields read "Account Card, change". Chips read "Use Rp 24.900 as the total". Store name and section titles are headings.
+- The reading line ("Reading photo 2…"), the check line and the warnings are polite live regions, so TalkBack announces a finished read and a changed check.
+- Icons beside text are decorative (null descriptions); the Scan FAB says "Scan a receipt".
+- Dark theme and font scale 200%: no clipping; long names wrap; the chips row scrolls sideways. Save uses the accent with `onPrimary`, as the keypad does.
+- Not checked: a live TalkBack pass and a physical device.
+
+### Real photos (task 7.1, local only)
+- Set: 7 web photos (`/tmp/claude-1000/saku-ocr/long-img`), each also cut into an overlap pair (15%) and a gap pair (12% missing). Read by ML Kit on the emulator with `ReceiptAccuracyTest` through `adb install -r` and `am instrument`; measured by `LocalReceiptItemsTest` (`RECEIPT_LONG_LOCAL_SET`), which reports and never fails.
+- Three photos hold two receipts side by side (indomaret_02, superindo_01, superindo_02). ML Kit reads across both, so rows mix two receipts: 2/11, 0/15 and 0/8 items as whole photos. A scan is one receipt, so these were cut into left and right halves (and their own overlap and gap pairs) and measured per receipt; the whole-photo figures are kept here only as the case Saku does not support.
+- Rate per source, whole photos plus overlap sets, items right (price exact, name at least 80% alike): Indomaret 51/56 (91%), Gelael 29/44 (65%), Superindo 20/46 (43%), Giant 2/14 (14%). Overlaps joined clean 8/10; gaps flagged 10/10. Under the 80% bar on three sources.
+- Tried and kept (bars unchanged): a quantity column before the name (`4 GULA PASIR 1 KG 1,300 5.200`, Gelael 25% to 65%); `-` and `:` read as a group separator (`5-280`, `1:300`); a long product code before the name stripped (Giant); weighed lines' grams and price per 100 g dropped (`830 25.5`); a name row carrying the item above's `HEMAT -x` on a curled photo (Superindo), which gives the discount to the item above and the name to the price row below.
+- Why the rest fails: Giant is crumpled with ticks drawn over it and ML Kit reads the names as noise (`MNGSHH SH KH` for NONGSHIM SHRMP KM); prices are right. Gelael is a 1992 dot-matrix print where digits are misread (`15335` for 1535). Superindo's curled halves shift the price column by a row; the grouping by a single tilt cannot follow a curl. Not tried: local tilt per neighbourhood in `receiptRows`, which is the next step for Superindo.
+
 ## Risks / Trade-offs
 
 - [A gap that is not flagged, because two different rows happen to look alike] → an overlap needs a row with an equal amount; the total check catches what the join misses.

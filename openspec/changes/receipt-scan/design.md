@@ -167,3 +167,11 @@ No data migration. The feature ships with the next release. Rollback is removing
 
 - Owner to confirm the release APK size after measuring (decision 1).
 - Decided 31 Oct 2026: e-wallet and mobile-banking screenshots are in scope (owner: "e wallet too, like mbca, gopay, ovo"). They have their own test set and per-app numbers.
+
+## Superseded by receipt-items (1 Nov 2026)
+
+The entry-sheet Scan receipt action described above was removed before release. Scanning now starts
+from the Scan button beside + on Trans and opens the Receipt screen (`ui/receipt/`), which keeps
+this change's reading of total, date and store, the chips (under the Receipt screen's total) and the
+unplaced lines (in One row mode). `ReceiptScanAssembly.kt`, `ReceiptScanParts.kt` and their tests
+were deleted. See `openspec/changes/receipt-items/design.md`.
