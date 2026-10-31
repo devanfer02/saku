@@ -87,7 +87,7 @@ class ReceiptAssemblyTest {
             rows.map { it.amount.rupiah },
         )
         assertEquals(206_100L, rows.sumOf { it.amount.rupiah })
-        assertEquals("SUSU UHT 1L ×2", rows[3].note)
+        assertEquals("Susu UHT 1L ×2", rows[3].note)
         assertTrue(rows.all { it.accountId == card.id && it.type == TxnType.EXPENSE })
         assertTrue(state.check!!.matches)
     }
@@ -115,6 +115,7 @@ class ReceiptAssemblyTest {
         val minyak = known.items[1]
         assertEquals(makan.id, minyak.categoryId)
         assertEquals("Makan & Minum", minyak.categoryName)
+        assertEquals("Minyak Goreng 2L", minyak.name)
         assertTrue(minyak.fromHistory)
         assertNull(known.items[5].categoryId)
 
@@ -252,5 +253,36 @@ class ReceiptAssemblyTest {
     fun `the one row note gains a line Saku could not place`() {
         assertEquals("Indomaret, TERIMA KASIH", appendToNote("Indomaret", "TERIMA KASIH"))
         assertEquals("TERIMA KASIH", appendToNote(" ", "TERIMA KASIH"))
+    }
+
+    @Test
+    fun `items show readable names, and a row saved under the printed name still finds its category`() {
+        val printed = cardDiscount.copy(items = listOf(ReceiptItem("INDOMIE GRG SPCL", 5, Money(15_500))), receiptDiscounts = emptyList())
+        val state = assemble(reading = printed, dictionary = mapOf("INDOMIE GRG SPCL" to makan.id))
+
+        val item = state.items.single()
+        assertEquals("Indomie Goreng Special", item.name)
+        assertEquals("Indomie Goreng Special ×5", item.note)
+        assertEquals(makan.id, item.categoryId)
+        assertTrue(item.fromHistory)
+    }
+
+    @Test
+    fun `an edited name is saved and teaches its changed word`() {
+        val state = assemble(choices = ReceiptChoices(nameByItem = mapOf("BERAS PREMIUM 5KG" to "Buris Premium 5KG")))
+
+        assertEquals("Buris Premium 5KG", state.items[2].note)
+        assertEquals(mapOf("BERAS" to "Buris"), learnedFrom(state).words)
+        assertTrue(learnedFrom(assemble()).isEmpty)
+    }
+
+    @Test
+    fun `a learned word is used on the next receipt`() {
+        val state = assembleReceipt(
+            cardDiscount, ReceiptChoices(), emptyMap(), listOf(makan), listOf(cash), emptyList(),
+            ReceiptDefaults(), 1, false, learned = com.dvnnfrr.saku.receipt.LearnedWords(words = mapOf("BERAS" to "Buris")),
+        )
+
+        assertEquals("Buris Premium 5KG", state.items[2].name)
     }
 }

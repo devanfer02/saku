@@ -144,7 +144,7 @@ class ReceiptViewModelTest {
         assertFalse(state.reading)
         assertEquals(1, state.photos)
         assertEquals("Indomaret", state.store)
-        assertEquals(listOf("INDOMIE GRG SPCL", "MINYAK GORENG 2L", "BERAS PREMIUM 5KG"), state.items.map { it.name })
+        assertEquals(listOf("Indomie Goreng Special", "Minyak Goreng 2L", "Beras Premium 5KG"), state.items.map { it.name })
     }
 
     @Test
@@ -158,7 +158,7 @@ class ReceiptViewModelTest {
         val state = vm.state.value
         assertEquals(2, state.photos)
         assertEquals(4, state.items.size)
-        assertEquals(1, state.items.count { it.name == "BERAS PREMIUM 5KG" })
+        assertEquals(1, state.items.count { it.name == "Beras Premium 5KG" })
         assertTrue(state.check!!.matches)
         assertEquals(emptyList<Int>(), state.gapsAfterPhoto)
     }
@@ -246,5 +246,25 @@ class ReceiptViewModelTest {
 
         assertEquals(1, cameraDiscarded)
         assertNull(vm.savedDay.value)
+    }
+
+    @Test
+    fun `a renamed item teaches its word, and the next scan uses it`() = runTest(dispatcher) {
+        val (_, makan) = seed()
+        val first = viewModel()
+        advanceUntilIdle()
+        first.setItemName("BERAS PREMIUM 5KG", "Buris Premium 5KG")
+        advanceUntilIdle()
+        first.save()
+        advanceUntilIdle()
+        first.useForAllUnset(makan)
+        advanceUntilIdle()
+        assertTrue(transactions.all().any { it.note == "Buris Premium 5KG" })
+
+        val second = viewModel(first = "content://photo/bottom")
+        advanceUntilIdle()
+        val names = second.state.value.items.map { it.name }
+        assertTrue(names.toString(), "Buris Premium 5KG" in names)
+        assertTrue(second.state.value.items.first { it.name == "Buris Premium 5KG" }.fromHistory)
     }
 }

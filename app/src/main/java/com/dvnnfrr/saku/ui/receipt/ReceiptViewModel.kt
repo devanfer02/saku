@@ -18,6 +18,7 @@ import com.dvnnfrr.saku.domain.Category
 import com.dvnnfrr.saku.domain.CategoryKind
 import com.dvnnfrr.saku.domain.Money
 import com.dvnnfrr.saku.domain.Tag
+import com.dvnnfrr.saku.receipt.LearnedWords
 import com.dvnnfrr.saku.receipt.OcrLine
 import com.dvnnfrr.saku.receipt.ReceiptParser
 import com.dvnnfrr.saku.ui.entry.EntryTag
@@ -98,13 +99,15 @@ class ReceiptViewModel(
         categoryRepository.observeActiveByKind(categoryKind),
         accountRepository.observeActive(),
         tagRepository.observeAll(),
-    ) { dictionary, categories, accounts, tags -> Lookups(dictionary, categories, accounts, tags) }
+        transactions.observeLearnedWords(),
+    ) { dictionary, categories, accounts, tags, learned -> Lookups(dictionary, categories, accounts, tags, learned) }
 
     private data class Lookups(
         val dictionary: Map<String, Long>,
         val categories: List<Category>,
         val accounts: List<Account>,
         val tags: List<Tag>,
+        val learned: LearnedWords,
     )
 
     val state: StateFlow<ReceiptUiState> =
@@ -120,6 +123,7 @@ class ReceiptViewModel(
                 photos = photos.parts.size,
                 readingPhoto = photos.reading > 0,
                 unreadable = photos.unreadable,
+                learned = lookups.learned,
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ReceiptUiState(reading = firstPhoto != null))
 
@@ -161,6 +165,10 @@ class ReceiptViewModel(
 
     fun setItemCategory(key: String, categoryId: Long) =
         choices.update { it.copy(categoryByItem = it.categoryByItem + (key to categoryId)) }
+
+    /** The user's name for an item; blank goes back to Saku's readable name. */
+    fun setItemName(key: String, name: String) =
+        choices.update { it.copy(nameByItem = it.nameByItem + (key to name)) }
 
     fun setOneRowCategory(categoryId: Long) = choices.update { it.copy(oneRowCategoryId = categoryId) }
 
@@ -239,7 +247,9 @@ class ReceiptViewModel(
             try {
                 // A typed tag is created here, at Save, so leaving the screen leaves no tag.
                 val tagIds = current.tags.map { it.id ?: tagRepository.findOrCreate(it.name) }.toSet()
-                transactions.saveAll(rows, tagIds)
+                // Words are learned only from rows actually saved per item.
+                val words = if (current.recordAs == RecordAs.PER_ITEM) learnedFrom(current) else LearnedWords.NONE
+                transactions.saveAll(rows, tagIds, words)
                 rememberDefaults(ReceiptDefaults(account.id, tagIds))
                 _savedDay.value = receiptDay(current.date, scannedAt.date)
             } finally {

@@ -43,7 +43,9 @@
     <!-- TalkBack on an item row: "MINYAK GORENG 2L, Rp 38.900, Makan & Minum" -->
     <string name="receipt_item_spoken">%1$s, %2$s, %3$s</string>
     <string name="receipt_item_spoken_unset">no category</string>
-    <string name="receipt_item_change">Change category</string>
+    <string name="receipt_item_change">Change name or category</string>
+    <string name="receipt_item_name">Name</string>
+    <string name="receipt_item_printed">Printed as %1$s</string>
 
     <!-- One row -->
     <string name="receipt_record_one">One row</string>

@@ -23,7 +23,7 @@ class ItemNameTest {
 
     @Test
     fun `a trailing quantity in any spelling becomes ×n`() {
-        assertEquals("Susu Uht ×3", readableItemName("SSU UHT X3"))
+        assertEquals("Susu UHT ×3", readableItemName("SSU UHT X3"))
         assertEquals("Teh Botol 450ML ×2", readableItemName("TEH BTL 450ML ×2"))
         assertEquals("Teh Botol 450ML ×2", readableItemName("teh btl 450ml x 2"))
     }
@@ -31,7 +31,7 @@ class ItemNameTest {
     @Test
     fun `unknown words are only title-cased, separators restart a word`() {
         assertEquals("Prendjak Teh Celu", readableItemName("PRENDJAK TEH CELU"))
-        assertEquals("G/F Uht F/CRM200", readableItemName("G/F UHT F/CRM200"))
+        assertEquals("G/F UHT F/CRM200", readableItemName("G/F UHT F/CRM200"))
         assertEquals("Ayam Ext.Minyak", readableItemName("AYAM EXT.MINYAK"))
     }
 

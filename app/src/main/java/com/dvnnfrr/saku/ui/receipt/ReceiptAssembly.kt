@@ -8,7 +8,10 @@ import com.dvnnfrr.saku.domain.Tag
 import com.dvnnfrr.saku.domain.TxnType
 import com.dvnnfrr.saku.domain.sum
 import com.dvnnfrr.saku.receipt.ReceiptReading
+import com.dvnnfrr.saku.receipt.LearnedWords
 import com.dvnnfrr.saku.receipt.itemKey
+import com.dvnnfrr.saku.receipt.learnedWords
+import com.dvnnfrr.saku.receipt.readableItemName
 import com.dvnnfrr.saku.receipt.spreadOverItems
 import com.dvnnfrr.saku.ui.entry.EntryTag
 import com.dvnnfrr.saku.ui.entry.entryTagsOf
@@ -35,6 +38,8 @@ enum class RecordAs { ONE_ROW, PER_ITEM }
 data class ReceiptChoices(
     val recordAs: RecordAs = RecordAs.PER_ITEM,
     val categoryByItem: Map<String, Long> = emptyMap(),
+    /** Names the user typed over Saku's readable name, by the printed name's item key. */
+    val nameByItem: Map<String, String> = emptyMap(),
     /** A chip tapped on the total; null keeps the total Saku picked. */
     val total: Money? = null,
     val oneRowCategoryId: Long? = null,
@@ -52,8 +57,14 @@ data class ReceiptDefaults(val accountId: Long? = null, val tagIds: Set<Long> = 
 
 /** One item as the screen lists it and as it would be saved. */
 data class ReceiptItemUi(
+    /** The printed name's [itemKey]; the user's choices for this item are kept under it. */
     val key: String,
+    /** The name to show and save: the user's edit, else [draft]. */
     val name: String,
+    /** The name as printed on the receipt (`INDOMIE GRG SPCL`). */
+    val printed: String = name,
+    /** The readable name Saku made from [printed] (`Indomie Goreng Special`). */
+    val draft: String = name,
     val quantity: Int,
     /** The line price for [quantity], as printed. */
     val price: Money,
@@ -67,6 +78,8 @@ data class ReceiptItemUi(
 ) {
     /** The note saved: the name, with ` ×n` when more than one was bought. */
     val note: String get() = if (quantity > 1) "$name ×$quantity" else name
+
+    val renamed: Boolean get() = name != draft
 }
 
 /** The items' sum after all discounts against the receipt total. */
@@ -151,6 +164,7 @@ fun assembleReceipt(
     photos: Int,
     readingPhoto: Boolean,
     unreadable: Boolean = false,
+    learned: LearnedWords = LearnedWords.NONE,
 ): ReceiptUiState {
     val active = categories.filterNot { it.archived }
     val activeIds = active.map { it.id }.toSet()
@@ -163,12 +177,18 @@ fun assembleReceipt(
     )
     val items = reading.items.mapIndexed { i, item ->
         val key = itemKey(item.name)
+        val draft = readableItemName(item.name, learned)
+        val name = choices.nameByItem[key]?.trim()?.takeIf { it.isNotEmpty() } ?: draft
         val picked = choices.categoryByItem[key]?.takeIf { it in activeIds }
-        val known = dictionary[key]?.takeIf { it in activeIds }
+        // By the readable name first; the printed one still finds rows saved before
+        // readable names, or before a word was learned.
+        val known = (dictionary[itemKey(name)] ?: dictionary[key])?.takeIf { it in activeIds }
         val categoryId = picked ?: known
         ReceiptItemUi(
             key = key,
-            name = item.name,
+            name = name,
+            printed = item.name,
+            draft = draft,
             quantity = item.quantity,
             price = item.price,
             discount = item.discount,
@@ -256,6 +276,11 @@ fun receiptRows(state: ReceiptUiState, scannedAt: LocalDateTime, zone: TimeZone)
         }
     }
 }
+
+/** What the user's name edits teach, for [TransactionRepository.saveAll] to store with the rows. */
+fun learnedFrom(state: ReceiptUiState): LearnedWords =
+    state.items.filter { it.renamed }
+        .fold(LearnedWords.NONE) { learned, item -> learned + learnedWords(item.printed, item.draft, item.name) }
 
 /** The gap row's note: `Indomaret other items`, or `Receipt other items` with no store. */
 fun gapNote(store: String?): String = "${store ?: "Receipt"} other items"

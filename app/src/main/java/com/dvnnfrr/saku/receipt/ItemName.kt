@@ -82,6 +82,8 @@ internal val BUILT_IN_WORDS: Map<String, String> = mapOf(
     "HZLNT" to "Hazelnut",
     "SHRMP" to "Shrimp",
     "JMB" to "Jumbo",
+    // Acronyms that stay upper case.
+    "UHT" to "UHT",
 )
 
 private val SPACES = Regex("""\s+""")

@@ -26,6 +26,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -164,6 +168,7 @@ fun ReceiptScreen(
                 }
             }
             PickerSheet(title = title, onDismiss = close) {
+                if (item != null) ItemNameField(item = item, onName = { viewModel.setItemName(item.key, it) })
                 CategoryPickerGrid(
                     categories = state.categories,
                     selectedId = selected,
@@ -216,6 +221,24 @@ fun ReceiptScreen(
 }
 
 private const val UNSET = "unset"
+
+/**
+ * The item's name, editable: Saku's readable name to start with, the printed one shown
+ * under it. A changed word is learned at Save for the next receipt.
+ */
+@Composable
+private fun ItemNameField(item: ReceiptItemUi, onName: (String) -> Unit) {
+    var text by rememberSaveable(item.key) { mutableStateOf(item.name) }
+    OutlinedTextField(
+        value = text,
+        onValueChange = { text = it; onName(it) },
+        singleLine = true,
+        label = { Text(stringResource(R.string.receipt_item_name)) },
+        supportingText = { Text(stringResource(R.string.receipt_item_printed, item.printed)) },
+        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Done),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = SakuTheme.spacing.screen),
+    )
+}
 
 /** A bottom sheet with a heading, so every choice opens in the lower half. */
 @OptIn(ExperimentalMaterial3Api::class)
