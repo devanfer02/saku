@@ -34,8 +34,8 @@ money.
   in each account today and pick a few categories. You can also skip it.
 - **Trans**: a day-by-day list, a monthly view and a calendar. On the calendar, tap two dates or drag
   across them and you get the total for that range plus every row, grouped by day.
-- **Search**: type "kopi" and you get the count, the totals, a month-by-month breakdown and the rows
-  themselves. This replaces subcategories, which Saku does not ask for.
+- **Search**: type "kopi" and you get the count and the totals, then Daily, Monthly and Yearly tabs:
+  the rows by day, each month, each year. Tap a year or month to open it. This replaces subcategories, which Saku does not ask for.
 - **Price history**: search one item, say "minyak goreng 2l", and a card shows its unit price on each
   trip as a line, with the lowest, the highest and the change since the first. A note ending in `×2`
   counts as two units. Price history on a saved expense opens the same search.
