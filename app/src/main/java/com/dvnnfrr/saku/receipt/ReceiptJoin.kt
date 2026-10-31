@@ -9,6 +9,7 @@ data class JoinedRows(val rows: List<ReceiptRow>, val gapsAfterPhoto: List<Int>)
 
 private const val WINDOW = 8
 private const val SIMILAR = 0.85
+private const val SIMILAR_SAME_AMOUNT = 0.75
 private const val MATCH_SHARE = 0.6
 private const val MAX_SKIP = 1
 private const val PHOTO_GAP = 40
@@ -78,11 +79,14 @@ private fun overlap(above: List<ReceiptRow>, below: List<ReceiptRow>): Pair<Int,
  * quantity row in the other), so a row with no amount is compared without amounts.
  */
 internal fun same(a: ReceiptRow, b: ReceiptRow): Boolean {
-    val amountA = amountsIn(a.text).lastOrNull()
-    val amountB = amountsIn(b.text).lastOrNull()
+    val amountA = rowAmount(a)
+    val amountB = rowAmount(b)
     if (amountA != null && amountB != null) {
-        if (!lookAlike(amountA.rupiah, amountB.rupiah)) return false
-        return similarity(a.text.filter(Char::isLetter).uppercase(), b.text.filter(Char::isLetter).uppercase()) >= SIMILAR
+        if (!lookAlike(amountA, amountB)) return false
+        // The same amount to the rupiah is evidence of its own, so the letters may differ a
+        // little more (`SMISS SOUPS` and `SWESS SOUPS`, a dot-matrix print read twice).
+        val needed = if (amountA == amountB) SIMILAR_SAME_AMOUNT else SIMILAR
+        return similarity(a.text.filter(Char::isLetter).uppercase(), b.text.filter(Char::isLetter).uppercase()) >= needed
     }
     val keyA = joinKey(withoutAmounts(a.text))
     val keyB = joinKey(withoutAmounts(b.text))
@@ -93,7 +97,11 @@ private fun withoutAmounts(text: String): String = text.replace(AMOUNT_IN_ROW, "
 
 private val AMOUNT_IN_ROW = Regex("""(?<![\d.,])-?\(?(?:rp\.?\s*)?\d{1,3}(?:[.,]\d{3})+\)?|(?<![\d.,])\d{4,7}(?![\d.,])""", RegexOption.IGNORE_CASE)
 
-private fun hasAmount(row: ReceiptRow): Boolean = amountsIn(row.text).isNotEmpty()
+private fun hasAmount(row: ReceiptRow): Boolean = rowAmount(row) != null
+
+// A dot-matrix print may read a group separator as `:` or `-` (`1:300`), which only the
+// item reader takes as an amount.
+private fun rowAmount(row: ReceiptRow): Long? = amountsIn(row.text).lastOrNull()?.rupiah ?: linePrice(row.text.trim())
 
 private fun joinKey(text: String): String = text.uppercase().filter { it.isLetterOrDigit() }
 
