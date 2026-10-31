@@ -106,6 +106,11 @@ class SchemaDatabaseFile(private val file: File) {
 
     fun txnTag(txnId: Long, tagId: Long) = insert("txn_tag", "txnId" to txnId, "tagId" to tagId)
 
+    fun itemWord(printed: String, readable: String, wholeName: Boolean = false) = insert(
+        "item_word", "printed" to printed, "readable" to readable, "isWholeName" to if (wholeName) 1 else 0,
+        "updatedAtEpochSec" to 0L,
+    )
+
     fun close(): File {
         db.close()
         return file

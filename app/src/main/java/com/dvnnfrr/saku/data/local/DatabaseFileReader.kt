@@ -122,7 +122,17 @@ object DatabaseFileReader {
                 DatabaseTxnTagRow(txnId = getLong(0), tagId = getLong(1))
             }
         },
+        words = if (!db.hasTable("item_word")) {
+            emptyList()
+        } else {
+            db.all("SELECT printed, readable, isWholeName FROM item_word ORDER BY printed") {
+                Triple(getString(0), getString(1), getInt(2) != 0)
+            }
+        },
     )
+
+    private fun SQLiteDatabase.hasTable(name: String): Boolean =
+        rawQuery("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?", arrayOf(name)).use { it.moveToFirst() }
 
     private fun <T> SQLiteDatabase.all(sql: String, row: Cursor.() -> T): List<T> =
         rawQuery(sql, null).use { cursor ->

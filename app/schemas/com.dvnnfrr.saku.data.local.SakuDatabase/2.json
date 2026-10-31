@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 2,
-    "identityHash": "f7bbcdec21beeb7050323443cbe7e4bc",
+    "identityHash": "1248a98cbd015c80c4fc3fe4ee0fec3b",
     "entities": [
       {
         "tableName": "account",
@@ -558,12 +558,50 @@
             ]
           }
         ]
+      },
+      {
+        "tableName": "item_word",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`printed` TEXT NOT NULL, `readable` TEXT NOT NULL, `isWholeName` INTEGER NOT NULL, `updatedAtEpochSec` INTEGER NOT NULL, PRIMARY KEY(`printed`))",
+        "fields": [
+          {
+            "fieldPath": "printed",
+            "columnName": "printed",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "readable",
+            "columnName": "readable",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isWholeName",
+            "columnName": "isWholeName",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAtEpochSec",
+            "columnName": "updatedAtEpochSec",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "printed"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
       }
     ],
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'f7bbcdec21beeb7050323443cbe7e4bc')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '1248a98cbd015c80c4fc3fe4ee0fec3b')"
     ]
   }
 }

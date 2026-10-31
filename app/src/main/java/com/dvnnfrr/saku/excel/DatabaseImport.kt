@@ -5,6 +5,7 @@ import com.dvnnfrr.saku.domain.CategoryKind
 import com.dvnnfrr.saku.domain.ColorSlot
 import com.dvnnfrr.saku.domain.Money
 import com.dvnnfrr.saku.domain.TagName
+import com.dvnnfrr.saku.receipt.LearnedWords
 import com.dvnnfrr.saku.domain.TxnType
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
@@ -83,6 +84,8 @@ data class DatabaseRows(
     /** Empty for a schema 1 file, which has no tag tables. */
     val tags: List<DatabaseTagRow> = emptyList(),
     val txnTags: List<DatabaseTxnTagRow> = emptyList(),
+    /** The `item_word` rows: printed, readable, whole name. Empty when the file has none. */
+    val words: List<Triple<String, String, Boolean>> = emptyList(),
 )
 
 /** Why a database file was not imported. Data, not prose; the screen words it. */
@@ -255,6 +258,10 @@ object DatabaseImport {
                 rejected = emptyList(),
             ),
             tags = tags,
+            words = LearnedWords(
+                words = rows.words.filterNot { it.third }.associate { it.first to it.second },
+                names = rows.words.filter { it.third }.associate { it.first to it.second },
+            ),
         )
 
         // The restore resolves a row's category by name and row type. The file knows the

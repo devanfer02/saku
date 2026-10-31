@@ -32,9 +32,9 @@ class BackupSheetsTest {
     // -- Contents of a backup -----------------------------------------------------
 
     @Test
-    fun `a backup has the six sheets in order, transactions first`() {
+    fun `a backup has the seven sheets in order, transactions first`() {
         val names = build().map { it.sheetName }
-        assertEquals(listOf("Saku", "Accounts", "Categories", "Subcategories", "Tags", "Backup"), names)
+        assertEquals(listOf("Saku", "Accounts", "Categories", "Subcategories", "Tags", "Words", "Backup"), names)
     }
 
     /** Scenario: Contents of a backup. Every record once, archived ones flagged. */
