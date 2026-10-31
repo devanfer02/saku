@@ -33,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -204,7 +205,10 @@ private fun Results(
     val dailyState = rememberLazyListState()
     val monthlyState = rememberLazyListState()
     val yearlyState = rememberLazyListState()
-    var priceExpanded by rememberSaveable { mutableStateOf(true) }
+    // Open by default, but folded at large font sizes, where the open card would push
+    // every result row off the screen.
+    val largeFont = LocalDensity.current.fontScale >= PRICE_CARD_FOLD_SCALE
+    var priceExpanded by rememberSaveable { mutableStateOf(!largeFont) }
     val tabs = listOf(
         stringResource(R.string.search_tab_daily),
         stringResource(R.string.search_tab_monthly),
@@ -369,3 +373,5 @@ private fun SearchScreenPreview() {
         )
     }
 }
+
+private const val PRICE_CARD_FOLD_SCALE = 1.3f
