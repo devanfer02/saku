@@ -39,7 +39,8 @@ private val DISCOUNT_WORD = pattern("""diskon|disc(?:ount)?\b|potongan|hemat|pro
 private val DISCOUNT_LABEL = pattern("""^[\W_]*(?:(?:diskon|disc(?:ount)?|potongan|hemat|promo|voucher|item|member)[\W_]*)+$""")
 private val ADDITION_WORD = pattern("""\btax\b|pajak|\bpb\s*1\b|\bppn\b|servi[cs]e?|\bsvc\b""")
 
-private val AMOUNT_TOKEN = pattern("""^\(?-?(?:rp\.?)?-?(\d{1,3}(?:[.,]\d{3})+|\d{3,7})(?:[.,]\d{2})?\)?-?$""")
+// A group separator may be read as `-` or `:` on a dot-matrix print (`5-280`, `1:300`).
+private val AMOUNT_TOKEN = pattern("""^\(?-?(?:rp\.?)?-?(\d{1,3}(?:[.,:\-]\d{3})+|\d{3,7})(?:[.,]\d{2})?\)?-?$""")
 private val QTY_TOKEN = pattern("""^(\d{1,3})(?:[x×]|pcs?)?$""")
 private val TIMES_TOKEN = pattern("""^[x×@*]$""")
 private val GLUED_TIMES = pattern("""(?<=\s|^)([x×@])(?=\d)""")
@@ -47,6 +48,13 @@ private val RP_TOKEN = pattern("""^rp\.?$""")
 private val LEAD_QTY = pattern("""^(\d{1,2})\s*[x×]?\s+(?=\p{L})""")
 private val O_IN_NUMBER = Regex("""(?<=\d)[oO]|[oO](?=\d)""")
 private val LETTERS = Regex("""\p{L}.*\p{L}""")
+private val PRODUCT_CODE = Regex("""^\d{5,}\s+(?=\S*\p{L})""")
+private val WEIGHT = Regex("""^\d{2,4}$""")
+private val PER_WEIGHT = Regex("""^\d{1,3}[.,]\d{1,2}$""")
+private val PLAIN_QTY = Regex("""^\d{1,3}$""")
+
+/** A name row that also carries the discount of the item above it: `BANGO KECAP HEMAT -12.270`. */
+private val NAME_THEN_DISCOUNT = pattern("""^(.*\p{L}.*?)\s+(?:hemat|diskon|disc|potongan)[\W_]*$""")
 
 private const val MIN_ITEM = 100L
 
@@ -72,12 +80,25 @@ private fun readTail(text: String): Tail? {
     if (price < MIN_ITEM) return null
     val negative = last.startsWith("-") || last.startsWith("(") || last.endsWith(")") || last.endsWith("-")
 
+    // A weighed line prints grams and the price per 100 g before the price: `830 25.5`.
+    if (tokens.size >= 3 && PER_WEIGHT.matches(tokens.last()) && WEIGHT.matches(tokens[tokens.lastIndex - 1])) {
+        tokens.removeAt(tokens.lastIndex)
+        tokens.removeAt(tokens.lastIndex)
+    }
+
     var unit = tokens.lastOrNull()?.let(::amountOf)?.takeIf { it >= MIN_ITEM }
     if (unit != null) tokens.removeAt(tokens.lastIndex)
     val times = tokens.lastOrNull()?.let { TIMES_TOKEN.matches(it) } == true
     if (times) tokens.removeAt(tokens.lastIndex)
     var quantity = tokens.lastOrNull()?.let { QTY_TOKEN.matchEntire(it) }?.groupValues?.get(1)?.toIntOrNull()
     if (quantity != null) tokens.removeAt(tokens.lastIndex)
+
+    // `QTY NAME UNIT TOTAL`, the quantity in a column of its own before the name.
+    if (quantity == null && !times && unit != null && tokens.size >= 2 && PLAIN_QTY.matches(tokens.first()) &&
+        LETTERS.containsMatchIn(tokens[1])
+    ) {
+        quantity = tokens.removeAt(0).toInt()
+    }
 
     // A lone number before the price is part of the name (`MIE 200 11.200`) unless it is
     // the unit price repeated or a quantity of one.
@@ -99,6 +120,7 @@ private fun amountOf(token: String): Long? =
 private fun cleanName(name: String): String = name
     .split(' ')
     .joinToString(" ") { token -> if (token.any(Char::isDigit)) token.replace(O_IN_NUMBER, "0") else token }
+    .replace(PRODUCT_CODE, "")
     .trim { it.isWhitespace() || it in ":.-=*#" }
     .replace(Regex("""\s+"""), " ")
 
@@ -139,6 +161,8 @@ fun pickItems(rows: List<ReceiptRow>, totalRow: Int?): ItemsPick {
     val items = mutableListOf<ReceiptItem>()
     val used = mutableSetOf<Int>()
     var pendingName: Int? = null
+    // The name of a pending row when it is only part of the row's text.
+    var pendingText: String? = null
     var nameRowItem: Int? = null
     var zoneEnd = rows.size
 
@@ -151,9 +175,12 @@ fun pickItems(rows: List<ReceiptRow>, totalRow: Int?): ItemsPick {
         val tail = readTail(text)
         if (tail == null) {
             pendingName = index.takeIf { isName(text) && !ZONE_END.containsMatchIn(text) }
+            pendingText = null
             continue
         }
         val pending = pendingName
+        val pendingNameText = pendingText
+        pendingText = null
         val priceAbove = nameRowItem.takeIf { it == index - 1 }
         pendingName = null
         nameRowItem = null
@@ -171,6 +198,15 @@ fun pickItems(rows: List<ReceiptRow>, totalRow: Int?): ItemsPick {
                     used += index
                 }
             }
+            items.isNotEmpty() && pending == null && NAME_THEN_DISCOUNT.matches(tail.name) -> {
+                // A curled photo shifts the price column down a row: the next item's name
+                // sits beside this item's discount, and its price on the row below.
+                val last = items.removeAt(items.lastIndex)
+                items += last.copy(discount = last.discount + Money(repairZeros(tail.price)))
+                used += index
+                pendingName = index
+                pendingText = NAME_THEN_DISCOUNT.matchEntire(tail.name)?.groupValues?.get(1)
+            }
             items.isNotEmpty() && isDiscount(tail) && pending == null -> {
                 val last = items.removeAt(items.lastIndex)
                 items += last.copy(discount = last.discount + Money(repairZeros(tail.price)))
@@ -178,7 +214,7 @@ fun pickItems(rows: List<ReceiptRow>, totalRow: Int?): ItemsPick {
             }
             tail.name.isEmpty() && pending != null && !tail.negative -> {
                 val (quantity, price) = priced(tail, null)
-                items += ReceiptItem(cleanName(rows[pending].text), quantity, Money(price))
+                items += ReceiptItem(cleanName(pendingNameText ?: rows[pending].text), quantity, Money(price))
                 used += pending
                 used += index
             }
