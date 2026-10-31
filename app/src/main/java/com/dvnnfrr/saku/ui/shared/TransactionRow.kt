@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
@@ -149,25 +148,18 @@ fun TransactionRow(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(spacing.xs),
         ) {
-            Text(
-                text = labels.primary,
-                style = SakuTheme.typography.bodyStrong,
-                color = colors.ink,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            // The tags sit beside the category, both say what the row is, so the note line
+            // below keeps the full width. Each gets at most half; a short category leaves
+            // the tags right after it.
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = labels.secondary,
-                    style = SakuTheme.typography.caption,
-                    color = colors.ink2,
+                    text = labels.primary,
+                    style = SakuTheme.typography.bodyStrong,
+                    color = colors.ink,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier
-                        .weight(1f, fill = false)
-                        .semantics { contentDescription = labels.spokenSecondary },
+                    modifier = Modifier.weight(1f, fill = false),
                 )
-                // Its own Text after the note, so a long note is cut and the tags are not.
                 rowTagsLabel(tags)?.let { label ->
                     Text(
                         text = SEPARATOR + label,
@@ -175,13 +167,20 @@ fun TransactionRow(
                         color = colors.ink2,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        // Capped width, no weight: the note keeps the rest of the row.
                         modifier = Modifier
-                            .widthIn(max = TAGS_MAX_WIDTH)
+                            .weight(1f, fill = false)
                             .semantics { contentDescription = spokenTags ?: label },
                     )
                 }
             }
+            Text(
+                text = labels.secondary,
+                style = SakuTheme.typography.caption,
+                color = colors.ink2,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.semantics { contentDescription = labels.spokenSecondary },
+            )
         }
 
         MoneyText(
@@ -258,6 +257,3 @@ private fun TransactionRowPreview() {
         }
     }
 }
-
-/** The widest the tags after a note may get; past it they end with an ellipsis. */
-private val TAGS_MAX_WIDTH = 140.dp
