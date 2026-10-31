@@ -133,4 +133,17 @@ class ReceiptItemsTest {
         val reading = read("Transaksi berhasil!", "15 Okt 2026 • 13:33", "Pembayaran ke", "Kopi Tuku Cipete", "Total Bayar Rp46.882")
         assertEquals(emptyList<ReceiptItem>(), reading.items)
     }
+
+    @Test
+    fun `a quantity column receipt reads a glued quantity and a misread unit price`() {
+        val pick = items(
+            "4 TEPUNG BERAS 1 KG 1,300 5.200",
+            "2 KECAP ASIN 995 1,990",
+            "1 SABUN MANDI 2,090 2.090",
+            "1GARAM HALUS 500 935 935",
+            "2 2208 TISU WAJAH 15520 3.040",
+        )
+        assertEquals(ReceiptItem("GARAM HALUS 500", 1, Money(935)), pick.items[3])
+        assertEquals(ReceiptItem("2208 TISU WAJAH", 1, Money(3_040)), pick.items[4])
+    }
 }

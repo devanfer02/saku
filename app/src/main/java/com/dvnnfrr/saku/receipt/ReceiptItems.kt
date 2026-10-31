@@ -52,11 +52,14 @@ private val PRODUCT_CODE = Regex("""^\d{5,}\s+(?=\S*\p{L})""")
 private val WEIGHT = Regex("""^\d{2,4}$""")
 private val PER_WEIGHT = Regex("""^\d{1,3}[.,]\d{1,2}$""")
 private val PLAIN_QTY = Regex("""^\d{1,3}$""")
+private val QTY_FIRST = Regex("""^\d{1,3}\s+\S*\p{L}""")
+private val GLUED_QTY = Regex("""^(\d{1,2})\p{L}""")
 
 /** A name row that also carries the discount of the item above it: `BANGO KECAP HEMAT -12.270`. */
 private val NAME_THEN_DISCOUNT = pattern("""^(.*\p{L}.*?)\s+(?:hemat|diskon|disc|potongan)[\W_]*$""")
 
 private const val MIN_ITEM = 100L
+private const val MIN_COLUMN_ROWS = 4
 
 /**
  * A row read from its right end: a line price, then maybe a unit price, an `x` and a
@@ -71,7 +74,7 @@ private data class Tail(
     val times: Boolean,
 )
 
-private fun readTail(text: String): Tail? {
+private fun readTail(text: String, quantityColumn: Boolean = false): Tail? {
     val tokens = text.replace(GLUED_TIMES, "$1 ").trim().split(Regex("""\s+"""))
         .filterNot { RP_TOKEN.matches(it) }
         .toMutableList()
@@ -92,18 +95,36 @@ private fun readTail(text: String): Tail? {
     if (times) tokens.removeAt(tokens.lastIndex)
     var quantity = tokens.lastOrNull()?.let { QTY_TOKEN.matchEntire(it) }?.groupValues?.get(1)?.toIntOrNull()
     if (quantity != null) tokens.removeAt(tokens.lastIndex)
+    // With a quantity column, a number before the unit price is part of the name
+    // (`GULA HALUS 500 935 935`) unless it checks out as a quantity.
+    if (quantityColumn && quantity != null && !times && unit != null && !lookAlike(quantity * unit, price)) {
+        tokens += quantity.toString()
+        quantity = null
+    }
 
     // `QTY NAME UNIT TOTAL`, the quantity in a column of its own before the name.
     if (quantity == null && !times && unit != null && tokens.size >= 2 && PLAIN_QTY.matches(tokens.first()) &&
-        LETTERS.containsMatchIn(tokens[1])
+        (LETTERS.containsMatchIn(tokens[1]) || quantityColumn && tokens.drop(1).any { LETTERS.containsMatchIn(it) })
     ) {
         quantity = tokens.removeAt(0).toInt()
+    }
+    // On such a receipt the quantity may be read glued to the name (`1GULA`, `16ULA` for
+    // `1 GULA`); it is split off only when quantity times unit price checks out.
+    if (quantityColumn && quantity == null && !times && unit != null && tokens.isNotEmpty()) {
+        val glued = GLUED_QTY.find(tokens.first())
+        val split = glued?.let { (1..it.groupValues[1].length).firstOrNull { n -> lookAlike(it.groupValues[1].take(n).toLong() * unit, price) } }
+        if (glued != null && split != null) {
+            quantity = tokens.first().take(split).toInt()
+            tokens[0] = tokens.first().drop(split)
+        }
     }
 
     // A lone number before the price is part of the name (`MIE 200 11.200`) unless it is
     // the unit price repeated or a quantity of one.
     if (quantity == null && !times && unit != null && lookAlike(unit, price)) quantity = 1
-    if (quantity == null && !times && unit != null && unit != price) {
+    // A number before the price is the unit price on a receipt with a quantity column,
+    // even when it was misread and does not check out; elsewhere it belongs to the name.
+    if (quantity == null && !times && unit != null && unit != price && !quantityColumn) {
         tokens += unit.toString()
         unit = null
     }
@@ -139,6 +160,19 @@ internal fun rowQuality(text: String): Int {
     return if (quantity * unit == tail.price) 3 else 2
 }
 
+/** The line price a row ends in, read as an item row is (`1:300` included), or null. */
+internal fun linePrice(text: String): Long? = readTail(text)?.price
+
+/*
+ * A receipt printed as `QTY NAME UNIT TOTAL` (a dot-matrix till, Gelael) has most of its
+ * priced rows starting with a plain quantity and a unit price before the line price.
+ */
+private fun hasQuantityColumn(rows: List<ReceiptRow>): Boolean {
+    val named = rows.map { it.text.trim() }.filter { text -> readTail(text)?.let { LETTERS.containsMatchIn(it.name) } == true }
+    val columned = named.count { text -> QTY_FIRST.containsMatchIn(text) && readTail(text)?.unit != null }
+    return named.size >= MIN_COLUMN_ROWS && columned * 2 >= named.size
+}
+
 /** Quantity and price of an item, kept only when quantity times unit price checks out. */
 private fun priced(tail: Tail, leadQuantity: Int?): Pair<Int, Long> {
     val quantity = tail.quantity ?: leadQuantity
@@ -165,6 +199,7 @@ fun pickItems(rows: List<ReceiptRow>, totalRow: Int?): ItemsPick {
     var pendingText: String? = null
     var nameRowItem: Int? = null
     var zoneEnd = rows.size
+    val quantityColumn = hasQuantityColumn(rows)
 
     for ((index, row) in rows.withIndex()) {
         val text = row.text.trim()
@@ -172,7 +207,7 @@ fun pickItems(rows: List<ReceiptRow>, totalRow: Int?): ItemsPick {
             zoneEnd = index
             break
         }
-        val tail = readTail(text)
+        val tail = readTail(text, quantityColumn)
         if (tail == null) {
             pendingName = index.takeIf { isName(text) && !ZONE_END.containsMatchIn(text) }
             pendingText = null
