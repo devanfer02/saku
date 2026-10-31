@@ -177,4 +177,17 @@ class ReceiptItemsTest {
         assertEquals(listOf("SUSU KENTAL 370G", "SAUS TIRAM 135ML", "MINYAK WIJEN"), pick.items.map { it.name })
         assertEquals(listOf(Money(2_100), Money(1_000), Money.ZERO), pick.items.map { it.discount })
     }
+
+    @Test
+    fun `a receipt printing quantity unit and total puts back a lost line price`() {
+        val pick = items(
+            "SUSU KENTAL 370G 2 12.500 25.000",
+            "SAUS TIRAM 135ML 1 9.990 9.990",
+            "TEH CELUP 25S 2 10.790",
+            "KACANG MEDE 1 16.690 6",
+            "ROTI TAWAR 1 7.390 200",
+        )
+        assertEquals(listOf(Money(21_580), Money(16_690), Money(7_390)), pick.items.drop(2).map { it.price })
+        assertEquals(listOf("TEH CELUP 25S", "KACANG MEDE", "ROTI TAWAR"), pick.items.drop(2).map { it.name })
+    }
 }

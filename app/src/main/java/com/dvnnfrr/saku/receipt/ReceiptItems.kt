@@ -57,6 +57,7 @@ private val GLUED_MINUS = Regex("""(?<=\p{L})-(?=\d)""")
 private val CUT_PRICE = Regex("""^\d{1,3}[.,]\d{1,2}$""")
 private val SEPARATED = Regex("""^\d{1,3}(?:[.,]\d{3})+$""")
 private val INNER_DISCOUNT = pattern("""(?<=\s|^)(?:hema[t1il|]|diskon|potongan)[\s:]*-?\(?(\d{1,3}(?:[.,]\d{3})+)\)?(?=\s|$)""")
+private val STRAY = Regex("""^\d{1,2}$""")
 private val GLUED_QTY = Regex("""^(\d{1,2})\p{L}""")
 
 /** A name row that also carries the discount of the item above it: `BANGO KECAP HEMAT -12.270`. */
@@ -79,11 +80,12 @@ private data class Tail(
     val times: Boolean,
 )
 
-private fun readTail(text: String, quantityColumn: Boolean = false): Tail? {
+private fun readTail(text: String, layout: Layout = Layout.FREE): Tail? {
+    val quantityColumn = layout == Layout.QUANTITY_FIRST
     val tokens = text.replace(GLUED_TIMES, "$1 ").replace(GLUED_MINUS, " -").trim().split(Regex("""\s+"""))
         .filterNot { RP_TOKEN.matches(it) }
         .toMutableList()
-    val last = tokens.removeLastOrNull()?.let { uncut(it, tokens) } ?: return null
+    val last = tokens.removeLastOrNull()?.let { uncut(it, tokens) }?.let { lostTotal(it, tokens, layout) } ?: return null
     val price = amountOf(last) ?: return null
     if (price < MIN_ITEM) return null
     val negative = last.startsWith("-") || last.startsWith("(") || last.endsWith(")") || last.endsWith("-")
@@ -144,6 +146,17 @@ private fun readTail(text: String, quantityColumn: Boolean = false): Tail? {
         tokens += unit.toString()
         unit = null
     }
+    // A quantity of one prints the unit price as the line price; a shorter line price was
+    // misread or cut (`1 7.390 200`), so the unit price stands for it.
+    if (layout == Layout.QUANTITY_UNIT_TOTAL && quantity == 1 && unit != null && !negative &&
+        price.toString().length < unit.toString().length
+    ) {
+        return Tail(tokens.joinToString(" "), 1, unit, unit, negative = false, times = false)
+    }
+    // `NAME QTY UNIT` with the line price lost, on a receipt that prints all three.
+    if (layout == Layout.QUANTITY_UNIT_TOTAL && unit == null && !times && quantity != null && quantity > 1 && !negative) {
+        return Tail(tokens.joinToString(" "), quantity, price, quantity * price, negative = false, times = false)
+    }
     if (unit == null && !times && quantity != null && quantity != 1) {
         tokens += quantity.toString()
         quantity = null
@@ -162,6 +175,17 @@ private fun uncut(last: String, before: List<String>): String {
     val read = last.filter(Char::isDigit)
     val whole = (quantity * unit).toString()
     return if (read.length >= MIN_CUT_DIGITS && whole.length > read.length && whole.startsWith(read)) whole else last
+}
+
+/*
+ * On a receipt that prints `QTY UNIT TOTAL`, a line price read as a stray digit or two
+ * (`1 16.690 6`) is put back as quantity times unit price.
+ */
+private fun lostTotal(last: String, before: List<String>, layout: Layout): String {
+    if (layout != Layout.QUANTITY_UNIT_TOTAL || !STRAY.matches(last) || before.size < 2) return last
+    val unit = before.last().takeIf { SEPARATED.matches(it) }?.let(::amountOf) ?: return last
+    val quantity = QTY_TOKEN.matchEntire(before[before.lastIndex - 1])?.groupValues?.get(1)?.toLongOrNull() ?: return last
+    return (quantity * unit).toString()
 }
 
 private fun amountOf(token: String): Long? =
@@ -194,10 +218,10 @@ internal fun rowQuality(text: String): Int {
  * it inside (`LE MINERALE 330ML 24 HEMAT -11.060 2.290 54.960`). The discount is taken
  * out, and returned with the rest, when the rest still reads as a named item.
  */
-private fun innerDiscount(text: String, quantityColumn: Boolean): Pair<String, Long>? {
+private fun innerDiscount(text: String, layout: Layout): Pair<String, Long>? {
     val match = INNER_DISCOUNT.find(text) ?: return null
     val rest = text.removeRange(match.range).replace(Regex("""\s+"""), " ").trim()
-    val tail = readTail(rest, quantityColumn) ?: return null
+    val tail = readTail(rest, layout) ?: return null
     if (tail.negative || !isName(tail.name)) return null
     val amount = match.groupValues[1].filter(Char::isDigit).toLongOrNull()?.takeIf { it >= MIN_ITEM } ?: return null
     return rest to repairZeros(amount)
@@ -207,14 +231,28 @@ private fun innerDiscount(text: String, quantityColumn: Boolean): Pair<String, L
 internal fun linePrice(text: String): Long? = readTail(text)?.price
 
 /*
- * A receipt printed as `QTY NAME UNIT TOTAL` (a dot-matrix till, Gelael) has most of its
- * priced rows starting with a plain quantity and a unit price before the line price.
+ * A receipt printed as `QTY NAME UNIT TOTAL` (a dot-matrix till) has most of its priced rows
+ * starting with a plain quantity and a unit price before the line price; one printed as
+ * `NAME QTY UNIT TOTAL` has a third or more of its rows check out as quantity times unit.
  */
-private fun hasQuantityColumn(rows: List<ReceiptRow>): Boolean {
-    val named = rows.map { it.text.trim() }.filter { text -> readTail(text)?.let { LETTERS.containsMatchIn(it.name) } == true }
-    val columned = named.count { text -> QTY_FIRST.containsMatchIn(text) && readTail(text)?.unit != null }
-    return named.size >= MIN_COLUMN_ROWS && columned * 2 >= named.size
+private fun layoutOf(rows: List<ReceiptRow>): Layout {
+    val firstPriced = rows.indexOfFirst { readTail(it.text.trim()) != null }
+    val zone = if (firstPriced < 0) rows else rows.drop(firstPriced).takeWhile { !ZONE_END.containsMatchIn(it.text) }
+    val named = zone.map { it.text.trim() }.filter { text ->
+        readTail(text)?.let { LETTERS.containsMatchIn(it.name) && !it.negative && !DISCOUNT_WORD.containsMatchIn(text) } == true
+    }
+    if (named.size < MIN_COLUMN_ROWS) return Layout.FREE
+    val first = named.count { text -> QTY_FIRST.containsMatchIn(text) && readTail(text)?.unit != null }
+    if (first * 2 >= named.size) return Layout.QUANTITY_FIRST
+    val last = named.count { text ->
+        val tail = readTail(text)
+        !QTY_FIRST.containsMatchIn(text) && tail?.quantity != null && tail.unit != null && lookAlike(tail.quantity * tail.unit, tail.price)
+    }
+    return if (last * 3 >= named.size) Layout.QUANTITY_UNIT_TOTAL else Layout.FREE
 }
+
+/** Where a receipt prints quantity and unit price: `QTY NAME UNIT TOTAL`, `NAME QTY UNIT TOTAL`, or anything else. */
+private enum class Layout { FREE, QUANTITY_FIRST, QUANTITY_UNIT_TOTAL }
 
 /** Quantity and price of an item, kept only when quantity times unit price checks out. */
 private fun priced(tail: Tail, leadQuantity: Int?): Pair<Int, Long> {
@@ -242,17 +280,17 @@ fun pickItems(rows: List<ReceiptRow>, totalRow: Int?): ItemsPick {
     var pendingText: String? = null
     var nameRowItem: Int? = null
     var zoneEnd = rows.size
-    val quantityColumn = hasQuantityColumn(rows)
+    val layout = layoutOf(rows)
 
     for ((index, row) in rows.withIndex()) {
         if (items.isNotEmpty() && ZONE_END.containsMatchIn(row.text)) {
             zoneEnd = index
             break
         }
-        val inner = innerDiscount(row.text.trim(), quantityColumn)
+        val inner = innerDiscount(row.text.trim(), layout)
         val text = inner?.first ?: row.text.trim()
         val itemsBefore = items.size
-        val tail = readTail(text, quantityColumn)
+        val tail = readTail(text, layout)
         if (tail == null) {
             pendingName = index.takeIf { isName(text) && !ZONE_END.containsMatchIn(text) }
             pendingText = null
