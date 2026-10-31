@@ -172,3 +172,17 @@ data class TxnTagEntity(
     val txnId: Long,
     val tagId: Long,
 )
+
+/**
+ * A word the user taught Saku by editing a receipt item's name (receipt-items, "Learned
+ * words"). [printed] is the printed token upper case (`BRS`), or with [isWholeName] a printed
+ * name's item key; [readable] is what it reads as (`Buris`). Written by upsert on the key
+ * only; never deleted.
+ */
+@Entity(tableName = "item_word")
+data class ItemWordEntity(
+    @PrimaryKey val printed: String,
+    val readable: String,
+    val isWholeName: Boolean,
+    val updatedAtEpochSec: Long,
+)

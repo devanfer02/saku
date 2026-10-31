@@ -16,6 +16,7 @@ import com.dvnnfrr.saku.domain.Transaction
 import com.dvnnfrr.saku.domain.TransactionFilter
 import com.dvnnfrr.saku.domain.TxnType
 import com.dvnnfrr.saku.domain.truncatedToSeconds
+import com.dvnnfrr.saku.receipt.LearnedWords
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
@@ -35,6 +36,7 @@ class RoomTransactionRepository(
     private val subcategoryDao = db.subcategoryDao()
     private val accountDao = db.accountDao()
     private val tagDao = db.tagDao()
+    private val itemWordDao = db.itemWordDao()
 
     /**
      * Attaches each row's tags. Combined with the link table's own Flow, so tagging a row
@@ -148,6 +150,12 @@ class RoomTransactionRepository(
     override fun observeNoteUsage(type: TxnType): Flow<List<NoteUsage>> =
         txnDao.observeNoteUses(type.name).map(::foldNoteUsage)
 
+    override fun observeLearnedWords(): Flow<LearnedWords> =
+        itemWordDao.observeAll().map { it.toLearnedWords() }
+
+    override fun observeItemCategories(): Flow<Map<String, Long>> =
+        txnDao.observeNoteUses(TxnType.EXPENSE.name).map(::foldItemCategories)
+
     override suspend fun byId(id: Long): Transaction? =
         txnDao.byId(id)?.toDomain(tagDao.tagIdsFor(id).toSet())
 
@@ -195,6 +203,22 @@ class RoomTransactionRepository(
         tagDao.link(tagIds.map { TxnTagEntity(txnId = id, tagId = it) })
         id
     }
+
+    override suspend fun saveAll(rows: List<NewTransaction>, tagIds: Set<Long>, words: LearnedWords): List<Long> =
+        db.withTransaction {
+            if (!words.isEmpty) itemWordDao.upsert(words.toEntities(clock.now()))
+            rows.map { row ->
+                record(
+                    occurredAt = row.occurredAt,
+                    type = row.type,
+                    amount = row.amount,
+                    accountId = row.accountId,
+                    categoryId = row.categoryId,
+                    note = row.note,
+                    tagIds = tagIds,
+                )
+            }
+        }
 
     override suspend fun update(transaction: Transaction) {
         db.withTransaction {

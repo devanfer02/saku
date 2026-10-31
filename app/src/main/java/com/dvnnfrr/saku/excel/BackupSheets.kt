@@ -6,6 +6,7 @@ import com.dvnnfrr.saku.domain.CategoryKind
 import com.dvnnfrr.saku.domain.ColorSlot
 import com.dvnnfrr.saku.domain.Money
 import com.dvnnfrr.saku.domain.TagName
+import com.dvnnfrr.saku.receipt.LearnedWords
 import com.dvnnfrr.saku.domain.TxnType
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
@@ -73,6 +74,8 @@ data class BackupContents(
     val transactions: ParsedSheet,
     /** Empty for a format 1 backup and a schema 1 database, which predate tags. */
     val tags: List<BackupTag> = emptyList(),
+    /** The learned item words; empty for a file written before them. */
+    val words: LearnedWords = LearnedWords.NONE,
 ) {
     /**
      * The category a transaction row points at. The transaction sheet names a category but
@@ -169,6 +172,7 @@ object BackupSheets {
     const val CATEGORIES = "Categories"
     const val SUBCATEGORIES = "Subcategories"
     const val TAGS = "Tags"
+    const val WORDS = "Words"
     const val BACKUP = "Backup"
 
     private object AccountColumns {
@@ -212,6 +216,14 @@ object BackupSheets {
         val ALL = listOf(NAME, ARCHIVED, SORT_ORDER)
     }
 
+    private object WordColumns {
+        const val PRINTED = "Printed"
+        const val READABLE = "Readable"
+        const val WHOLE_NAME = "Whole name"
+
+        val ALL = listOf(PRINTED, READABLE, WHOLE_NAME)
+    }
+
     private object InfoFields {
         const val FIELD = "Field"
         const val VALUE = "Value"
@@ -223,7 +235,7 @@ object BackupSheets {
 
     // -- Writing ------------------------------------------------------------------
 
-    /** The six sheets in file order: transactions first, the `Backup` sheet last. */
+    /** The seven sheets in file order: transactions first, the `Backup` sheet last. */
     fun build(
         snapshot: BackupSnapshot,
         appVersion: String,
@@ -288,6 +300,12 @@ object BackupSheets {
             )
         })
 
+        val wordRows = snapshot.words.words.map { (printed, readable) -> Triple(printed, readable, false) } +
+            snapshot.words.names.map { (printed, readable) -> Triple(printed, readable, true) }
+        val words = sheet(WORDS, WordColumns.ALL, wordRows.map { (printed, readable, whole) ->
+            listOf(CellValue.Text(printed), CellValue.Text(readable), CellValue.Flag(whole))
+        })
+
         val info = sheet(
             BACKUP,
             listOf(InfoFields.FIELD, InfoFields.VALUE),
@@ -302,7 +320,7 @@ object BackupSheets {
             ),
         )
 
-        return listOf(transactions, accounts, categories, subcategories, tags, info)
+        return listOf(transactions, accounts, categories, subcategories, tags, words, info)
     }
 
     private fun sheet(name: String, headers: List<String>, rows: List<List<CellValue>>) =
@@ -349,13 +367,15 @@ object BackupSheets {
         val subcategories = readSubcategories(subcategoryTable)
         // A format 1 file has no Tags sheet and its transaction sheet no Tags column.
         val tags = if (info.formatVersion >= TAGS_SINCE) readTags(named(TAGS)) else emptyList()
+        // Optional: format 2 files written before learned words have no Words sheet.
+        val words = sheets.firstOrNull { nameKey(it.sheetName) == nameKey(WORDS) }?.let(::readWords) ?: LearnedWords.NONE
 
         val parsed = ImportParser.parse(transactionSheet, info.zone)
         val transactions = (parsed as? ParseOutcome.Parsed)?.sheet
             ?.takeIf { it.layout == SheetLayout.SAKU }
             ?: refuse(BackupRefusal.UnrecognisedTransactions)
 
-        val contents = BackupContents(info, accounts, categories, subcategories, transactions, tags)
+        val contents = BackupContents(info, accounts, categories, subcategories, transactions, tags, words)
         checkReferences(contents)
         return contents
     }
@@ -466,6 +486,21 @@ object BackupSheets {
         }
         refuseDuplicates(SUBCATEGORIES, subcategories) { it.name to it.ref }
         return subcategories
+    }
+
+    private fun readWords(table: SheetTable): LearnedWords {
+        val c = Columns(table)
+        val printed = c.require(WordColumns.PRINTED)
+        val readable = c.require(WordColumns.READABLE)
+        val whole = c.require(WordColumns.WHOLE_NAME)
+        val rows = table.dataRows().map { row ->
+            val cell = CellReader(WORDS, row)
+            Triple(cell.name(printed, WordColumns.PRINTED), cell.name(readable, WordColumns.READABLE), cell.flag(whole, WordColumns.WHOLE_NAME))
+        }
+        return LearnedWords(
+            words = rows.filterNot { it.third }.associate { it.first to it.second },
+            names = rows.filter { it.third }.associate { it.first to it.second },
+        )
     }
 
     private fun readTags(table: SheetTable): List<BackupTag> {

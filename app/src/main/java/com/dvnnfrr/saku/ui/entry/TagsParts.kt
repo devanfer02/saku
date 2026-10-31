@@ -60,7 +60,8 @@ import com.dvnnfrr.saku.ui.theme.SakuTheme
 internal fun TagsRow(
     tags: List<EntryTag>,
     onRemove: (EntryTag) -> Unit,
-    onAdd: () -> Unit,
+    /** Null hides Add tag, for a host that shows the picker already (the Receipt screen). */
+    onAdd: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     val spacing = SakuTheme.spacing
@@ -82,11 +83,13 @@ internal fun TagsRow(
             horizontalArrangement = Arrangement.spacedBy(spacing.sm, Alignment.End),
         ) {
             tags.forEach { tag -> TagChip(tag, onRemove = { onRemove(tag) }) }
-            AssistChip(
-                onClick = onAdd,
-                label = { Text(stringResource(R.string.entry_tag_add)) },
-                leadingIcon = { Icon(Icons.Filled.Add, contentDescription = null) },
-            )
+            if (onAdd != null) {
+                AssistChip(
+                    onClick = onAdd,
+                    label = { Text(stringResource(R.string.entry_tag_add)) },
+                    leadingIcon = { Icon(Icons.Filled.Add, contentDescription = null) },
+                )
+            }
         }
     }
 }

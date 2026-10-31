@@ -92,18 +92,6 @@
     <string name="entry_suggestion_spoken">%1$s, %2$s, %3$s</string>
     <string name="entry_suggestion_spoken_no_category">%1$s, %2$s</string>
 
-    <!-- Receipt scan (receipt-scan). One action reads paper receipts and payment screenshots alike. -->
-    <string name="entry_scan_receipt">Scan receipt</string>
-    <string name="entry_scan_reading">Reading receipt…</string>
-    <string name="entry_scan_camera">Take a photo</string>
-    <string name="entry_scan_gallery">Choose from gallery</string>
-    <string name="entry_scan_both_kinds">Paper receipts and payment screenshots both work.</string>
-    <string name="entry_scan_no_total">No total found. Enter the amount yourself.</string>
-    <string name="entry_scan_other_amounts">Other amounts on the receipt</string>
-    <string name="entry_scan_chip_spoken">Use %1$s as the amount</string>
-    <string name="entry_scan_lines_title">Lines Saku could not place</string>
-    <string name="entry_scan_lines_hint">Tap a line to add it to the note.</string>
-    <string name="entry_scan_line_spoken">Add to note: %1$s</string>
 
     <!-- Entry validation -->
     <string name="entry_error_amount_missing">Enter an amount</string>

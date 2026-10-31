@@ -124,7 +124,9 @@ conflicts with Saku; the note wins over the skill body. Sources and licences are
 `data/make-mock-receipts.py` with invented items, for the receipt-scan Maestro flow. The receipt
 parser's accuracy bar runs on OCR text from the CORD v2 test split in
 `app/src/test/resources/receipt/cord/` (CC BY 4.0, see its `CORD-NOTICE.md`). Web photos of real
-receipts and wallet screenshots are a local-only set (`RECEIPT_LOCAL_SET`); never commit them.
+receipts and wallet screenshots are a local-only set (`RECEIPT_LOCAL_SET`, and `RECEIPT_LONG_LOCAL_SET`
+for long receipts' items); never commit them. `data/receipt-long/` holds synthetic long receipts in
+overlapping and gapped photos, with their truth under `app/src/test/resources/receipt/long/`.
 
 `data/mock-money-manager.xlsx` is a mock Money Manager export with invented rows (Jul to Oct
 2026), used by tests and Maestro. Tests pin its counts, so changing it means updating them. It keeps
@@ -158,6 +160,11 @@ Settled. Reopen only with a reason, not by drift:
   schema version 2, reached by `MIGRATION_1_2`, which only creates. Never add
   `fallbackToDestructiveMigration`. Backup format 2 adds a `Tags` sheet; format 1 and schema 1 files
   still come in. Users back up before upgrading. See `openspec/changes/transaction-tags/design.md`.
+- **Receipt items** (1 Nov 2026). Scan is a button beside + on Trans, not an entry-sheet action.
+  The Receipt screen joins several photos, reads items, spreads receipt discounts by largest
+  remainder, checks the items against the total and saves one row or one row per item in one
+  transaction. Item names are made readable (`receipt/ItemName.kt`); words the user corrects are
+  learned in the `item_word` table, part of schema 2. See `openspec/changes/receipt-items/design.md`.
 - **No subcategories in the product.** Tagging them was a chore; search answers the same question
   with a count, totals and day-grouped rows. The UI neither shows nor asks for them. The
   `subcategory` table, `TxnEntity.subcategoryId` and every stored row stay, and import, export,

@@ -16,7 +16,7 @@ import org.junit.runner.RunWith
 /**
  * Schema 1 to 2 on a device: a version 1 file with rows in every table, migrated by
  * [MIGRATION_1_2] and validated by Room against 2.json, then opened by the app's own
- * builder setup. Every row must still be there, unchanged, with no tags.
+ * builder setup. Every row must still be there, unchanged, with no tags and no learned words.
  */
 @RunWith(AndroidJUnit4::class)
 class MigrationTest {
@@ -70,6 +70,7 @@ class MigrationTest {
                 assertEquals(1, db.subcategoryDao().all().size)
                 assertEquals(0, db.tagDao().all().size)
                 assertEquals(0, db.tagDao().allLinks().size)
+                assertEquals(0, db.itemWordDao().all().size)
             }
         } finally {
             db.close()

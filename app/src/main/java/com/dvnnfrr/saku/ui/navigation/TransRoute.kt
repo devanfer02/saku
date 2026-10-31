@@ -9,6 +9,9 @@ package com.dvnnfrr.saku.ui.navigation
 enum class TransRoute(val route: String) {
     /** Search, optionally opened on a query: Price history passes an item's name. */
     SEARCH("transactions/search?$SEARCH_QUERY={$SEARCH_QUERY}"),
+
+    /** The Receipt screen, with the first photo's URI as the `photo` argument. */
+    RECEIPT("transactions/receipt?photo={photo}"),
     ;
 
     companion object {

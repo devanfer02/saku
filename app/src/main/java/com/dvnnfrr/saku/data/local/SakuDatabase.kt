@@ -15,6 +15,7 @@ import androidx.room.TypeConverters
         ImportBatchEntity::class,
         TagEntity::class,
         TxnTagEntity::class,
+        ItemWordEntity::class,
     ],
     version = SakuDatabase.VERSION,
     exportSchema = true,
@@ -28,6 +29,7 @@ abstract class SakuDatabase : RoomDatabase() {
     abstract fun txnDao(): TxnDao
     abstract fun importBatchDao(): ImportBatchDao
     abstract fun tagDao(): TagDao
+    abstract fun itemWordDao(): ItemWordDao
 
     companion object {
         private const val NAME = "saku.db"
@@ -41,7 +43,7 @@ abstract class SakuDatabase : RoomDatabase() {
          * and `SchemaIdentityTest` fails when the two drift. The database import refuses
          * a file whose hash differs.
          */
-        const val IDENTITY_HASH = "f7bbcdec21beeb7050323443cbe7e4bc"
+        const val IDENTITY_HASH = "1248a98cbd015c80c4fc3fe4ee0fec3b"
 
         /** Version 1's hash. The database import still reads version 1 files. */
         const val IDENTITY_HASH_V1 = "bfb8f34edf6ae031f2e4cb76c266b385"

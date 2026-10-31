@@ -111,6 +111,44 @@ The project SHALL keep OCR fixtures of synthetic long receipts photographed in o
 - **WHEN** a parser change drops item accuracy on the synthetic fixtures below 80%
 - **THEN** the unit test suite fails and names the rate
 
+### Requirement: Readable item names
+Saku SHALL turn a printed item name into a readable one for display and for the saved note: known till abbreviations expanded by whole token, other words title-cased, tokens holding a digit kept as printed, and a trailing quantity written ` ×n`. A readable name SHALL read the same again. The user SHALL be able to edit the name on the Receipt screen before saving. The category lookup SHALL try the readable name's item key and then the printed name's.
+
+#### Scenario: Owner's example
+- **WHEN** the printed name is `INDOMIE GRG SPCL x2`
+- **THEN** Saku shows and saves `Indomie Goreng Special ×2`
+
+#### Scenario: Sizes stay
+- **WHEN** the printed name is `DETERJEN 1.8KG`
+- **THEN** the name is `Deterjen 1.8KG`
+
+#### Scenario: Unknown word
+- **WHEN** the printed name is `PRENDJAK TEH CELU`
+- **THEN** the name is `Prendjak Teh Celu`
+
+#### Scenario: Earlier rows still match
+- **WHEN** an earlier expense with note `INDOMIE GRG SPCL` was saved under Makan & Minum
+- **THEN** the item printed `INDOMIE GRG SPCL` shows `Indomie Goreng Special` under Makan & Minum from history
+
+### Requirement: Learn words from edited names
+When the user saves per item after editing an item's name, Saku SHALL learn from the edit: with as many words as the printed name, each changed word under its printed token, upper case, except tokens holding a digit; otherwise the whole name under the printed name's item key. Learned words SHALL override the built-in expansions and SHALL be used on later receipts. A later edit of the same token SHALL overwrite it. Past rows SHALL NOT be renamed. Learned words SHALL be kept in backups and restored without overwriting words the database already has.
+
+#### Scenario: Learn a word
+- **WHEN** the user edits `Beras Premium 5KG` (printed `BRS PREMIUM 5KG`) to `Buris Premium 5KG` and saves
+- **THEN** a later receipt's `BRS PULEN 5KG` reads `Buris Pulen 5KG`
+
+#### Scenario: Whole name
+- **WHEN** the user edits `Idm F/T 2PLY 3X180'S` to `Tisu Toilet Indomaret 2 ply`
+- **THEN** that printed name reads `Tisu Toilet Indomaret 2 ply` from then on
+
+#### Scenario: Sizes are not learned
+- **WHEN** the user edits `Beras Premium 5KG` to `Beras Premium 10KG`
+- **THEN** nothing is learned
+
+#### Scenario: Backup round trip
+- **WHEN** a backup with learned words is restored onto a database that has none
+- **THEN** the words are there; a word the database already had keeps its reading
+
 ## REMOVED Requirements
 
 ### Requirement: Scan a receipt from the entry sheet

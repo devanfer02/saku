@@ -10,6 +10,7 @@ import com.dvnnfrr.saku.data.AppearanceStore
 import com.dvnnfrr.saku.data.ChartStyleStore
 import com.dvnnfrr.saku.data.FirstRunSeed
 import com.dvnnfrr.saku.data.FirstRunStore
+import com.dvnnfrr.saku.data.ReceiptDefaultsStore
 import com.dvnnfrr.saku.data.ReminderStore
 import com.dvnnfrr.saku.data.SharedPreferencesAppearanceStore
 import com.dvnnfrr.saku.data.local.SakuDatabase
@@ -73,6 +74,9 @@ interface AppContainer {
     val firstRun: FirstRunStore
 
     val receipts: ReceiptRecognizer
+
+    /** The account and tags the last receipt was saved with. */
+    val receiptDefaults: ReceiptDefaultsStore
 }
 
 class RoomAppContainer(context: Context) : AppContainer {
@@ -107,6 +111,8 @@ class RoomAppContainer(context: Context) : AppContainer {
     override val firstRun: FirstRunStore by lazy { FirstRunStore(context) }
 
     override val receipts: ReceiptRecognizer by lazy { ReceiptRecognizer(context) }
+
+    override val receiptDefaults: ReceiptDefaultsStore by lazy { ReceiptDefaultsStore(context) }
 }
 
 /**

@@ -183,6 +183,7 @@ class RoomImportRepository(
                 rows.map { it.toDomain(tagsByTxn[it.id].orEmpty()) }
             },
             tags = records.tags,
+            words = db.itemWordDao().all().toLearnedWords(),
         )
     }
 
@@ -248,6 +249,9 @@ class RoomImportRepository(
         plan.tagsToCreate.forEach { tag ->
             tagDao.insert(TagEntity(name = tag.name, sortOrder = tag.sortOrder, archived = tag.archived))
         }
+
+        // Insert-only, like tags: a word this database already has keeps its reading.
+        if (!backup.words.isEmpty) db.itemWordDao().insertMissing(backup.words.toEntities(at))
 
         val batch = commit(
             fileName = fileName,

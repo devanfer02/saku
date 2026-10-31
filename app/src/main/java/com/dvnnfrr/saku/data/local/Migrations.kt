@@ -4,7 +4,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 /**
- * Schema 1 to 2: the tag tables. Create statements only, so no existing row can change;
+ * Schema 1 to 2: the tag tables and the learned item words (both unreleased, so one version). Create statements only, so no existing row can change;
  * `MigrationSqlTest` fails if anything else appears here. The text is Room's own
  * `createSql` from `schemas/.../2.json`, so the migrated file validates against the schema.
  */
@@ -16,6 +16,8 @@ internal val MIGRATION_1_2_SQL: List<String> = listOf(
         "FOREIGN KEY(`txnId`) REFERENCES `txn`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , " +
         "FOREIGN KEY(`tagId`) REFERENCES `tag`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
     "CREATE INDEX IF NOT EXISTS `index_txn_tag_tagId` ON `txn_tag` (`tagId`)",
+    "CREATE TABLE IF NOT EXISTS `item_word` (`printed` TEXT NOT NULL, `readable` TEXT NOT NULL, " +
+        "`isWholeName` INTEGER NOT NULL, `updatedAtEpochSec` INTEGER NOT NULL, PRIMARY KEY(`printed`))",
 )
 
 val MIGRATION_1_2: Migration = object : Migration(1, 2) {

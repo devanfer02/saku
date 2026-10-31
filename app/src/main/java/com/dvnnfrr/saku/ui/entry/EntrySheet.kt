@@ -1,10 +1,5 @@
 package com.dvnnfrr.saku.ui.entry
 
-import android.content.ActivityNotFoundException
-import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
@@ -117,22 +112,6 @@ private fun EntrySheetBody(
     var pickingDate by rememberSaveable { mutableStateOf(false) }
     var pickingTime by rememberSaveable { mutableStateOf(false) }
 
-    // The camera writes into a file Saku lends it; the URI must survive the camera
-    // activity, which can outlive this composition.
-    var cameraTarget by rememberSaveable { mutableStateOf<Uri?>(null) }
-    val camera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { taken ->
-        val target = cameraTarget
-        if (taken && target != null) viewModel.scanReceipt(target)
-    }
-    val gallery = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { picked ->
-        picked?.let(viewModel::scanReceipt)
-    }
-    // Some devices report the photo picker as present yet have nothing to handle it (the
-    // Pixel 8 API 35 emulator image, for one); the document picker is the fallback.
-    val documents = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { picked ->
-        picked?.let(viewModel::scanReceipt)
-    }
-
     val focusManager = LocalFocusManager.current
     val leaveNote = {
         viewModel.dismissSuggestions()
@@ -171,14 +150,6 @@ private fun EntrySheetBody(
         )
 
         AmountDisplay(state)
-
-        state.receipt?.let { panel ->
-            ReceiptAmountChips(
-                amounts = panel.chipsFor(form.amount.value),
-                totalFound = panel.totalFound,
-                onPick = viewModel::pickReceiptAmount,
-            )
-        }
 
         Column(modifier = Modifier.padding(horizontal = spacing.screen)) {
             FieldRow(
@@ -236,34 +207,11 @@ private fun EntrySheetBody(
                     openPicker = OpenPicker.TAGS
                 },
             )
-
-            state.receipt?.let { panel ->
-                ReceiptLines(lines = panel.lines, onAdd = viewModel::addReceiptLine)
-            }
         }
         }
 
         // An open picker takes the keypad's place, as a grid, so the choices sit where
         // the thumb already is and a long list needs little or no scrolling.
-        if (openPicker == OpenPicker.NONE && state.canScanReceipt) {
-            ScanReceiptAction(
-                reading = state.readingReceipt,
-                onCamera = {
-                    val target = viewModel.cameraUri()
-                    cameraTarget = target
-                    // No camera app at all: nothing to open, and nothing on the sheet changes.
-                    try { camera.launch(target) } catch (_: ActivityNotFoundException) { }
-                },
-                onGallery = {
-                    try {
-                        gallery.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                    } catch (_: ActivityNotFoundException) {
-                        documents.launch(arrayOf("image/*"))
-                    }
-                },
-            )
-        }
-
         if (openPicker == OpenPicker.NONE) {
             val item = priceHistoryItem(form)
             if (item != null && onPriceHistory != null) PriceHistoryAction(onClick = { onPriceHistory(item) })
@@ -620,7 +568,7 @@ private fun ExpandedPicker(
 private val PICKER_MAX_HEIGHT = 400.dp
 
 @Composable
-private fun NameDialog(
+internal fun NameDialog(
     @androidx.annotation.StringRes titleRes: Int,
     onConfirm: (String) -> Unit,
     onDismiss: () -> Unit,
