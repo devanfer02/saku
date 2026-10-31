@@ -18,6 +18,12 @@ class ItemKeyTest {
     fun `sizes and counts inside the name stay`() {
         assertEquals("TELUR AYAM 10", itemKey("TELUR AYAM 10"))
         assertEquals("SPONS CUCI 3S", itemKey("spons cuci 3s"))
-        assertEquals("MIE 2X", itemKey("MIE 2X"))
+    }
+
+    @Test
+    fun `a count written first is a quantity, as in the owner's notes`() {
+        assertEquals("MIE", itemKey("MIE 2X"))
+        assertEquals("DIMSUM", itemKey("Dimsum 3 biji"))
+        assertEquals("MINYAK GORENG 2L", itemKey("Minyak Goreng 2L"))
     }
 }
