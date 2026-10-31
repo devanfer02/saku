@@ -41,11 +41,15 @@ money.
 - **Tags**: optional labels that cut across categories. Mark the rice under Makan & Minum and the soap
   under Kebutuhan Kos both "Monthly grocery", then filter Trans and Stats by that tag to see the trip's
   total split by category. A row can carry several tags; More > Tags renames and archives them.
-- **Scan receipt**: take a photo of a paper receipt or pick a payment screenshot (m-BCA, BRImo, GoPay,
-  OVO, DANA and the like). Saku reads it on the phone and fills the amount, the date and the store.
-  Other amounts on the receipt show as chips, and lines it could not place can be added to the note
-  with a tap. You check everything before saving, and the photo is never kept. On 98 Indonesian
-  receipts it had never seen, it picked the right total 87% of the time.
+- **Scan receipt**: the button beside + takes a photo or picks one, of a paper receipt or a payment
+  screenshot (m-BCA, BRImo, GoPay, OVO, DANA and the like). Saku reads it on the phone. A long receipt
+  goes in several photos, top to bottom, with Add next part; Saku joins them and says when a part
+  may be missing. Each item gets a readable name (`INDOMIE GRG SPCL` becomes Indomie Goreng
+  Special), its discount, a share of any card discount, and the category it had last time. The
+  items are checked against the total before you save, as one row or one row per item, with an
+  optional tag such as Monthly grocery. Names you correct are remembered for the next receipt. The
+  photo is never kept. On 98 Indonesian receipts it had never seen, it picked the right total 87%
+  of the time.
 - **Stats**: the period total over ranked categories, a pie you can switch on and tap, and a strip of
   periods with a real Y axis. Tap the period name to jump to any week, month or year.
 - **Accounts**: Cash, Bank, Investment and Liability, with net worth split into spendable and
