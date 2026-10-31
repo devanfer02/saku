@@ -3,6 +3,7 @@ package com.dvnnfrr.saku.ui.receipt
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -48,6 +49,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.dvnnfrr.saku.R
 import com.dvnnfrr.saku.domain.Account
@@ -138,7 +140,7 @@ fun ReceiptScreen(
             TagsRow(
                 tags = state.tags,
                 onRemove = viewModel::removeTag,
-                onAdd = {},
+                onAdd = null,
                 modifier = Modifier.padding(horizontal = SakuTheme.spacing.screen),
             )
             TagPicker(
@@ -402,91 +404,130 @@ private fun ReceiptBottomBar(
     val colors = SakuTheme.colors
     var menuOpen by rememberSaveable { mutableStateOf(false) }
 
-    Column(modifier = Modifier.fillMaxWidth().background(colors.surface)) {
-        HorizontalDivider(color = colors.line)
-        Column(
-            modifier = Modifier.padding(horizontal = spacing.screen, vertical = spacing.sm),
-            verticalArrangement = Arrangement.spacedBy(spacing.sm),
-        ) {
-            if (state.canRecordPerItem) {
-                SegmentedTabs(
-                    options = listOf(
-                        stringResource(R.string.receipt_record_one),
-                        stringResource(R.string.receipt_record_per_item),
-                    ),
-                    selectedIndex = state.recordAs.ordinal,
-                    onSelect = { onRecordAs(RecordAs.entries[it]) },
-                )
-            } else if (state.photos > 0) {
+    val recordAs: @Composable (Modifier) -> Unit = { modifier ->
+        if (state.canRecordPerItem) {
+            SegmentedTabs(
+                options = listOf(
+                    stringResource(R.string.receipt_record_one),
+                    stringResource(R.string.receipt_record_per_item),
+                ),
+                selectedIndex = state.recordAs.ordinal,
+                onSelect = { onRecordAs(RecordAs.entries[it]) },
+                modifier = modifier,
+            )
+        } else if (state.photos > 0) {
+            Text(
+                text = stringResource(R.string.receipt_one_row_only),
+                style = SakuTheme.typography.caption,
+                color = colors.ink2,
+                modifier = modifier,
+            )
+        }
+    }
+    val account = state.account?.name.orEmpty()
+    val accountField: @Composable (Modifier) -> Unit = { modifier ->
+        BarField(
+            label = stringResource(R.string.receipt_account),
+            value = account,
+            spoken = stringResource(R.string.receipt_account_spoken, account),
+            onClick = onOpenAccount,
+            modifier = modifier,
+        )
+    }
+    val tags = state.tags.joinToString(", ") { it.name }.ifEmpty { stringResource(R.string.receipt_no_tag) }
+    val tagsField: @Composable (Modifier) -> Unit = { modifier ->
+        BarField(
+            label = stringResource(R.string.receipt_tags),
+            value = tags,
+            spoken = stringResource(R.string.receipt_tags_spoken, tags),
+            onClick = onOpenTags,
+            modifier = modifier,
+        )
+    }
+    val addPart: @Composable (Modifier) -> Unit = { modifier ->
+        Box(modifier = modifier) {
+            OutlinedButton(
+                onClick = { menuOpen = true },
+                enabled = !state.reading,
+                shape = RoundedCornerShape(spacing.corner),
+                modifier = Modifier.fillMaxWidth().heightIn(min = spacing.touchTarget),
+            ) {
+                Icon(Icons.Outlined.AddAPhoto, contentDescription = null, tint = colors.accent)
                 Text(
-                    text = stringResource(R.string.receipt_one_row_only),
-                    style = SakuTheme.typography.caption,
-                    color = colors.ink2,
+                    text = stringResource(R.string.receipt_add_part),
+                    style = SakuTheme.typography.bodyStrong,
+                    color = colors.accent,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(start = spacing.sm),
                 )
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
-                val account = state.account?.name.orEmpty()
-                BarField(
-                    label = stringResource(R.string.receipt_account),
-                    value = account,
-                    spoken = stringResource(R.string.receipt_account_spoken, account),
-                    onClick = onOpenAccount,
-                    modifier = Modifier.weight(1f),
-                )
-                val tags = state.tags.joinToString(", ") { it.name }.ifEmpty { stringResource(R.string.receipt_no_tag) }
-                BarField(
-                    label = stringResource(R.string.receipt_tags),
-                    value = tags,
-                    spoken = stringResource(R.string.receipt_tags_spoken, tags),
-                    onClick = onOpenTags,
-                    modifier = Modifier.weight(1f),
-                )
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm), verticalAlignment = Alignment.CenterVertically) {
-                Box(modifier = Modifier.weight(1f)) {
-                    OutlinedButton(
-                        onClick = { menuOpen = true },
-                        enabled = !state.reading,
-                        shape = RoundedCornerShape(spacing.corner),
-                        modifier = Modifier.fillMaxWidth().heightIn(min = spacing.touchTarget),
-                    ) {
-                        Icon(Icons.Outlined.AddAPhoto, contentDescription = null, tint = colors.accent)
-                        Text(
-                            text = stringResource(R.string.receipt_add_part),
-                            style = SakuTheme.typography.bodyStrong,
-                            color = colors.accent,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(start = spacing.sm),
-                        )
-                    }
-                    ReceiptPhotoMenu(
-                        expanded = menuOpen,
-                        onDismiss = { menuOpen = false },
-                        onCamera = onCamera,
-                        onGallery = onGallery,
-                    )
-                }
-                Button(
-                    onClick = onSave,
-                    enabled = state.canSave,
-                    shape = RoundedCornerShape(spacing.corner),
-                    // onPrimary as on the keypad's Save: white on the dark accent fails contrast.
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = colors.accent,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                    ),
-                    modifier = Modifier.weight(1f).heightIn(min = spacing.touchTarget),
+            ReceiptPhotoMenu(
+                expanded = menuOpen,
+                onDismiss = { menuOpen = false },
+                onCamera = onCamera,
+                onGallery = onGallery,
+            )
+        }
+    }
+    val save: @Composable (Modifier) -> Unit = { modifier ->
+        Button(
+            onClick = onSave,
+            enabled = state.canSave,
+            shape = RoundedCornerShape(spacing.corner),
+            // onPrimary as on the keypad's Save: white on the dark accent fails contrast.
+            colors = ButtonDefaults.buttonColors(
+                containerColor = colors.accent,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+            ),
+            modifier = modifier.heightIn(min = spacing.touchTarget),
+        ) {
+            Text(
+                text = pluralStringResource(R.plurals.receipt_save, state.rowCount, state.rowCount),
+                style = SakuTheme.typography.bodyStrong,
+                textAlign = TextAlign.Center,
+            )
+        }
+    }
+
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth().background(colors.surface)) {
+        // Landscape or a tablet: one row, so the list keeps the height (found on the
+        // emulator: three stacked rows left the list about 70 dp in landscape).
+        val wide = maxWidth >= WIDE_BAR
+        Column {
+            HorizontalDivider(color = colors.line)
+            if (wide) {
+                Row(
+                    modifier = Modifier.padding(horizontal = spacing.screen, vertical = spacing.sm),
+                    horizontalArrangement = Arrangement.spacedBy(spacing.sm),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(
-                        text = pluralStringResource(R.plurals.receipt_save, state.rowCount, state.rowCount),
-                        style = SakuTheme.typography.bodyStrong,
-                        textAlign = TextAlign.Center,
-                    )
+                    recordAs(Modifier.weight(1.4f))
+                    accountField(Modifier.weight(1f))
+                    tagsField(Modifier.weight(1f))
+                    addPart(Modifier.weight(1.1f))
+                    save(Modifier.weight(1f))
+                }
+            } else {
+                Column(
+                    modifier = Modifier.padding(horizontal = spacing.screen, vertical = spacing.sm),
+                    verticalArrangement = Arrangement.spacedBy(spacing.sm),
+                ) {
+                    recordAs(Modifier.fillMaxWidth())
+                    Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
+                        accountField(Modifier.weight(1f))
+                        tagsField(Modifier.weight(1f))
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm), verticalAlignment = Alignment.CenterVertically) {
+                        addPart(Modifier.weight(1f))
+                        save(Modifier.weight(1f))
+                    }
                 }
             }
         }
     }
 }
+
+private val WIDE_BAR = 600.dp
 
 @SakuPreview
 @Composable
