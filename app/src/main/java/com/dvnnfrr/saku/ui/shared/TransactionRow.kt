@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
@@ -174,8 +175,9 @@ fun TransactionRow(
                         color = colors.ink2,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
+                        // Capped width, no weight: the note keeps the rest of the row.
                         modifier = Modifier
-                            .weight(1f, fill = false)
+                            .widthIn(max = TAGS_MAX_WIDTH)
                             .semantics { contentDescription = spokenTags ?: label },
                     )
                 }
@@ -256,3 +258,6 @@ private fun TransactionRowPreview() {
         }
     }
 }
+
+/** The widest the tags after a note may get; past it they end with an ellipsis. */
+private val TAGS_MAX_WIDTH = 140.dp
