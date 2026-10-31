@@ -53,13 +53,18 @@ private val WEIGHT = Regex("""^\d{2,4}$""")
 private val PER_WEIGHT = Regex("""^\d{1,3}[.,]\d{1,2}$""")
 private val PLAIN_QTY = Regex("""^\d{1,3}$""")
 private val QTY_FIRST = Regex("""^\d{1,3}\s+\S*\p{L}""")
+private val GLUED_MINUS = Regex("""(?<=\p{L})-(?=\d)""")
+private val CUT_PRICE = Regex("""^\d{1,3}[.,]\d{1,2}$""")
+private val SEPARATED = Regex("""^\d{1,3}(?:[.,]\d{3})+$""")
+private val INNER_DISCOUNT = pattern("""(?<=\s|^)(?:hema[t1il|]|diskon|potongan)[\s:]*-?\(?(\d{1,3}(?:[.,]\d{3})+)\)?(?=\s|$)""")
 private val GLUED_QTY = Regex("""^(\d{1,2})\p{L}""")
 
 /** A name row that also carries the discount of the item above it: `BANGO KECAP HEMAT -12.270`. */
-private val NAME_THEN_DISCOUNT = pattern("""^(.*\p{L}.*?)\s+(?:hemat|diskon|disc|potongan)[\W_]*$""")
+private val NAME_THEN_DISCOUNT = pattern("""^(.*\p{L}.*?)\s+(?:hema[t1il|]|diskon|disc|potongan)[\W_]*$""")
 
 private const val MIN_ITEM = 100L
 private const val MIN_COLUMN_ROWS = 4
+private const val MIN_CUT_DIGITS = 3
 
 /**
  * A row read from its right end: a line price, then maybe a unit price, an `x` and a
@@ -75,10 +80,10 @@ private data class Tail(
 )
 
 private fun readTail(text: String, quantityColumn: Boolean = false): Tail? {
-    val tokens = text.replace(GLUED_TIMES, "$1 ").trim().split(Regex("""\s+"""))
+    val tokens = text.replace(GLUED_TIMES, "$1 ").replace(GLUED_MINUS, " -").trim().split(Regex("""\s+"""))
         .filterNot { RP_TOKEN.matches(it) }
         .toMutableList()
-    val last = tokens.removeLastOrNull() ?: return null
+    val last = tokens.removeLastOrNull()?.let { uncut(it, tokens) } ?: return null
     val price = amountOf(last) ?: return null
     if (price < MIN_ITEM) return null
     val negative = last.startsWith("-") || last.startsWith("(") || last.endsWith(")") || last.endsWith("-")
@@ -91,10 +96,21 @@ private fun readTail(text: String, quantityColumn: Boolean = false): Tail? {
 
     var unit = tokens.lastOrNull()?.let(::amountOf)?.takeIf { it >= MIN_ITEM }
     if (unit != null) tokens.removeAt(tokens.lastIndex)
+    // A quantity of one digit read glued to the unit price: `17.390 7.390` for `1 7.390 7.390`.
+    var gluedQuantity: Int? = null
+    if (unit != null && unit != price && !lookAlike(unit, price) && unit.toString().length >= 4) {
+        val digits = unit.toString()
+        val first = digits.first().digitToInt()
+        val rest = digits.drop(1).toLong()
+        if (first > 0 && rest >= MIN_ITEM && lookAlike(first * rest, price)) {
+            gluedQuantity = first
+            unit = rest
+        }
+    }
     val times = tokens.lastOrNull()?.let { TIMES_TOKEN.matches(it) } == true
     if (times) tokens.removeAt(tokens.lastIndex)
-    var quantity = tokens.lastOrNull()?.let { QTY_TOKEN.matchEntire(it) }?.groupValues?.get(1)?.toIntOrNull()
-    if (quantity != null) tokens.removeAt(tokens.lastIndex)
+    var quantity = gluedQuantity ?: tokens.lastOrNull()?.let { QTY_TOKEN.matchEntire(it) }?.groupValues?.get(1)?.toIntOrNull()
+    if (quantity != null && gluedQuantity == null) tokens.removeAt(tokens.lastIndex)
     // With a quantity column, a number before the unit price is part of the name
     // (`GULA HALUS 500 935 935`) unless it checks out as a quantity.
     if (quantityColumn && quantity != null && !times && unit != null && !lookAlike(quantity * unit, price)) {
@@ -135,6 +151,19 @@ private fun readTail(text: String, quantityColumn: Boolean = false): Tail? {
     return Tail(tokens.joinToString(" "), quantity, unit, price, negative, times)
 }
 
+/*
+ * A line price cut by the photo's edge (`86.49` for 86.490) is put back from the quantity
+ * and unit price before it, when their product starts with the digits that were read.
+ */
+private fun uncut(last: String, before: List<String>): String {
+    if (!CUT_PRICE.matches(last)) return last
+    val unit = before.lastOrNull()?.takeIf { SEPARATED.matches(it) }?.let(::amountOf) ?: return last
+    val quantity = before.getOrNull(before.lastIndex - 1)?.let { QTY_TOKEN.matchEntire(it) }?.groupValues?.get(1)?.toLongOrNull() ?: 1L
+    val read = last.filter(Char::isDigit)
+    val whole = (quantity * unit).toString()
+    return if (read.length >= MIN_CUT_DIGITS && whole.length > read.length && whole.startsWith(read)) whole else last
+}
+
 private fun amountOf(token: String): Long? =
     AMOUNT_TOKEN.matchEntire(token)?.groupValues?.get(1)?.filter(Char::isDigit)?.toLongOrNull()
 
@@ -158,6 +187,20 @@ internal fun rowQuality(text: String): Int {
     val quantity = tail.quantity ?: return 2
     val unit = tail.unit ?: return 2
     return if (quantity * unit == tail.price) 3 else 2
+}
+
+/*
+ * Rows printed close together may be read as one: an item row with the discount row under
+ * it inside (`LE MINERALE 330ML 24 HEMAT -11.060 2.290 54.960`). The discount is taken
+ * out, and returned with the rest, when the rest still reads as a named item.
+ */
+private fun innerDiscount(text: String, quantityColumn: Boolean): Pair<String, Long>? {
+    val match = INNER_DISCOUNT.find(text) ?: return null
+    val rest = text.removeRange(match.range).replace(Regex("""\s+"""), " ").trim()
+    val tail = readTail(rest, quantityColumn) ?: return null
+    if (tail.negative || !isName(tail.name)) return null
+    val amount = match.groupValues[1].filter(Char::isDigit).toLongOrNull()?.takeIf { it >= MIN_ITEM } ?: return null
+    return rest to repairZeros(amount)
 }
 
 /** The line price a row ends in, read as an item row is (`1:300` included), or null. */
@@ -202,11 +245,13 @@ fun pickItems(rows: List<ReceiptRow>, totalRow: Int?): ItemsPick {
     val quantityColumn = hasQuantityColumn(rows)
 
     for ((index, row) in rows.withIndex()) {
-        val text = row.text.trim()
-        if (items.isNotEmpty() && ZONE_END.containsMatchIn(text)) {
+        if (items.isNotEmpty() && ZONE_END.containsMatchIn(row.text)) {
             zoneEnd = index
             break
         }
+        val inner = innerDiscount(row.text.trim(), quantityColumn)
+        val text = inner?.first ?: row.text.trim()
+        val itemsBefore = items.size
         val tail = readTail(text, quantityColumn)
         if (tail == null) {
             pendingName = index.takeIf { isName(text) && !ZONE_END.containsMatchIn(text) }
@@ -261,6 +306,10 @@ fun pickItems(rows: List<ReceiptRow>, totalRow: Int?): ItemsPick {
                 used += index
                 if (tail.unit == null && quantity == 1) nameRowItem = index
             }
+        }
+        if (inner != null && items.size > itemsBefore) {
+            val last = items.removeAt(items.lastIndex)
+            items += last.copy(discount = last.discount + Money(inner.second))
         }
     }
     if (items.isEmpty()) return ItemsPick.NONE
