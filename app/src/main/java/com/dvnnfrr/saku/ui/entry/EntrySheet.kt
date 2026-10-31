@@ -77,6 +77,8 @@ fun EntrySheet(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     editingId: Long? = null,
+    /** Price history on a saved expense, with its item name; null hides the action. */
+    onPriceHistory: ((String) -> Unit)? = null,
     viewModel: TransactionEntryViewModel = viewModel(factory = TransactionEntryViewModel.Factory),
 ) {
     val state by viewModel.state.collectAsState()
@@ -96,7 +98,7 @@ fun EntrySheet(
         containerColor = SakuTheme.colors.surface,
         modifier = modifier,
     ) {
-        EntrySheetBody(state = state, suggestions = suggestions, viewModel = viewModel)
+        EntrySheetBody(state = state, suggestions = suggestions, viewModel = viewModel, onPriceHistory = onPriceHistory)
     }
 }
 
@@ -105,6 +107,7 @@ private fun EntrySheetBody(
     state: EntryUiState,
     suggestions: List<NoteSuggestion>,
     viewModel: TransactionEntryViewModel,
+    onPriceHistory: ((String) -> Unit)?,
 ) {
     val form = state.form
     val spacing = SakuTheme.spacing
@@ -262,6 +265,8 @@ private fun EntrySheetBody(
         }
 
         if (openPicker == OpenPicker.NONE) {
+            val item = priceHistoryItem(form)
+            if (item != null && onPriceHistory != null) PriceHistoryAction(onClick = { onPriceHistory(item) })
             Keypad(
                 onDigit = viewModel::onDigit,
                 onTripleZero = viewModel::onTripleZero,

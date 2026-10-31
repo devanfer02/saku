@@ -51,6 +51,8 @@ import kotlinx.datetime.Month
 fun TransactionsScreen(
     modifier: Modifier = Modifier,
     onOpenSearch: () -> Unit = {},
+    /** Price history on an expense row: open search on that item's name. */
+    onOpenPriceHistory: (String) -> Unit = {},
     /** The weekly reminder was tapped: open the sheet on a new transaction, then report it. */
     openNewEntry: Boolean = false,
     onNewEntryOpened: () -> Unit = {},
@@ -107,6 +109,10 @@ fun TransactionsScreen(
         EntrySheet(
             editingId = editing.takeIf { it != NEW },
             onDismiss = { editing = NOT_OPEN },
+            onPriceHistory = { item ->
+                editing = NOT_OPEN
+                onOpenPriceHistory(item)
+            },
         )
     }
 
