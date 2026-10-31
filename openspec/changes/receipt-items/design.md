@@ -180,6 +180,34 @@ Calls made while building task groups 3 to 7, rejected options included.
 - Tried and kept (bars unchanged): a quantity column before the name (`4 GULA PASIR 1 KG 1,300 5.200`, Gelael 25% to 65%); `-` and `:` read as a group separator (`5-280`, `1:300`); a long product code before the name stripped (Giant); weighed lines' grams and price per 100 g dropped (`830 25.5`); a name row carrying the item above's `HEMAT -x` on a curled photo (Superindo), which gives the discount to the item above and the name to the price row below.
 - Why the rest fails: Giant is crumpled with ticks drawn over it and ML Kit reads the names as noise (`MNGSHH SH KH` for NONGSHIM SHRMP KM); prices are right. Gelael is a 1992 dot-matrix print where digits are misread (`15335` for 1535). Superindo's curled halves shift the price column by a row; the grouping by a single tilt cannot follow a curl. Not tried: local tilt per neighbourhood in `receiptRows`, which is the next step for Superindo.
 
+### Real photos, second pass
+Same set, same strict scorer (price exact, name at least 80% alike). `LocalReceiptItemsTest` also prints a second rate beside it, price exact and name at least 50% alike, so a misread name can be told from a wrong price; the strict rate is the one held to the bar.
+
+| Source | Before | After (strict) | After (price right, name half alike) |
+| --- | --- | --- | --- |
+| Indomaret | 51/56 (91%) | 51/56 (91%) | 52/56 (92%) |
+| Gelael | 29/44 (65%) | 36/44 (81%) | 36/44 (81%) |
+| Superindo | 20/46 (43%) | 35/46 (76%) | 35/46 (76%) |
+| Giant | 2/14 (14%) | 2/14 (14%) | 4/14 (28%) |
+
+Overlaps joined clean 8/10 to 9/10; gaps flagged 10/10. Synthetic sets 100/96/100%, CORD totals 90% exact and 95% pick or chip, CORD items 154/230 (66%): all unchanged.
+
+Kept, each with a unit test that fails without it:
+- Layout per receipt, read from the item zone only (header and payment rows left out). `QTY NAME UNIT TOTAL` when half the named priced rows start with a plain quantity and carry a unit price; `NAME QTY UNIT TOTAL` when a third check out as quantity times unit. A free layout keeps the old rules.
+- `QTY NAME UNIT TOTAL`: a quantity glued to the name (`1GULA`, `16ULA` for `1 GULA`) is split off when quantity times unit checks out; a number before the unit is part of the name unless it checks out as a quantity; the number before the price is the unit price even when misread, so it never lands in the name.
+- `NAME QTY UNIT TOTAL`: a lost line price (`2 10.790`, or a stray `6` after the unit) is quantity times unit; with quantity 1, a line price shorter than the unit (`1 7.390 200`) is the unit.
+- A discount row read inside its item row (`LE MINERALE 330ML 24 HEMAT -11.060 2.290 54.960`) is taken out and given to that item, when the rest still reads as a named item.
+- A quantity glued to the unit price (`17.390 7.390` for `1 7.390`), a line price cut at the photo's edge (`86.49` for 86.490, put back when quantity times unit starts with the digits read), `HEMAT-3.200` split at the minus, and `HEMAI` read for `HEMAT` on a curled name row.
+- Join: a row's amount falls back to the item reader's (`1:300` is no amount to `amountsIn`), so a dot-matrix overlap has an anchor; two rows with the same amount to the rupiah need their letters 75% alike instead of 85% (`SMISS SOUPS` and `SWESS SOUPS`).
+
+Tried and dropped:
+- One tilt for the whole photo, chosen better. A scan of slopes from -0.2 to 0.2 per photo showed the measured tilt already sits on the best plateau for every source but two Superindo halves (superindo_01L, superindo_02R), where the best slope gains 2 and 3 items. Three ways to find it failed: the slope whose items add up to the read total (no slope checks out, because of discounts and misread digits), the slope with the most rows whose quantity times unit checks out (no signal on superindo_02R), and the tilt read from how much taller wide line boxes are than narrow ones (right on Superindo, but 0.045 on Gelael and 0.053 on indomaret_03, whose best slope is near zero; a curl makes boxes tall too).
+
+Why the rest fails:
+- Superindo (11 misses): superindo_02R as a whole photo has its unit and line price columns shifted by different amounts, so rows pair a name with the item above's price (0/4); superindo_01L has its price column above the names, so prices come before their names and the header `DESKRIPSI` takes the first one. Both need line-level pairing (prices to names by order, or a tilt per region from ML Kit's line angle, which `OcrLine` does not carry); the overlap sets of the same halves read 4/4 and 5/5. The rest are single digits misread (`112.650` for 112.690) or lost (`3.` for 3.190).
+- Gelael (8 misses): two `INST N. RASA BA` lines at the same unit price are merged into one item by design (Decision 2), which the scorer counts as two misses in the overlap set; the others are digits a dot-matrix print turns into other digits (`253 763` for 255 765, `185 182`).
+- Giant (12 misses): names still read as noise; the second rate shows prices right for 4 of 14, and two prices are themselves misread (`6s200`, `BIC4606`).
+
 ## Risks / Trade-offs
 
 - [A gap that is not flagged, because two different rows happen to look alike] → an overlap needs a row with an equal amount; the total check catches what the join misses.

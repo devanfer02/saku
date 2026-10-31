@@ -133,4 +133,61 @@ class ReceiptItemsTest {
         val reading = read("Transaksi berhasil!", "15 Okt 2026 • 13:33", "Pembayaran ke", "Kopi Tuku Cipete", "Total Bayar Rp46.882")
         assertEquals(emptyList<ReceiptItem>(), reading.items)
     }
+
+    @Test
+    fun `a quantity column receipt reads a glued quantity and a misread unit price`() {
+        val pick = items(
+            "4 TEPUNG BERAS 1 KG 1,300 5.200",
+            "2 KECAP ASIN 995 1,990",
+            "1 SABUN MANDI 2,090 2.090",
+            "1GARAM HALUS 500 935 935",
+            "2 2208 TISU WAJAH 15520 3.040",
+        )
+        assertEquals(ReceiptItem("GARAM HALUS 500", 1, Money(935)), pick.items[3])
+        assertEquals(ReceiptItem("2208 TISU WAJAH", 1, Money(3_040)), pick.items[4])
+    }
+
+    @Test
+    fun `a discount row read inside its item row is taken out`() {
+        val item = items("SIRUP MELON 460ML 2 HEMAT -3.100 12.290 24.580").items.single()
+        assertEquals(ReceiptItem("SIRUP MELON 460ML", 2, Money(24_580), Money(3_100)), item)
+    }
+
+    @Test
+    fun `a quantity glued to the unit price is split off`() {
+        val item = items("KERIPIK SINGKONG 17.490 7.490").items.single()
+        assertEquals(ReceiptItem("KERIPIK SINGKONG", 1, Money(7_490)), item)
+    }
+
+    @Test
+    fun `a line price cut by the photo edge is put back from quantity and unit`() {
+        val item = items("DETERJEN CAIR 1L 1 46.590 46.59").items.single()
+        assertEquals(ReceiptItem("DETERJEN CAIR 1L", 1, Money(46_590)), item)
+    }
+
+    @Test
+    fun `a curled name row with a misread HEMAT gives the discount to the item above`() {
+        val pick = items(
+            "SUSU KENTAL 370G 2 12.500 25.000",
+            "SAUS TIRAM 135ML HEMAI 2.100",
+            "1 9.990 9.990",
+            "MINYAK WIJEN HEMAT-1.000",
+            "1 8.890 8.890",
+        )
+        assertEquals(listOf("SUSU KENTAL 370G", "SAUS TIRAM 135ML", "MINYAK WIJEN"), pick.items.map { it.name })
+        assertEquals(listOf(Money(2_100), Money(1_000), Money.ZERO), pick.items.map { it.discount })
+    }
+
+    @Test
+    fun `a receipt printing quantity unit and total puts back a lost line price`() {
+        val pick = items(
+            "SUSU KENTAL 370G 2 12.500 25.000",
+            "SAUS TIRAM 135ML 1 9.990 9.990",
+            "TEH CELUP 25S 2 10.790",
+            "KACANG MEDE 1 16.690 6",
+            "ROTI TAWAR 1 7.390 200",
+        )
+        assertEquals(listOf(Money(21_580), Money(16_690), Money(7_390)), pick.items.drop(2).map { it.price })
+        assertEquals(listOf("TEH CELUP 25S", "KACANG MEDE", "ROTI TAWAR"), pick.items.drop(2).map { it.name })
+    }
 }

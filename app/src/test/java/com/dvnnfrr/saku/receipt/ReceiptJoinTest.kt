@@ -94,4 +94,14 @@ class ReceiptJoinTest {
         assertEquals(Money(161_200), reading.itemsNet)
         assertEquals("Indomaret", reading.store)
     }
+
+    @Test
+    fun `a dot-matrix overlap with colon separators joins`() {
+        val joined = join(
+            listOf("1 ROKOK KRETEK 1:300 1:300", "1 KACANG ASIN 750 750", "2 SMISS COKLAT 1:690 3-380"),
+            listOf("1 R0KOK KRETEK 1,300 1:300", "1 KACANG ASIN 750 750", "2 SWESS COKLAT 1:690 3-380", "1 KERUPUK 590 590"),
+        )
+        assertEquals(emptyList<Int>(), joined.gapsAfterPhoto)
+        assertEquals(4, joined.rows.size)
+    }
 }
