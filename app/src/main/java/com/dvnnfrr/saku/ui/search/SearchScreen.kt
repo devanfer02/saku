@@ -1,6 +1,10 @@
 package com.dvnnfrr.saku.ui.search
 
 import androidx.compose.foundation.background
+import androidx.compose.material3.FilterChip
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -80,6 +84,7 @@ fun SearchScreen(
         tab = pickedTab ?: state.defaultTab,
         onQueryChange = viewModel::setQuery,
         onSelectTab = viewModel::selectTab,
+        onSelectPriceItem = viewModel::selectPriceItem,
         onBack = onBack,
         onClearFilter = viewModel::clearFilter,
         onRowClick = { editing = it },
@@ -115,6 +120,7 @@ fun SearchScreen(
     onClearFilter: () -> Unit,
     onRowClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
+    onSelectPriceItem: (String) -> Unit = {},
     /** False in previews, which have no window to raise a keyboard in. */
     autoFocus: Boolean = true,
 ) {
@@ -184,7 +190,7 @@ fun SearchScreen(
                 message = stringResource(R.string.search_empty, query.trim()),
             )
 
-            else -> Results(state, tab, onSelectTab, onClearFilter, onRowClick)
+            else -> Results(state, tab, onSelectTab, onSelectPriceItem, onClearFilter, onRowClick)
         }
     }
 }
@@ -199,6 +205,7 @@ private fun Results(
     state: SearchUiState,
     tab: SearchTab,
     onSelectTab: (SearchTab) -> Unit,
+    onSelectPriceItem: (String) -> Unit,
     onClearFilter: () -> Unit,
     onRowClick: (Long) -> Unit,
 ) {
@@ -220,6 +227,14 @@ private fun Results(
         if (state.hiddenCount > 0) HiddenLine(state.hiddenCount, onClearFilter)
         // Between the summary and the tabs, so it stays put whichever tab is open; it
         // folds to one line when the list needs the room.
+        // Two or more items bought at least twice: chips by row count pick whose card shows.
+        if (state.priceItems.size >= 2) {
+            PriceItemChips(
+                items = state.priceItems,
+                selectedKey = state.price?.itemKey,
+                onSelect = onSelectPriceItem,
+            )
+        }
         state.price?.let { price ->
             PriceCard(
                 price = price,
@@ -375,3 +390,30 @@ private fun SearchScreenPreview() {
 }
 
 private const val PRICE_CARD_FOLD_SCALE = 1.3f
+
+/** One chip per item with its row count, most bought first; the picked one is selected. */
+@Composable
+private fun PriceItemChips(items: List<PriceItem>, selectedKey: String?, onSelect: (String) -> Unit) {
+    val spacing = SakuTheme.spacing
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = spacing.screen),
+        horizontalArrangement = Arrangement.spacedBy(spacing.sm),
+    ) {
+        items.forEach { item ->
+            FilterChip(
+                selected = item.key == selectedKey,
+                onClick = { onSelect(item.key) },
+                label = {
+                    Text(
+                        text = pluralStringResource(R.plurals.price_item_chip, item.count, item.name, item.count),
+                        maxLines = 1,
+                    )
+                },
+                modifier = Modifier.heightIn(min = spacing.touchTarget),
+            )
+        }
+    }
+}

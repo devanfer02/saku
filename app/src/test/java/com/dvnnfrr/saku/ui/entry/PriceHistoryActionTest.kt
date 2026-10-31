@@ -13,9 +13,10 @@ class PriceHistoryActionTest {
         EntryFormState(id = id, type = type, occurredAt = LocalDateTime(2026, 10, 1, 12, 0), note = note)
 
     @Test
-    fun `a saved expense opens on its item key`() {
+    fun `a saved expense opens on its name without the quantity`() {
         assertEquals("SUSU UHT 1L", priceHistoryItem(form()))
-        assertEquals("MINYAK GORENG 2L", priceHistoryItem(form(note = " minyak  goreng 2l ")))
+        assertEquals("minyak goreng 2l", priceHistoryItem(form(note = " minyak  goreng 2l ")))
+        assertEquals("Indomie", priceHistoryItem(form(note = "Indomie 2X")))
     }
 
     @Test

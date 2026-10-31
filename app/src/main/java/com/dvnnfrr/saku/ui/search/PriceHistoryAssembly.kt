@@ -3,8 +3,12 @@ package com.dvnnfrr.saku.ui.search
 import com.dvnnfrr.saku.domain.Money
 import com.dvnnfrr.saku.domain.Transaction
 import com.dvnnfrr.saku.domain.TxnType
+import com.dvnnfrr.saku.receipt.LearnedWords
 import com.dvnnfrr.saku.receipt.itemKey
 import com.dvnnfrr.saku.receipt.itemQuantity
+import com.dvnnfrr.saku.receipt.itemSearchName
+import com.dvnnfrr.saku.receipt.readableItemName
+import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -12,10 +16,48 @@ import kotlinx.datetime.toLocalDateTime
 /*
  * Pure assembly for the price card in search. No Compose, no Android.
  *
- * Rows of one item share an [itemKey]; a row's unit price is its amount over the
- * quantity in its note. One point per day, so two trips on one day do not draw a
- * vertical jump.
+ * Rows of one item share a [priceKey]: the note in its readable form (short forms
+ * expanded, the user's learned words applied), then compared ignoring case, spaces and
+ * a trailing quantity (` ×2`, ` 2X`, ` 3 biji`). An exact match on that, nothing fuzzier: `INDOMIE GRG SPCL` and
+ * "Indomie goreng special" are one item, "Indomie Goreng" and "Indomie Goreng Special"
+ * are two. A row's unit price is its amount over the quantity in its note. One point per
+ * day, so two trips on one day do not draw a vertical jump.
  */
+
+/**
+ * The key price history groups rows by: the readable name's [itemKey] with its spaces
+ * dropped too, since hand-typed notes split words either way (`Es Teh`, `Esteh`). Blank
+ * for a blank note, which is never an item.
+ */
+fun priceKey(note: String?, learned: LearnedWords = LearnedWords.NONE): String {
+    val text = note.orEmpty()
+    if (text.isBlank()) return ""
+    return itemKey(readableItemName(text, learned)).replace(" ", "")
+}
+
+/**
+ * An item the matches hold at least twice: its [key], a [name] to show (the readable
+ * form of its newest note, without the quantity) and how many rows it has.
+ */
+data class PriceItem(val key: String, val name: String, val count: Int)
+
+/**
+ * The items among the expense [this] bought at least twice, most rows first, then the
+ * most recently bought. The counter behind the item chips: a search for "indomie" that
+ * finds two flavours offers both, the one bought more often first.
+ */
+fun List<Transaction>.priceItems(learned: LearnedWords = LearnedWords.NONE): List<PriceItem> =
+    filter { it.type == TxnType.EXPENSE }
+        .groupBy { priceKey(it.note, learned) }
+        .filterKeys { it.isNotEmpty() }
+        .filterValues { it.size >= MIN_ROWS }
+        .map { (key, rows) ->
+            val newest = rows.maxBy { it.occurredAt }
+            val name = itemSearchName(readableItemName(newest.note.orEmpty(), learned))
+            PriceItem(key, name, rows.size) to newest.occurredAt
+        }
+        .sortedWith(compareByDescending<Pair<PriceItem, Instant>> { it.first.count }.thenByDescending { it.second })
+        .map { it.first }
 
 /** One day's unit price of the item. */
 data class PricePoint(val date: LocalDate, val unitPrice: Money)
@@ -45,16 +87,18 @@ fun unitPrice(amount: Money, note: String?): Money {
 }
 
 /**
- * The price card for [matches], or null unless every expense among them has the same
- * non-blank item key and there are at least two of them. Income, transfers and
- * adjustments are ignored: a refund is not a price.
+ * The price card for the item [key] among [this], or for the first of [priceItems] when
+ * [key] is null or no longer among them. Null when no item was bought at least twice.
+ * Income, transfers and adjustments are ignored: a refund is not a price.
  */
-fun List<Transaction>.priceHistory(zone: TimeZone): PriceHistory? {
-    val expenses = filter { it.type == TxnType.EXPENSE }
-    if (expenses.size < MIN_ROWS) return null
-    val keys = expenses.map { itemKey(it.note.orEmpty()) }.toSet()
-    val key = keys.singleOrNull()
-    if (key.isNullOrEmpty()) return null
+fun List<Transaction>.priceHistory(
+    zone: TimeZone,
+    learned: LearnedWords = LearnedWords.NONE,
+    key: String? = null,
+): PriceHistory? {
+    val items = priceItems(learned)
+    val chosen = items.firstOrNull { it.key == key } ?: items.firstOrNull() ?: return null
+    val expenses = filter { it.type == TxnType.EXPENSE && priceKey(it.note, learned) == chosen.key }
 
     val points = expenses
         .groupBy { it.occurredAt.toLocalDateTime(zone).date }
@@ -65,7 +109,7 @@ fun List<Transaction>.priceHistory(zone: TimeZone): PriceHistory? {
     val latest = points.last()
     val change = latest.unitPrice - first.unitPrice
     return PriceHistory(
-        itemKey = key,
+        itemKey = chosen.key,
         points = points,
         // The most recent day at the extreme: "lowest in October" says when it was last that cheap.
         lowest = points.reversed().minBy { it.unitPrice },

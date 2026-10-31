@@ -11,6 +11,8 @@ import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import com.dvnnfrr.saku.receipt.LearnedWords
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -57,7 +59,11 @@ class PriceHistoryAssemblyTest {
     fun `quantity reads only a trailing suffix from 1 to 999`() {
         assertEquals(2, itemQuantity("SUSU UHT 1L ×2"))
         assertEquals(12, itemQuantity("susu uht 1l X12 "))
-        assertEquals(1, itemQuantity("MIE 2X"))
+        // The owner's notes put the count first: "Indomie 2X", "Dimsum 3 biji", "Dimsum 20PCS".
+        assertEquals(2, itemQuantity("MIE 2X"))
+        assertEquals(3, itemQuantity("Dimsum 3 biji"))
+        assertEquals(20, itemQuantity("Dimsum 20PCS"))
+        assertEquals(2, itemQuantity("Nasi Goreng 2 porsi"))
         assertEquals(1, itemQuantity("TELUR AYAM 10"))
         assertEquals(1, itemQuantity("AIR ×0"))
         assertEquals(1, itemQuantity("AIR ×1000"))
@@ -71,7 +77,7 @@ class PriceHistoryAssemblyTest {
         ).priceHistory(zone)
         assertNotNull(card)
         card!!
-        assertEquals("SUSU UHT 1L", card.itemKey)
+        assertEquals("SUSUUHT1L", card.itemKey)
         assertEquals(listOf(Money(14_767), Money(18_200)), card.points.map { it.unitPrice })
     }
 
@@ -105,12 +111,58 @@ class PriceHistoryAssemblyTest {
     }
 
     @Test
-    fun `spec scenario, two items show no card`() {
+    fun `two items bought twice each give chips, most rows first`() {
+        val rows = listOf(
+            txn("MINYAK GORENG 2L", 38_900, day(7)),
+            txn("MINYAK GORENG 1L", 20_000, day(8)),
+            txn("Minyak Goreng 2L ×2", 77_800, day(9)),
+            txn("MINYAK GORENG 1L", 21_000, day(10)),
+            txn("minyak goreng 2l", 39_000, day(11)),
+        )
+        val items = rows.priceItems()
+        assertEquals(listOf("MINYAKGORENG2L" to 3, "MINYAKGORENG1L" to 2), items.map { it.key to it.count })
+        assertEquals("Minyak Goreng 2L", items.first().name)
+
+        assertEquals("MINYAKGORENG2L", rows.priceHistory(zone)?.itemKey)
+        assertEquals("MINYAKGORENG1L", rows.priceHistory(zone, key = "MINYAKGORENG1L")?.itemKey)
+        // A picked key no longer among the items falls back to the most bought one.
+        assertEquals("MINYAKGORENG2L", rows.priceHistory(zone, key = "GULA1KG")?.itemKey)
+    }
+
+    @Test
+    fun `items bought once give no card`() {
         val card = listOf(
             txn("MINYAK GORENG 2L", 38_900, day(9)),
             txn("MINYAK GORENG 1L", 20_000, day(10)),
         ).priceHistory(zone)
         assertNull(card)
+    }
+
+    @Test
+    fun `short forms and learned words join one item, other words do not`() {
+        val rows = listOf(
+            txn("INDOMIE GRG SPCL ×2", 6_200, day(8)),
+            txn("Indomie goreng special", 3_200, day(9)),
+            txn("Indomie Goreng", 3_000, day(10)),
+        )
+        assertEquals(listOf("INDOMIEGORENGSPECIAL" to 2), rows.priceItems().map { it.key to it.count })
+
+        val learned = LearnedWords(words = mapOf("BRS" to "Buris"))
+        val rice = listOf(txn("BRS PREMIUM 5KG", 72_500, day(8)), txn("Buris Premium 5KG", 73_000, day(9)))
+        assertEquals(2, rice.priceItems(learned).single().count)
+        assertTrue(rice.priceItems().isEmpty())
+    }
+
+    @Test
+    fun `spaces and a count written first do not split an item`() {
+        val rows = listOf(
+            txn("Es Teh", 5_000, day(8)),
+            txn("Esteh 2X", 10_000, day(9)),
+            txn("es teh", 6_000, day(10)),
+        )
+        val item = rows.priceItems().single()
+        assertEquals(3, item.count)
+        assertEquals(Money(5_000), rows.priceHistory(zone)!!.points[1].unitPrice)
     }
 
     @Test
@@ -152,7 +204,7 @@ class PriceHistoryAssemblyTest {
     }
 
     @Test
-    fun `search carries the card only for one item`() {
+    fun `search carries the card of the most bought item`() {
         val rows = listOf(
             txn("MINYAK GORENG 2L", 35_000, day(7)),
             txn("MINYAK GORENG 2L ×2", 77_800, day(9)),
@@ -163,7 +215,8 @@ class PriceHistoryAssemblyTest {
         assertEquals(Money(38_900), one.price?.latest?.unitPrice)
 
         val two = assembleSearch("minyak", TransactionFilter.ALL, rows, null, zone, index)
-        assertNull(two.price)
+        assertEquals("MINYAKGORENG2L", two.price?.itemKey)
+        assertEquals(1, two.priceItems.size)
         assertEquals(3, two.count)
     }
 }

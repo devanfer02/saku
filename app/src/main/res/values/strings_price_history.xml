@@ -5,6 +5,11 @@
         changes do not collide.
     -->
     <string name="price_title">Unit price</string>
+    <!-- An item chip above the price card: the item name and how many times it was bought. -->
+    <plurals name="price_item_chip">
+        <item quantity="one">%1$s · %2$d</item>
+        <item quantity="other">%1$s · %2$d</item>
+    </plurals>
     <string name="price_lowest">Lowest</string>
     <string name="price_highest">Highest</string>
     <!-- %1$s is the date of the first point, `12 Jul 2026`. -->

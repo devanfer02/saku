@@ -8,6 +8,7 @@ import com.dvnnfrr.saku.domain.TransactionFilter
 import com.dvnnfrr.saku.domain.TxnType
 import com.dvnnfrr.saku.domain.barPermille
 import com.dvnnfrr.saku.domain.fold
+import com.dvnnfrr.saku.receipt.LearnedWords
 import com.dvnnfrr.saku.ui.transactions.DaySection
 import com.dvnnfrr.saku.ui.transactions.DisplayIndex
 import com.dvnnfrr.saku.ui.transactions.periodTotals
@@ -95,7 +96,9 @@ data class SearchUiState(
     val months: List<SearchPeriod> = emptyList(),
     /** The matches year by year, newest first, gaps included. Empty when nothing matched. */
     val years: List<SearchPeriod> = emptyList(),
-    /** The price card, when the matches are one item bought at least twice; see `priceHistory`. */
+    /** Items the matches hold at least twice, most rows first; chips when there are two or more. */
+    val priceItems: List<PriceItem> = emptyList(),
+    /** The price card of the picked item, or of the first of [priceItems]; see `priceHistory`. */
     val price: PriceHistory? = null,
 ) {
     /**
@@ -203,6 +206,9 @@ fun assembleSearch(
     unfiltered: List<Searchable>?,
     zone: TimeZone,
     index: DisplayIndex,
+    learned: LearnedWords = LearnedWords.NONE,
+    /** The item chip the user picked, by key; null for the most bought item. */
+    pickedItem: String? = null,
 ): SearchUiState {
     val words = parseQuery(query)
     if (words.isEmpty()) return SearchUiState(filter = filter)
@@ -218,6 +224,7 @@ fun assembleSearch(
         hiddenCount = (allMatches - matches.size).coerceAtLeast(0),
         months = matches.toSearchMonths(zone),
         years = matches.toSearchYears(zone),
-        price = matches.priceHistory(zone),
+        priceItems = matches.priceItems(learned),
+        price = matches.priceHistory(zone, learned, pickedItem),
     )
 }

@@ -13,17 +13,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.dvnnfrr.saku.R
 import com.dvnnfrr.saku.domain.TxnType
-import com.dvnnfrr.saku.receipt.itemKey
+import com.dvnnfrr.saku.receipt.itemSearchName
 import com.dvnnfrr.saku.ui.theme.SakuTheme
 
 /**
- * The item a saved expense was for, to open its price history on: the note's item key.
+ * The item a saved expense was for, to open its price history on: the note without its
+ * quantity.
  * Null for a new entry, any other type, or a blank note, where there is no item to follow.
  */
 fun priceHistoryItem(form: EntryFormState): String? {
     val savedExpense = form.isEditing && form.type == TxnType.EXPENSE
     if (!savedExpense) return null
-    return itemKey(form.note).ifEmpty { null }
+    return itemSearchName(form.note).ifEmpty { null }
 }
 
 /** Price history, just above the keypad so a thumb reaches it. */

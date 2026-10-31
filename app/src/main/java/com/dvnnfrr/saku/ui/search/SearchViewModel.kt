@@ -33,8 +33,8 @@ import kotlinx.datetime.TimeZone
 internal const val SEARCH_DEBOUNCE_MS = 150L
 
 /**
- * State for search. Holds only the query text and the picked tab; the filter comes from
- * [SharedFilter].
+ * State for search. Holds only the query text, the picked tab and the picked price item;
+ * the filter comes from [SharedFilter].
  *
  * The query is matched after a short pause so a fast typist does not re-match every
  * keystroke, but [query] itself is exposed undebounced for the text field. Notes are
@@ -62,6 +62,9 @@ class SearchViewModel(
     /** The tab the user picked, or null to follow [SearchUiState.defaultTab]. Kept across queries. */
     val tab: StateFlow<SearchTab?> = pickedTab.asStateFlow()
 
+    /** The price item chip the user picked, by key; null follows the most bought item. */
+    private val pickedItem = MutableStateFlow<String?>(null)
+
     private data class Sources(
         val filter: TransactionFilter,
         val filtered: List<Searchable>,
@@ -88,8 +91,14 @@ class SearchViewModel(
 
     @OptIn(FlowPreview::class)
     val state: StateFlow<SearchUiState> =
-        combine(text.debounce(SEARCH_DEBOUNCE_MS).distinctUntilChanged(), sources, index) { q, src, idx ->
-            assembleSearch(q, src.filter, src.filtered, src.unfiltered, zone, idx)
+        combine(
+            text.debounce(SEARCH_DEBOUNCE_MS).distinctUntilChanged(),
+            sources,
+            index,
+            transactionRepository.observeLearnedWords(),
+            pickedItem,
+        ) { q, src, idx, learned, item ->
+            assembleSearch(q, src.filter, src.filtered, src.unfiltered, zone, idx, learned, item)
         }
             .stateIn(
                 scope = viewModelScope,
@@ -99,6 +108,12 @@ class SearchViewModel(
 
     fun setQuery(value: String) {
         text.value = value
+        // A new query is a new set of items; the counter picks again.
+        pickedItem.value = null
+    }
+
+    fun selectPriceItem(key: String) {
+        pickedItem.value = key
     }
 
     fun selectTab(tab: SearchTab) {
