@@ -9,6 +9,8 @@
     <string name="entry_tag_name_label">Tag name</string>
     <string name="entry_tag_name_example">Monthly grocery</string>
     <string name="entry_tag_done">Done</string>
+    <!-- The picker button when a name is typed; it adds that name as a tag. -->
+    <string name="entry_tag_add_typed">Add “%1$s”</string>
     <string name="entry_tag_too_long">Use 30 characters or fewer</string>
     <string name="entry_tag_has_separator">Use a name without ;</string>
     <string name="entry_tag_none">No tags yet. Type a name to create one.</string>
@@ -21,7 +23,7 @@
     </plurals>
 
     <!-- Filter sheet -->
-    <string name="filter_tab_tags">TAGS</string>
+    <string name="filter_tab_tags">Tags</string>
     <string name="filter_no_tags">No tags yet. Add one from a transaction’s Tags row.</string>
 
     <!-- More menu and the Tags screen -->
@@ -34,6 +36,7 @@
         <item quantity="one">%d transaction</item>
         <item quantity="other">%d transactions</item>
     </plurals>
+    <string name="tags_row_action">rename or archive</string>
     <string name="tags_edit_hint">Tap a tag to rename or archive it</string>
     <string name="tags_name_label">Name</string>
     <string name="tags_save_name">Save name</string>

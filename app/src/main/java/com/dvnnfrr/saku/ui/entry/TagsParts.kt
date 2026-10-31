@@ -199,7 +199,16 @@ internal fun TagPicker(
                 containerColor = SakuTheme.colors.accent,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
             ),
-        ) { Text(stringResource(R.string.entry_tag_done), style = SakuTheme.typography.bodyStrong) }
+        ) {
+            // Done also adds what is typed, so say so: "mon" would otherwise become a tag by surprise.
+            val typed = query.trim()
+            val label = if (typed.isEmpty()) {
+                stringResource(R.string.entry_tag_done)
+            } else {
+                stringResource(R.string.entry_tag_add_typed, typed)
+            }
+            Text(label, style = SakuTheme.typography.bodyStrong, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
     }
 }
 

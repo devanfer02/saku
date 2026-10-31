@@ -173,7 +173,10 @@ fun TransactionRow(
                         style = SakuTheme.typography.caption,
                         color = colors.ink2,
                         maxLines = 1,
-                        modifier = Modifier.semantics { contentDescription = spokenTags ?: label },
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .weight(1f, fill = false)
+                            .semantics { contentDescription = spokenTags ?: label },
                     )
                 }
             }
