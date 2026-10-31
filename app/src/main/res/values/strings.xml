@@ -3,6 +3,7 @@
 
     <!-- Bottom navigation -->
     <string name="nav_transactions">Trans.</string>
+    <string name="nav_transactions_spoken">Transactions</string>
     <string name="nav_stats">Stats</string>
     <string name="nav_accounts">Accounts</string>
     <string name="nav_more">More</string>

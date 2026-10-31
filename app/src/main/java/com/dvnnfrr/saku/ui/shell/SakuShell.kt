@@ -11,6 +11,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import com.dvnnfrr.saku.R
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavHostController
@@ -65,7 +70,7 @@ fun SakuShell(
                             }
                         },
                         icon = { Icon(destination.icon, contentDescription = null) },
-                        label = { Text(stringResource(destination.labelRes)) },
+                        label = { NavLabel(destination) },
                         modifier = Modifier.testTag(destination.navTestTag),
                     )
                 }
@@ -88,3 +93,25 @@ fun SakuShell(
 private fun SakuShellPreview() {
     SakuPreviewSurface(padded = false) { SakuShell() }
 }
+
+/**
+ * A bottom-bar label. It stops growing at 1.3x font scale and stays on one line, so
+ * "Accounts" at 200% does not break mid-word. TalkBack reads the full name ("Trans."
+ * is spoken as "Transactions").
+ */
+@Composable
+private fun NavLabel(destination: SakuDestination) {
+    val scale = LocalDensity.current.fontScale
+    val base = MaterialTheme.typography.labelMedium.fontSize
+    val size = if (scale > NAV_LABEL_MAX_SCALE) base * (NAV_LABEL_MAX_SCALE / scale) else base
+    val spoken = if (destination == SakuDestination.TRANSACTIONS) stringResource(R.string.nav_transactions_spoken) else null
+    Text(
+        text = stringResource(destination.labelRes),
+        fontSize = size,
+        maxLines = 1,
+        softWrap = false,
+        modifier = if (spoken != null) Modifier.semantics { contentDescription = spoken } else Modifier,
+    )
+}
+
+private const val NAV_LABEL_MAX_SCALE = 1.3f
