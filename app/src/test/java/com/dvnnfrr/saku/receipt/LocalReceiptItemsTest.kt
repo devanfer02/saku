@@ -41,7 +41,9 @@ class LocalReceiptItemsTest {
 
         fun dump(name: String): List<OcrLine>? = File(dir, "$name.txt").takeIf { it.isFile }?.let { parseDump(it.readText()) }
 
-        data class Score(var right: Int = 0, var all: Int = 0)
+        // `loose` is a second rate printed beside the strict one, never instead of it: the
+        // price exact and the name only half alike, to tell misread names from wrong prices.
+        data class Score(var right: Int = 0, var loose: Int = 0, var all: Int = 0)
         val bySource = sortedMapOf<String, Score>()
         val report = StringBuilder()
 
@@ -53,7 +55,12 @@ class LocalReceiptItemsTest {
                 if (hit != null) left.remove(hit) else misses += item
             }
             val right = want.size - misses.size
-            bySource.getOrPut(source) { Score() }.apply { this.right += right; all += want.size }
+            val looseLeft = reading.items.toMutableList()
+            val loose = want.count { item ->
+                val hit = looseLeft.firstOrNull { it.price.rupiah == item.price && similarity(key(it.name), key(item.name)) >= LOOSE_NAME }
+                hit?.let(looseLeft::remove) != null
+            }
+            bySource.getOrPut(source) { Score() }.apply { this.right += right; this.loose += loose; all += want.size }
             report.append("  $label: $right/${want.size} items, gaps ${reading.gapsAfterPhoto}\n")
             misses.forEach { report.append("    MISS ${it.name} ${it.price}\n") }
             left.forEach { report.append("    EXTRA ${it.name} x${it.quantity} ${it.price.rupiah}-${it.discount.rupiah}\n") }
@@ -104,12 +111,16 @@ class LocalReceiptItemsTest {
         }
 
         println("Local long receipts (whole photos and overlap sets)")
-        bySource.forEach { (source, s) -> println("  $source: ${s.right}/${s.all} items right (${s.right * 100 / maxOf(s.all, 1)}%)") }
+        bySource.forEach { (source, s) ->
+            val all = maxOf(s.all, 1)
+            println("  $source: ${s.right}/${s.all} items right (${s.right * 100 / all}%); price right, name half alike ${s.loose}/${s.all} (${s.loose * 100 / all}%)")
+        }
         println("  overlaps joined clean: $overlapsClean/$overlaps; gaps flagged: $gapsFlagged/$gaps")
         println(report)
     }
 
     private companion object {
         const val NAME = 0.8
+        const val LOOSE_NAME = 0.5
     }
 }
