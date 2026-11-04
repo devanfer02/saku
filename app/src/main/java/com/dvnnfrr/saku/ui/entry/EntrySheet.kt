@@ -36,6 +36,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.composed
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -108,6 +113,8 @@ private fun EntrySheetBody(
     val spacing = SakuTheme.spacing
     var openPicker by rememberSaveable { mutableStateOf(OpenPicker.NONE) }
     var creatingCategory by rememberSaveable { mutableStateOf(false) }
+    // Which account leg the New account dialog fills: null when closed.
+    var creatingAccountFor by rememberSaveable { mutableStateOf<OpenPicker?>(null) }
     var confirmingDelete by rememberSaveable { mutableStateOf(false) }
     var pickingDate by rememberSaveable { mutableStateOf(false) }
     var pickingTime by rememberSaveable { mutableStateOf(false) }
@@ -232,6 +239,7 @@ private fun EntrySheetBody(
                     openPicker = OpenPicker.NONE
                 },
                 onCreateCategory = { creatingCategory = true },
+                onCreateAccount = { creatingAccountFor = openPicker },
             )
         }
     }
@@ -245,6 +253,18 @@ private fun EntrySheetBody(
                 openPicker = OpenPicker.NONE
             },
             onDismiss = { creatingCategory = false },
+        )
+    }
+
+    creatingAccountFor?.let { leg ->
+        NameDialog(
+            titleRes = R.string.accounts_new_title,
+            onConfirm = { name ->
+                viewModel.createAccount(name, destination = leg == OpenPicker.DESTINATION)
+                creatingAccountFor = null
+                openPicker = OpenPicker.NONE
+            },
+            onDismiss = { creatingAccountFor = null },
         )
     }
 
@@ -464,6 +484,10 @@ private fun NoteField(
                 textAlign = TextAlign.End,
                 fontSize = SakuTheme.typography.body.fontSize,
             ),
+            // The text's own ink, light on dark and dark on light; BasicTextField's
+            // default cursor is black whatever the theme.
+            cursorBrush = SolidColor(SakuTheme.colors.ink),
+            visualTransformation = CursorRoomAtEnd,
             // The "Note" Text is a sibling, so without this TalkBack focuses the
             // field and announces only "edit box".
             modifier = Modifier
@@ -475,6 +499,28 @@ private fun NoteField(
     }
 }
 
+/**
+ * Draws two narrow no-break spaces after the note. The note is right-aligned, so its last
+ * letter sits on the field's edge, where the cursor is drawn: without room the cursor
+ * covers that letter. U+202F is not trimmed as trailing whitespace by Android's line
+ * layout, unlike a plain space. Offsets map one to one; the extra character is never
+ * part of the value.
+ */
+private object CursorRoomAtEnd : VisualTransformation {
+    private const val ROOM = "\u202F\u202F"
+
+    override fun filter(text: AnnotatedString): TransformedText {
+        val length = text.length
+        return TransformedText(
+            AnnotatedString(text.text + ROOM),
+            object : OffsetMapping {
+                override fun originalToTransformed(offset: Int): Int = offset
+                override fun transformedToOriginal(offset: Int): Int = offset.coerceAtMost(length)
+            },
+        )
+    }
+}
+
 @Composable
 private fun ExpandedPicker(
     open: OpenPicker,
@@ -482,6 +528,7 @@ private fun ExpandedPicker(
     viewModel: TransactionEntryViewModel,
     onClose: () -> Unit,
     onCreateCategory: () -> Unit,
+    onCreateAccount: () -> Unit,
 ) {
     if (open == OpenPicker.NONE) return
     val colors = SakuTheme.colors
@@ -519,14 +566,16 @@ private fun ExpandedPicker(
 
         val gridModifier = Modifier.heightIn(max = PICKER_MAX_HEIGHT)
         when (open) {
-            // No create action on either account picker. Accounts are made on the
-            // Accounts screen; wiring this to the shared NameDialog created a
-            // *subcategory* named after the account the user thought they were adding.
+            // New account goes through its own dialog and `createAccount`. An earlier
+            // version reused the category dialog, which made a *subcategory* named after
+            // the account the user thought they were adding.
             OpenPicker.ACCOUNT -> AccountPickerGrid(
                 accounts = state.accounts,
                 selectedId = state.form.accountId,
                 onSelect = { viewModel.setAccount(it.id); onClose() },
                 modifier = gridModifier,
+                onCreateNew = onCreateAccount,
+                createLabel = stringResource(R.string.accounts_new_title),
             )
 
             OpenPicker.DESTINATION -> AccountPickerGrid(
@@ -534,6 +583,8 @@ private fun ExpandedPicker(
                 selectedId = state.form.toAccountId,
                 onSelect = { viewModel.setDestination(it.id); onClose() },
                 modifier = gridModifier,
+                onCreateNew = onCreateAccount,
+                createLabel = stringResource(R.string.accounts_new_title),
             )
 
             OpenPicker.CATEGORY -> CategoryPickerGrid(
