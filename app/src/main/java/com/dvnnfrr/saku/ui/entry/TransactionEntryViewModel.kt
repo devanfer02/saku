@@ -216,6 +216,19 @@ class TransactionEntryViewModel(
 
     fun selectCategory(id: Long?) = updateForm { it.copy(categoryId = id) }
 
+    /**
+     * Makes an account from the picker by name, puts it on the form's [destination] leg or
+     * its account, and reloads the account list. See [quickAccount].
+     */
+    fun createAccount(name: String, destination: Boolean) {
+        viewModelScope.launch {
+            val id = quickAccount(accountRepository, name)
+            val accounts = accountRepository.observeActive().first()
+            _state.update { it.copy(accounts = accounts) }
+            if (destination) setDestination(id) else setAccount(id)
+        }
+    }
+
     fun createCategory(name: String) {
         val kind = _state.value.form.categoryKind ?: return
         viewModelScope.launch {

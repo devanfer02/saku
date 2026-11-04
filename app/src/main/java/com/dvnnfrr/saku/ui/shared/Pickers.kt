@@ -143,13 +143,18 @@ fun CategoryPickerGrid(
     PickerGrid(cells = cells, modifier = modifier, onCreateNew = onCreateNew, createLabel = createLabel)
 }
 
-/** Accounts as a grid; no create action, since accounts are made on the Accounts screen. */
+/**
+ * Accounts as a grid. [onCreateNew], when given, adds a create cell that makes an account
+ * by name; type, colour and opening balance are then set on the Accounts screen.
+ */
 @Composable
 fun AccountPickerGrid(
     accounts: List<Account>,
     onSelect: (Account) -> Unit,
     modifier: Modifier = Modifier,
     selectedId: Long? = null,
+    onCreateNew: (() -> Unit)? = null,
+    createLabel: String = "",
 ) {
     val cells = accounts.filterNot { it.archived }.map { account ->
         GridCell(
@@ -159,7 +164,7 @@ fun AccountPickerGrid(
             onClick = { onSelect(account) },
         )
     }
-    PickerGrid(cells = cells, modifier = modifier, onCreateNew = null, createLabel = "")
+    PickerGrid(cells = cells, modifier = modifier, onCreateNew = onCreateNew, createLabel = createLabel)
 }
 
 private class GridCell(val key: Long, val label: String, val selected: Boolean, val onClick: () -> Unit)

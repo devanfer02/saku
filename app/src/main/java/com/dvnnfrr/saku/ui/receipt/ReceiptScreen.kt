@@ -104,6 +104,7 @@ fun ReceiptScreen(
     val allTags by viewModel.allTags.collectAsState()
     var sheet by rememberSaveable { mutableStateOf(Sheet.NONE) }
     var creatingFor by rememberSaveable { mutableStateOf<String?>(null) }
+    var creatingAccount by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(savedDay) { savedDay?.let(onSaved) }
 
@@ -134,6 +135,8 @@ fun ReceiptScreen(
                 accounts = state.accounts,
                 selectedId = state.account?.id,
                 onSelect = { viewModel.setAccount(it.id); close() },
+                onCreateNew = { creatingAccount = true },
+                createLabel = stringResource(R.string.accounts_new_title),
             )
         }
 
@@ -202,6 +205,18 @@ fun ReceiptScreen(
                 createLabel = stringResource(R.string.entry_new_category),
             )
         }
+    }
+
+    if (creatingAccount) {
+        NameDialog(
+            titleRes = R.string.accounts_new_title,
+            onConfirm = { name ->
+                creatingAccount = false
+                close()
+                viewModel.createAccount(name)
+            },
+            onDismiss = { creatingAccount = false },
+        )
     }
 
     creatingFor?.let { target ->

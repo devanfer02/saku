@@ -25,6 +25,7 @@ import com.dvnnfrr.saku.ui.entry.EntryTag
 import com.dvnnfrr.saku.ui.entry.minusTag
 import com.dvnnfrr.saku.ui.entry.plusTag
 import com.dvnnfrr.saku.ui.entry.plusTyped
+import com.dvnnfrr.saku.ui.entry.quickAccount
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -61,7 +62,7 @@ private data class Photos(
 class ReceiptViewModel(
     private val transactions: TransactionRepository,
     private val categoryRepository: CategoryRepository,
-    accountRepository: AccountRepository,
+    private val accountRepository: AccountRepository,
     private val tagRepository: TagRepository,
     private val readPhoto: suspend (Uri) -> List<OcrLine>,
     private val newCameraUri: () -> Uri,
@@ -206,6 +207,16 @@ class ReceiptViewModel(
                 clash.existingId
             }
             apply(id)
+        }
+    }
+
+    /**
+     * Makes an account from the picker by name and selects it; an existing name, archived
+     * or not, is reused. See [quickAccount] for what a quick account starts as.
+     */
+    fun createAccount(name: String) {
+        viewModelScope.launch {
+            setAccount(quickAccount(accountRepository, name))
         }
     }
 
