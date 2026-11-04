@@ -236,10 +236,14 @@ private fun Results(
             )
         }
         state.price?.let { price ->
+            // The picked range, per item; null until the user picks one, then kept while typing.
+            var priceRange by rememberSaveable(price.itemKey) { mutableStateOf<PriceRange?>(null) }
             PriceCard(
-                price = price,
+                history = price,
                 expanded = priceExpanded,
                 onToggle = { priceExpanded = !priceExpanded },
+                range = priceRange,
+                onSelectRange = { priceRange = it },
                 modifier = Modifier.padding(top = SakuTheme.spacing.xs),
             )
         }
