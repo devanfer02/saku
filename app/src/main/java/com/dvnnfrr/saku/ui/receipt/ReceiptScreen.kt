@@ -60,6 +60,7 @@ import com.dvnnfrr.saku.domain.ColorSlot
 import com.dvnnfrr.saku.domain.Money
 import com.dvnnfrr.saku.receipt.ReceiptItem
 import com.dvnnfrr.saku.receipt.ReceiptReading
+import com.dvnnfrr.saku.receipt.ReceiptSource
 import com.dvnnfrr.saku.ui.entry.NameDialog
 import com.dvnnfrr.saku.ui.entry.TagPicker
 import com.dvnnfrr.saku.ui.entry.TagsRow
@@ -68,6 +69,7 @@ import com.dvnnfrr.saku.ui.shared.AccountPickerGrid
 import com.dvnnfrr.saku.ui.shared.CategoryPickerGrid
 import com.dvnnfrr.saku.ui.shared.ScreenHeader
 import com.dvnnfrr.saku.ui.shared.SegmentedTabs
+import androidx.compose.ui.tooling.preview.Preview
 import com.dvnnfrr.saku.ui.theme.SakuPreview
 import com.dvnnfrr.saku.ui.theme.SakuPreviewSurface
 import com.dvnnfrr.saku.ui.theme.SakuTheme
@@ -562,6 +564,43 @@ private fun ReceiptScreenPreview() {
         allTags = emptyList(),
         defaults = ReceiptDefaults(),
         photos = 3,
+        readingPhoto = false,
+    )
+    SakuPreviewSurface(padded = false) {
+        ReceiptScreen(
+            state = state,
+            onBack = {}, onCamera = {}, onGallery = {}, onRecordAs = {}, onPickTotal = {},
+            onOpenItem = {}, onOpenOneRowCategory = {}, onGapRow = {}, onOpenGapCategory = {},
+            onAddLine = {}, onOpenAccount = {}, onOpenTags = {}, onSave = {},
+        )
+    }
+}
+
+/** A GoFood order at 200% font: the Read from line wraps in the list and the Save bar stays put. */
+@Preview(name = "GoFood, 200% font", showBackground = true, fontScale = 2f, heightDp = 800)
+@Composable
+private fun ReceiptOrderLargeFontPreview() {
+    val makan = Category(1, "Makan & Minum", CategoryKind.EXPENSE, ColorSlot(0), 0, false)
+    val reading = ReceiptReading(
+        total = Money(63_100),
+        otherAmounts = emptyList(),
+        date = LocalDate(2026, 11, 3),
+        store = null,
+        unplaced = listOf("Flavour : Smoky Barbeque"),
+        items = listOf(ReceiptItem("Big Crunch Chicken", 1, Money(49_000))),
+        receiptDiscounts = listOf(Money(14_700)),
+        additions = listOf(Money(22_800), Money(6_000)),
+        source = ReceiptSource.GOFOOD,
+    )
+    val state = assembleReceipt(
+        reading = reading,
+        choices = ReceiptChoices(),
+        dictionary = emptyMap(),
+        categories = listOf(makan),
+        accounts = emptyList(),
+        allTags = emptyList(),
+        defaults = ReceiptDefaults(),
+        photos = 1,
         readingPhoto = false,
     )
     SakuPreviewSurface(padded = false) {

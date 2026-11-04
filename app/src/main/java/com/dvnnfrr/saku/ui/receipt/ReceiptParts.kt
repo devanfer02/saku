@@ -48,7 +48,7 @@ import com.dvnnfrr.saku.ui.theme.SakuTheme
 import com.dvnnfrr.saku.ui.theme.formatIdr
 import com.dvnnfrr.saku.ui.transactions.dateLabel
 
-/** Store, date, photo count, the total with its chips, and the check against the items. */
+/** Store, date, photo count, the total, where it was read from, its chips, and the check against the items. */
 @Composable
 internal fun ReceiptSummary(state: ReceiptUiState, onPickTotal: (Money) -> Unit) {
     val spacing = SakuTheme.spacing
@@ -84,6 +84,9 @@ internal fun ReceiptSummary(state: ReceiptUiState, onPickTotal: (Money) -> Unit)
         }
         if (state.total == null) {
             Text(stringResource(R.string.receipt_no_total), style = SakuTheme.typography.caption, color = colors.ink2)
+        }
+        state.source?.let { source ->
+            Text(stringResource(R.string.receipt_source, source), style = SakuTheme.typography.caption, color = colors.ink2)
         }
         ReceiptAmountChips(amounts = state.chips, onPick = onPickTotal)
         state.check?.let { CheckLine(it) }

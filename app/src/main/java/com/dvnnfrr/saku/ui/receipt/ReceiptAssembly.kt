@@ -97,6 +97,8 @@ data class ReceiptUiState(
     /** Set when the last photo had no text Saku could read. */
     val unreadable: Boolean = false,
     val store: String? = null,
+    /** The app or shop the screen's labels named (`GoFood`, `Indomaret`); null when unknown. */
+    val source: String? = null,
     val date: LocalDate? = null,
     val total: Money? = null,
     /** Other amounts on the receipt, to put in the total's place in one tap. */
@@ -218,6 +220,7 @@ fun assembleReceipt(
         reading = readingPhoto,
         unreadable = unreadable,
         store = reading.store,
+        source = reading.source?.label,
         date = reading.date,
         total = total,
         chips = chips.take(MAX_CHIPS),
@@ -229,7 +232,8 @@ fun assembleReceipt(
         gapCategoryId = choices.gapCategoryId?.takeIf { it in activeIds },
         oneRowAmount = oneRowAmount,
         oneRowCategoryId = oneRowCategory,
-        oneRowNote = choices.oneRowNote ?: reading.store.orEmpty(),
+        // An order screen that names no restaurant still says where it came from: `GoFood`.
+        oneRowNote = choices.oneRowNote ?: reading.store ?: reading.source?.label.orEmpty(),
         unplaced = reading.unplaced,
         account = account,
         tags = tags,

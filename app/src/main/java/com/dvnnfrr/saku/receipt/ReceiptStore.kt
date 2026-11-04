@@ -28,7 +28,7 @@ private val CHAINS = listOf(
 
 /** Screenshot labels whose text, on the same row or the next, names who was paid. */
 private val PAYEE = Regex(
-    """^\s*(pembayaran\s*ke|bayar\s*ke|nama\s*merchant|merchant|nama\s*penerima|penerima)\b[:\s]*(.*)$""",
+    """^\s*(pembayaran\s*ke|bayar\s*ke|nama\s*merchant|merchant|nama\s*penerima|penerima|alamat\s*restoran|penjual)\b[:\s]*(.*)$""",
     RegexOption.IGNORE_CASE,
 )
 
@@ -41,9 +41,11 @@ private val CLOCK = Regex("""^\s*\d{1,2}[:.]\d{2}\b""")
  * The store, by the first rule that answers:
  * 1. a known chain anywhere in the top quarter of the image;
  * 2. a payee label on a payment screenshot (`Pembayaran ke`, `Merchant`, `Penerima`);
- * 3. the first top-quarter row with a word of three letters or more and no amount.
+ * 3. the first top-quarter row with a word of three letters or more and no amount, except
+ *    on an [appScreen], an app's order, whose top rows are the app's own headings
+ *    (`Purchase item(s)`, `Rincian Pesananmu`).
  */
-fun pickStore(rows: List<ReceiptRow>): StorePick? {
+fun pickStore(rows: List<ReceiptRow>, appScreen: Boolean = false): StorePick? {
     if (rows.isEmpty()) return null
     val top = rows.minOf { it.top }
     val quarter = top + (rows.maxOf { it.bottom } - top) / 4
@@ -62,6 +64,7 @@ fun pickStore(rows: List<ReceiptRow>): StorePick? {
         if (next != null && next.isNameLike()) return StorePick(next, index + 1)
     }
 
+    if (appScreen) return null
     return head.firstOrNull { (_, row) -> row.text.isNameLike() && !CLOCK.containsMatchIn(row.text) }
         ?.let { (index, row) -> StorePick(row.text.trim(), index) }
 }
@@ -70,7 +73,7 @@ private fun String.isNameLike(): Boolean =
     LETTERS.containsMatchIn(this) && amountsIn(this).isEmpty() && !isPaymentRow(this)
 
 /** Lower case, letters only, with the usual OCR swaps undone: `lNDOMARET` to `indomaret`. */
-private fun chainKey(text: String): String = text.lowercase()
+internal fun chainKey(text: String): String = text.lowercase()
     .replace('0', 'o').replace('1', 'i').replace('|', 'i')
     .replace(Regex("""\bl(?=nd)"""), "i")
     .filter { it in 'a'..'z' }

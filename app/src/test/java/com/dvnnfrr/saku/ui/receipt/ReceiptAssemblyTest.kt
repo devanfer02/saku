@@ -10,6 +10,7 @@ import com.dvnnfrr.saku.domain.Tag
 import com.dvnnfrr.saku.domain.TxnType
 import com.dvnnfrr.saku.receipt.ReceiptItem
 import com.dvnnfrr.saku.receipt.ReceiptReading
+import com.dvnnfrr.saku.receipt.ReceiptSource
 import com.dvnnfrr.saku.ui.entry.EntryTag
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
@@ -193,6 +194,17 @@ class ReceiptAssemblyTest {
         assertNull(state.check)
         assertEquals(1, state.unsetCount)
         assertEquals(Money(46_882), receiptRows(state, scannedAt, zone).single().amount)
+    }
+
+    @Test
+    fun `a known source is shown, and an order with no restaurant notes the app`() {
+        val order = ReceiptReading(Money(63_100), emptyList(), null, null, emptyList(), source = ReceiptSource.GOFOOD)
+        val state = assemble(reading = order)
+
+        assertEquals("GoFood", state.source)
+        assertEquals("GoFood", state.oneRowNote)
+        assertNull(assemble(reading = order.copy(source = null)).source)
+        assertEquals("Warung Bu Tini", assemble(reading = order.copy(store = "Warung Bu Tini")).oneRowNote)
     }
 
     @Test

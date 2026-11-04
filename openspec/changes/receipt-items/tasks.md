@@ -58,6 +58,14 @@ Photos are pushed into the emulator's gallery from `data/`; the owner's own file
 - [x] 6.14 Filter by Monthly grocery after the scans: Stats shows only those rows, split by category
 - [x] 6.15 No file left under the app cache `receipts` folder after each scan; `checkDebugNoNetworkPermission` passes
 
+## 6b. App order screens and the source (owner, 4 Nov 2026)
+
+- [x] 6b.1 `receipt/ReceiptSource.kt`: order apps, banking apps, wallets and shops from the screen's labels; `ReceiptReading.source`; tests per rule
+- [x] 6b.2 `receipt/AppOrder.kt`: GoFood, ShopeeFood, Shopee and Tokopedia items, wrapped names, priced-elsewhere item, fees, discounts, fee groups, totals, struck-through amounts; store from the order; fixtures with invented names; one test per rule
+- [x] 6b.2a Labels and layouts from the research notes: folded lists, English ShopeeFood, Shopee checkout, Tokopedia invoice, GoFood in GoPay history; a fixture and a test each
+- [x] 6b.3 Receipt screen: `Read from <source>` under the total; One row note falls back to the source; assembly test; 200% font preview
+- [x] 6b.4 `lintDebug`, `testDebugUnitTest`, `assembleDebug` green; CORD and synthetic bars unchanged
+
 ## 7. Done
 
 - [ ] 7.1 Run the local real set; at least 80% items right per source; record the rates here. Second pass: Indomaret 51/56 (91%), Gelael 36/44 (81%), Superindo 35/46 (76%), Giant 2/14 (14%); overlaps joined 9/10, gaps flagged 10/10. Superindo and Giant still under the bar; see design.md, "Real photos, second pass"

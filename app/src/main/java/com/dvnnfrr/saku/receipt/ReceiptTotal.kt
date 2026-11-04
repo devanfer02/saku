@@ -49,7 +49,7 @@ private val CUT_SHORT = pattern("""(?<![\d.,])(\d{1,3})[.,](\d{1,2})(?!\d)""")
  * `1 3.000` the space separates the quantity from the price. */
 private val SPACE_THOUSANDS = pattern("""(?<![\d.,])(\d{1,3}) (\d{3})(?![\d.,])""")
 
-private const val CHIPS = 3
+internal const val CHIPS = 3
 
 internal fun isPaymentRow(text: String): Boolean = PAYMENT.containsMatchIn(text) && !GRAND.containsMatchIn(text)
 
