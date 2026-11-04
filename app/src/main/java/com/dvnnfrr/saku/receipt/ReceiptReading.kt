@@ -21,7 +21,8 @@ data class OcrLine(
  * [items] are the bought items, each with its own discount; [receiptDiscounts] are cuts
  * on the whole receipt (`DISKON KARTU`) and [additions] tax or service added on top, both
  * to be spread over the items. [gapsAfterPhoto] holds `n` when photos `n` and `n + 1`
- * share no row, so a part may be missing between them.
+ * share no row, so a part may be missing between them. [source] is the app or shop the
+ * screen's own labels name, if any (`pickSource`).
  */
 data class ReceiptReading(
     val total: Money?,
@@ -33,6 +34,7 @@ data class ReceiptReading(
     val receiptDiscounts: List<Money> = emptyList(),
     val additions: List<Money> = emptyList(),
     val gapsAfterPhoto: List<Int> = emptyList(),
+    val source: ReceiptSource? = null,
 ) {
     val isEmpty: Boolean get() = total == null && otherAmounts.isEmpty() && unplaced.isEmpty() && items.isEmpty()
 
