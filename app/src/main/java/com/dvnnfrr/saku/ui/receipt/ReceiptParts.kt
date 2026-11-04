@@ -57,10 +57,14 @@ internal fun ReceiptSummary(state: ReceiptUiState, onPickTotal: (Money) -> Unit)
         modifier = Modifier.fillMaxWidth().padding(horizontal = spacing.screen, vertical = spacing.md),
         verticalArrangement = Arrangement.spacedBy(spacing.xs),
     ) {
+        // The store when one was read; else the app it came from ("GoFood"), since an
+        // order screen often shows no restaurant name; else a plain "Receipt", not a
+        // "not found" that reads like an error.
+        val heading = state.store ?: state.source
         Text(
-            text = state.store ?: stringResource(R.string.receipt_unknown_store),
+            text = heading ?: stringResource(R.string.receipt_unnamed),
             style = SakuTheme.typography.title,
-            color = if (state.store != null) colors.ink else colors.ink2,
+            color = if (heading != null) colors.ink else colors.ink2,
             modifier = Modifier.semantics { heading() },
         )
         val photos = androidx.compose.ui.res.pluralStringResource(R.plurals.receipt_photos, state.photos, state.photos)

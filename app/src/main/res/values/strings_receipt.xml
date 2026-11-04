@@ -16,7 +16,7 @@
         <item quantity="one">%1$d photo</item>
         <item quantity="other">%1$d photos</item>
     </plurals>
-    <string name="receipt_unknown_store">Store not found</string>
+    <string name="receipt_unnamed">Receipt</string>
     <string name="receipt_total">Total</string>
     <!-- Under the total: the app or shop Saku recognized, "Read from GoFood". Brand names stay as written. -->
     <string name="receipt_source">Read from %1$s</string>
