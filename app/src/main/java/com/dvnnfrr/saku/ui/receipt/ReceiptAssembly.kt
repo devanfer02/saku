@@ -25,7 +25,7 @@ import kotlinx.datetime.toInstant
 /*
  * Pure assembly for the Receipt screen: a reading and the user's choices in, the screen's
  * state and the rows to save out. Tested on the JVM without a database or a ViewModel.
- * See openspec/changes/receipt-items/design.md, sections 5 to 7.
+ * See openspec/changes/archive/2026-11-04-receipt-items/design.md, sections 5 to 7.
  */
 
 /** How the receipt is recorded. A reading with no items allows [ONE_ROW] only. */
