@@ -127,19 +127,23 @@ fun formatIdrCompact(money: Money, sign: MoneySign = MoneySign.NET): String {
 }
 
 /**
- * A chart axis tick: `0`, `250 rb`, `2,5 jt`, `10 jt`. Ticks are round steps from
- * `stripAxis`, so a juta shows a decimal only when it has one, and anything under a juta
- * reads in thousands (`rb`, ribu) rather than as `0,3 jt`. Unsigned: an axis starts at 0.
+ * A chart axis tick: `0`, `500`, `2,5 rb`, `38,9 rb`, `250 rb`, `1,25 jt`, `10 jt`. Exact,
+ * never rounded: ticks are round steps (`stripAxis`, `priceAxis`), so a tick shows only the
+ * decimals it has, with a decimal comma. Under a ribu it reads in rupiah, under a juta in
+ * thousands (`rb`, ribu), and in juta above. Unsigned: no axis here goes below 0.
  */
 fun formatIdrAxis(tick: Money): String {
     val rupiah = abs(tick.rupiah)
-    if (rupiah == 0L) return "0"
-    if (rupiah < RUPIAH_PER_JUTA) return "${roundedDiv(rupiah, 1_000)}$AXIS_THOUSANDS_SUFFIX"
-    val tenths = roundedDiv(rupiah, RUPIAH_PER_TENTH_JUTA)
+    if (rupiah < 1_000L) return rupiah.toString()
+    val (unit, suffix) = if (rupiah < RUPIAH_PER_JUTA) 1_000L to AXIS_THOUSANDS_SUFFIX else RUPIAH_PER_JUTA to COMPACT_SUFFIX
+    val fraction = rupiah % unit
     return buildString {
-        appendGrouped((tenths / 10).toString())
-        if (tenths % 10 != 0L) append(DECIMAL_COMMA).append(tenths % 10)
-        append(COMPACT_SUFFIX)
+        appendGrouped((rupiah / unit).toString())
+        if (fraction != 0L) {
+            val digits = (unit - 1).toString().length
+            append(DECIMAL_COMMA).append(fraction.toString().padStart(digits, '0').trimEnd('0'))
+        }
+        append(suffix)
     }
 }
 

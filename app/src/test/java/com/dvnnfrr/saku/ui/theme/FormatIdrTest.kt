@@ -212,4 +212,14 @@ class FormatIdrTest {
         assertEquals("10 jt", formatIdrAxis(Money(10_000_000)))
         assertEquals("1.000 jt", formatIdrAxis(Money(1_000_000_000)))
     }
+
+    @Test
+    fun `an axis tick is exact, with only the decimals it has`() {
+        assertEquals("500", formatIdrAxis(Money(500)))
+        assertEquals("2,5 rb", formatIdrAxis(Money(2_500)))
+        assertEquals("38,9 rb", formatIdrAxis(Money(38_900)))
+        assertEquals("40 rb", formatIdrAxis(Money(40_000)))
+        assertEquals("1,25 jt", formatIdrAxis(Money(1_250_000)))
+        assertEquals("1,05 jt", formatIdrAxis(Money(1_050_000)))
+    }
 }
