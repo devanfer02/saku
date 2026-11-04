@@ -37,4 +37,26 @@
     <string name="price_spoken_down_amount">down %1$s since %2$s</string>
     <string name="price_spoken_same">the same as in %1$s</string>
     <string name="entry_price_history">Price history</string>
+    <!-- Range chips above the price chart, and what TalkBack says for each. -->
+    <string name="price_range_6m">6M</string>
+    <string name="price_range_1y">1Y</string>
+    <string name="price_range_3y">3Y</string>
+    <string name="price_range_all">All</string>
+    <string name="price_range_6m_spoken">Last 6 months</string>
+    <string name="price_range_1y_spoken">Last year</string>
+    <string name="price_range_3y_spoken">Last 3 years</string>
+    <string name="price_range_all_spoken">All time</string>
+    <string name="price_chart_hint">Tap the line to see a price</string>
+    <!-- %1$d points, %2$s first date, %3$s last date. -->
+    <string name="price_chart_spoken">Price chart, %1$d points from %2$s to %3$s</string>
+    <string name="price_chart_spoken_monthly">Price chart, monthly averages, %1$d months from %2$s to %3$s</string>
+    <string name="price_chart_none_selected">Swipe up or down to step through the prices</string>
+    <!-- %1$s date, %2$s unit price. -->
+    <string name="price_point_spoken">%1$s, %2$s</string>
+    <!-- %1$s month and year, %2$s the month's average unit price. -->
+    <string name="price_point_spoken_month">%1$s, average %2$s</string>
+    <!-- Above a monthly point: "Jul 2025 avg". -->
+    <string name="price_point_month_average">%1$s avg</string>
+    <string name="price_point_next">Next price</string>
+    <string name="price_point_previous">Previous price</string>
 </resources>

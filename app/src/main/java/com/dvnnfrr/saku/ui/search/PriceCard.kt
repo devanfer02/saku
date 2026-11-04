@@ -12,9 +12,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -29,7 +34,6 @@ import com.dvnnfrr.saku.R
 import com.dvnnfrr.saku.domain.DateRange
 import com.dvnnfrr.saku.domain.Money
 import com.dvnnfrr.saku.ui.shared.MoneyText
-import com.dvnnfrr.saku.ui.shared.PriceLine
 import com.dvnnfrr.saku.ui.shared.periodName
 import com.dvnnfrr.saku.ui.theme.MoneySign
 import com.dvnnfrr.saku.ui.theme.SakuPreview
@@ -41,22 +45,31 @@ import kotlinx.datetime.LocalDate
 
 /**
  * The price card between the search summary and the tabs. Its header, the latest unit
- * price, is always shown and toggles the rest: the line, its first and last dates, the
- * lowest, the highest and the change since the first.
+ * price, is always shown and toggles the rest: range chips (6M, 1Y, 3Y, All, those that
+ * cut the history), the chart, the lowest, the highest and the change since the range's
+ * first point. Every figure follows the range; [range] null is [defaultRange].
  *
- * TalkBack reads one sentence for the whole card from the header, so the expanded part,
- * which only repeats it in figures, is hidden from it.
+ * TalkBack reads one sentence for the whole card from the header. The chips and the chart
+ * speak for themselves; the figures, which only repeat the sentence, are hidden from it.
  */
 @Composable
 fun PriceCard(
-    price: PriceHistory,
+    history: PriceHistory,
     expanded: Boolean,
     onToggle: () -> Unit,
+    range: PriceRange?,
+    onSelectRange: (PriceRange) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = SakuTheme.colors
     val spacing = SakuTheme.spacing
     val typography = SakuTheme.typography
+    val ranges = remember(history) { history.ranges() }
+    val shownRange = range?.takeIf { it in ranges } ?: history.defaultRange()
+    val price = remember(history, shownRange) { history.inRange(shownRange) }
+    val chart = remember(price) { priceChart(price.points) }
+    // The tapped point; a new item or range starts with none.
+    var selectedPoint by remember(history.itemKey, shownRange) { mutableStateOf<Int?>(null) }
     val spoken = spokenSummary(price)
     val stateText = stringResource(if (expanded) R.string.price_expanded else R.string.price_collapsed)
 
@@ -105,30 +118,58 @@ fun PriceCard(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clearAndSetSemantics {}
                     .padding(start = spacing.lg, end = spacing.lg, bottom = spacing.md),
                 verticalArrangement = Arrangement.spacedBy(spacing.xs),
             ) {
-                PriceLine(
-                    positions = price.points.map { it.date.toEpochDays().toLong() },
-                    values = price.points.map { it.unitPrice.rupiah },
-                )
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        text = price.first.date.dateLabel(),
-                        style = typography.caption,
-                        color = colors.ink2,
-                        modifier = Modifier.weight(1f),
-                    )
-                    Text(text = price.latest.date.dateLabel(), style = typography.caption, color = colors.ink2)
+                if (ranges.size >= 2) {
+                    RangeChips(ranges, shownRange, onSelectRange)
                 }
-                Figure(stringResource(R.string.price_lowest), price.lowest.unitPrice, price.lowest.date.dateLabel())
-                Figure(stringResource(R.string.price_highest), price.highest.unitPrice, price.highest.date.dateLabel())
-                ChangeFigure(price)
+                PriceLineChart(chart = chart, selected = selectedPoint, onSelect = { selectedPoint = it })
+                Column(
+                    modifier = Modifier.fillMaxWidth().clearAndSetSemantics {},
+                    verticalArrangement = Arrangement.spacedBy(spacing.xs),
+                ) {
+                    Figure(stringResource(R.string.price_lowest), price.lowest.unitPrice, price.lowest.date.dateLabel())
+                    Figure(stringResource(R.string.price_highest), price.highest.unitPrice, price.highest.date.dateLabel())
+                    ChangeFigure(price)
+                }
             }
         }
     }
 }
+
+/** One chip per offered range, the shown one selected. */
+@Composable
+private fun RangeChips(ranges: List<PriceRange>, shown: PriceRange, onSelect: (PriceRange) -> Unit) {
+    Row(horizontalArrangement = Arrangement.spacedBy(SakuTheme.spacing.sm)) {
+        ranges.forEach { range ->
+            val spoken = stringResource(range.spokenRes)
+            FilterChip(
+                selected = range == shown,
+                onClick = { onSelect(range) },
+                label = { Text(text = stringResource(range.labelRes), maxLines = 1) },
+                // 32 dp to see; Material keeps the 48 dp touch target around it.
+                modifier = Modifier.semantics { contentDescription = spoken },
+            )
+        }
+    }
+}
+
+private val PriceRange.labelRes: Int
+    get() = when (this) {
+        PriceRange.SIX_MONTHS -> R.string.price_range_6m
+        PriceRange.ONE_YEAR -> R.string.price_range_1y
+        PriceRange.THREE_YEARS -> R.string.price_range_3y
+        PriceRange.ALL -> R.string.price_range_all
+    }
+
+private val PriceRange.spokenRes: Int
+    get() = when (this) {
+        PriceRange.SIX_MONTHS -> R.string.price_range_6m_spoken
+        PriceRange.ONE_YEAR -> R.string.price_range_1y_spoken
+        PriceRange.THREE_YEARS -> R.string.price_range_3y_spoken
+        PriceRange.ALL -> R.string.price_range_all_spoken
+    }
 
 /** A label on the left; the amount, and under it its date, on the right. */
 @Composable
@@ -234,7 +275,7 @@ private fun PriceCardPreview() {
     )
     SakuPreviewSurface(padded = false) {
         PriceCard(
-            price = PriceHistory(
+            history = PriceHistory(
                 itemKey = "MINYAKGORENG2L",
                 name = "Minyak Goreng 2L",
                 points = points,
@@ -245,6 +286,8 @@ private fun PriceCardPreview() {
             ),
             expanded = true,
             onToggle = {},
+            range = null,
+            onSelectRange = {},
         )
     }
 }

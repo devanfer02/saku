@@ -107,12 +107,20 @@ fun List<Transaction>.priceHistory(
         .map { (date, rows) -> PricePoint(date, averageOf(rows.map { unitPrice(it.amount, it.note) })) }
         .sortedBy { it.date }
 
+    return historyOf(chosen.key, chosen.name, points)
+}
+
+/**
+ * The card's figures over [points], oldest first and at least two: the same rules for the
+ * whole history and for the part a range shows.
+ */
+internal fun historyOf(itemKey: String, name: String, points: List<PricePoint>): PriceHistory {
     val first = points.first()
     val latest = points.last()
     val change = latest.unitPrice - first.unitPrice
     return PriceHistory(
-        itemKey = chosen.key,
-        name = chosen.name,
+        itemKey = itemKey,
+        name = name,
         points = points,
         // The most recent day at the extreme: "lowest in October" says when it was last that cheap.
         lowest = points.reversed().minBy { it.unitPrice },
@@ -125,7 +133,7 @@ fun List<Transaction>.priceHistory(
 private const val MIN_ROWS = 2
 
 /** Mean of [prices], rounded half up; every price here is zero or more. */
-private fun averageOf(prices: List<Money>): Money {
+internal fun averageOf(prices: List<Money>): Money {
     val n = prices.size.toLong()
     val sum = prices.sumOf { it.rupiah }
     return Money((2 * sum + n) / (2 * n))
