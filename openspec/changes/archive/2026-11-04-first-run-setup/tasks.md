@@ -48,4 +48,4 @@
 
 - [x] 8.1 `openspec validate first-run-setup --strict`
 - [x] 8.2 No em dash in touched files; no colour literal outside `ui/theme/`
-- [ ] 8.3 Unit tests and debug build (main session; this branch did not run Gradle)
+- [x] 8.3 (passed in the PR #3 checks before merge, 30 Oct 2026) Unit tests and debug build (main session; this branch did not run Gradle)

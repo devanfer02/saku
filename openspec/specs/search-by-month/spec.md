@@ -4,7 +4,7 @@
 The per-month breakdown of search matches on one scale, with a jump to any month.
 ## Requirements
 ### Requirement: Per-month breakdown of matches
-When the matches of a search fall in two or more calendar months, the search screen SHALL show a "By month" list under the summary. It SHALL hold one row per month from the newest month with a match back to the oldest, newest first, including every month in between that has no match. Each row SHALL show the month and year, the matching rows' money out, the money in when it is not zero, and the number of matching rows. Transfers and adjustments SHALL count toward a month's number of rows but SHALL NOT count toward its money in or out, the same rule as the summary totals. The list SHALL reflect the active filter.
+The search results SHALL have Daily, Monthly and Yearly tabs under the summary. Monthly SHALL hold one row per month from the newest month with a match back to the oldest, newest first, including every month in between that has no match. Each row SHALL show the month and year, the matching rows' money out, the money in when it is not zero, and the number of matching rows. Transfers and adjustments SHALL count toward a month's number of rows but SHALL NOT count toward its money in or out, the same rule as the summary totals. Yearly SHALL hold one row per year the same way. Both SHALL reflect the active filter. Search SHALL open on Monthly when two or more months have matches, else on Daily, and SHALL keep a tab the user picks while the query changes.
 
 #### Scenario: A trend over three months
 - **WHEN** "arisan" matches Rp 500.000 in August, nothing in September and Rp 750.000 in October
@@ -24,7 +24,11 @@ When the matches of a search fall in two or more calendar months, the search scr
 
 #### Scenario: One month only
 - **WHEN** every match falls in October
-- **THEN** no "By month" list is shown
+- **THEN** search opens on Daily, and Monthly shows one row for October
+
+#### Scenario: Years
+- **WHEN** "arisan" matches in 2024 and 2026 only
+- **THEN** Yearly reads 2026, 2025 with no matches, 2024
 
 ### Requirement: Bars on one scale
 Each month row SHALL draw a bar against the largest month on the same side. The side SHALL be money out, unless the matches' total money in is larger than their total money out, in which case it SHALL be money in.
@@ -38,9 +42,13 @@ Each month row SHALL draw a bar against the largest month on the same side. The 
 - **THEN** each row's value and bar show the money in
 
 ### Requirement: Jump to a month
-Tapping a month row that has matches SHALL scroll the results to that month's newest day. A month with no matches SHALL NOT be tappable. The breakdown, the summary and the day rows SHALL scroll as one list.
+Tapping a month row that has matches SHALL open Daily at that month's newest day. Tapping a year row that has matches SHALL open Monthly at that year's newest month with a match. A month or year with no matches SHALL NOT be tappable. The summary and the tabs SHALL stay in place while a tab's list scrolls.
 
 #### Scenario: Jumping back
 - **WHEN** the user taps August in the list
-- **THEN** the results scroll so August's newest day header is at the top
+- **THEN** Daily opens with August's newest day header at the top
+
+#### Scenario: From a year
+- **WHEN** the user taps 2025 in Yearly
+- **THEN** Monthly opens with 2025's newest month with a match at the top
 

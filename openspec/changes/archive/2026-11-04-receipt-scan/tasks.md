@@ -50,7 +50,7 @@
 
 - [x] 7.1 Full build: `:app:lintDebug :app:testDebugUnitTest :app:assembleDebug` green
 - [x] 7.2 Update `README.md` features and the root `CLAUDE.md` package map with `receipt/`
-- [ ] 7.3 (ships in one PR with transaction-tags, receipt-items, item-price-history and search-result-tabs) PR with APK sizes, CORD and web-set accuracy, and the e2e result; wait for checks
+- [x] 7.3 (merged in PR #4, 4 Nov 2026; ships in one PR with transaction-tags, receipt-items, item-price-history and search-result-tabs) PR with APK sizes, CORD and web-set accuracy, and the e2e result; wait for checks
 
 ## 8. Accuracy to the owner's 80% minimum
 

@@ -152,19 +152,19 @@ Settled. Reopen only with a reason, not by drift:
   as everything else (a separate no-OCR build was tried and dropped, 31 Oct 2026). The release is
   arm64-v8a only with compressed native libraries, about 21 MB; 32-bit phones are not supported.
   The parser must keep at least 80% exact totals on every test source; see
-  `openspec/changes/receipt-scan/design.md`.
+  `openspec/changes/archive/2026-11-04-receipt-scan/design.md`.
 - Seeded accounts open at the epoch, because every row worth importing predates any install.
 - **Tags (31 Oct 2026).** A transaction carries zero or more tags, optional on every type. A tag is a
   name (1 to 30 characters, no `;`, unique ignoring case and spaces) that cuts across categories, such
   as "Monthly grocery"; it is renamed and archived, never deleted. Tables `tag` and `txn_tag`, Room
   schema version 2, reached by `MIGRATION_1_2`, which only creates. Never add
   `fallbackToDestructiveMigration`. Backup format 2 adds a `Tags` sheet; format 1 and schema 1 files
-  still come in. Users back up before upgrading. See `openspec/changes/transaction-tags/design.md`.
+  still come in. Users back up before upgrading. See `openspec/changes/archive/2026-11-04-transaction-tags/design.md`.
 - **Receipt items** (1 Nov 2026). Scan is a button beside + on Trans, not an entry-sheet action.
   The Receipt screen joins several photos, reads items, spreads receipt discounts by largest
   remainder, checks the items against the total and saves one row or one row per item in one
   transaction. Item names are made readable (`receipt/ItemName.kt`); words the user corrects are
-  learned in the `item_word` table, part of schema 2. See `openspec/changes/receipt-items/design.md`.
+  learned in the `item_word` table, part of schema 2. See `openspec/changes/archive/2026-11-04-receipt-items/design.md`.
 - **No subcategories in the product.** Tagging them was a chore; search answers the same question
   with a count, totals and day-grouped rows. The UI neither shows nor asks for them. The
   `subcategory` table, `TxnEntity.subcategoryId` and every stored row stay, and import, export,
