@@ -124,6 +124,18 @@ android {
                 abiFilters += "x86_64"
             }
         }
+        // A debuggable build that installs beside the real app (`com.dvnnfrr.saku.dev`,
+        // "Saku Dev"), with its own database, for testing a feature on a phone. Built by
+        // CI on every push to the `dev` branch. Signed with the release key when the
+        // SAKU_* environment is present, so each new dev APK updates the last one; a CI
+        // runner's debug key changes every run and would force an uninstall each time.
+        create("dev") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".dev"
+            versionNameSuffix = "-dev"
+            matchingFallbacks += "debug"
+            signingConfig = signingConfigs.findByName("release") ?: getByName("debug").signingConfig
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(

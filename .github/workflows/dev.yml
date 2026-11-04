@@ -1,0 +1,63 @@
+name: Dev build
+
+# A push to `dev` builds the dev variant: debuggable, installs beside the real app as
+# "Saku Dev" (com.dvnnfrr.saku.dev) with its own data. One artifact: saku-dev-apk.
+# No tests here; the pull_request lane in android.yml is the gate.
+on:
+  push:
+    branches: [dev]
+  workflow_dispatch:
+
+concurrency:
+  group: dev-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dev:
+    name: Dev APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      # Same handling as android.yml: outside the checkout, removed even on failure.
+      # Signing with the release key keeps every dev APK an update of the last one.
+      - name: Decode keystore
+        id: keystore
+        env:
+          SAKU_KEYSTORE_B64: ${{ secrets.SAKU_KEYSTORE_B64 }}
+        run: |
+          if [ -z "$SAKU_KEYSTORE_B64" ]; then
+            echo "No keystore secret; dev APK uses the runner's debug key."
+            exit 0
+          fi
+          printf '%s' "$SAKU_KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/saku.jks"
+          echo "path=$RUNNER_TEMP/saku.jks" >> "$GITHUB_OUTPUT"
+
+      # Also runs checkDevNoNetworkPermission.
+      - name: Assemble dev
+        env:
+          SAKU_KEYSTORE: ${{ steps.keystore.outputs.path }}
+          SAKU_KEYSTORE_PASSWORD: ${{ secrets.SAKU_KEYSTORE_PASSWORD }}
+          SAKU_KEY_ALIAS: ${{ secrets.SAKU_KEY_ALIAS }}
+          SAKU_KEY_PASSWORD: ${{ secrets.SAKU_KEY_PASSWORD }}
+        run: ./gradlew assembleDev --stacktrace
+
+      - name: Shred keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/saku.jks"
+
+      - name: Upload dev APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: saku-dev-apk
+          path: app/build/outputs/apk/dev/*.apk
+          if-no-files-found: error
