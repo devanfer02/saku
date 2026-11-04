@@ -204,4 +204,80 @@ class AppOrderTest {
         val reading = read("Purchase item(s)" to null, "Paket Promo Hemat" to "1", "Payment summary" to null, "Price" to "25.000", "Total payment" to "25.000")
         assertEquals(listOf(ReceiptItem("Paket Promo Hemat", 1, Money(25_000))), reading.items)
     }
+
+    @Test
+    fun `a folded shopeefood list keeps its fees and voucher out, so the check shows one gap`() {
+        val reading = read(*SHOPEEFOOD_FOLDED)
+        assertEquals(ReceiptSource.SHOPEEFOOD, reading.source)
+        assertEquals(Money(97_250), reading.total)
+        assertEquals(listOf(ReceiptItem("Es Kopi Gula Aren", 1, Money(30_000))), reading.items)
+        assertTrue(reading.receiptDiscounts.isEmpty())
+        assertTrue(reading.additions.isEmpty())
+        assertTrue("Normal, Normal Ice , Normal Espresso" in reading.unplaced)
+    }
+
+    @Test
+    fun `shopeefood in english pays the amount above the tax caption, past an order id`() {
+        val reading = read(*SHOPEEFOOD_ENGLISH)
+        assertEquals(ReceiptSource.SHOPEEFOOD, reading.source)
+        assertEquals(Money(19_000), reading.total)
+        assertEquals(listOf(ReceiptItem("Salad Sayur Segar", 1, Money(11_000))), reading.items)
+        assertEquals(money(5_000, 3_000), reading.additions)
+        assertEquals(reading.total, reading.itemsNet)
+    }
+
+    @Test
+    fun `a price on its own row under an unpriced item is that item's, and modifiers stay out`() {
+        val reading = read(*SHOPEEFOOD_CHECKOUT)
+        assertEquals(Money(32_000), reading.total)
+        assertEquals(listOf(ReceiptItem("Pizza Keju Lumer", 1, Money(24_000))), reading.items)
+        assertEquals(money(5_000, 3_000), reading.additions)
+        assertEquals(reading.total, reading.itemsNet)
+    }
+
+    @Test
+    fun `a shopee checkout reads its summary from rincian pembayaran, past tiles and toggles`() {
+        val reading = read(*SHOPEE_CHECKOUT)
+        assertEquals(ReceiptSource.SHOPEE, reading.source)
+        assertEquals(Money(90_900), reading.total)
+        assertEquals(listOf(ReceiptItem("Kipas Meja Mini Lipat", 1, Money(89_900))), reading.items)
+        assertEquals(money(9_000), reading.receiptDiscounts)
+        assertEquals(money(9_000, 1_000), reading.additions)
+        assertEquals(reading.total, reading.itemsNet)
+    }
+
+    @Test
+    fun `a tokopedia invoice reads its table and pays total tagihan`() {
+        val reading = read(*TOKOPEDIA_INVOICE)
+        assertEquals(ReceiptSource.TOKOPEDIA, reading.source)
+        assertEquals("Toko Jam Sentosa", reading.store)
+        assertEquals(Money(47_500), reading.total)
+        assertEquals(listOf(ReceiptItem("Jam Tangan Digital Sport", 1, Money(35_000))), reading.items)
+        assertEquals(money(1_000), reading.receiptDiscounts)
+        assertEquals(money(12_000, 500, 1_000), reading.additions)
+        assertEquals(reading.total, reading.itemsNet)
+    }
+
+    @Test
+    fun `a gofood order in gopay's history names the restaurant and pays the total`() {
+        val reading = read(*GOFOOD_IN_GOPAY)
+        assertEquals(ReceiptSource.GOFOOD, reading.source)
+        assertEquals("Dapur Lele Sederhana", reading.store)
+        assertEquals(Money(297_500), reading.total)
+        assertTrue(reading.items.isEmpty())
+        assertTrue("Sate Usus 5" in reading.unplaced)
+    }
+
+    @Test
+    fun `cashback with no minus is not taken off`() {
+        val reading = read(
+            "Rincian Pesanan" to null,
+            "1 x Nasi Kuning" to "Rp20.000",
+            "Biaya Layanan" to "Rp1.000",
+            "Cashback" to "Rp2.000",
+            "Total Pembayaran" to "Rp21.000",
+        )
+        assertTrue(reading.receiptDiscounts.isEmpty())
+        assertEquals(reading.total, reading.itemsNet)
+    }
 }

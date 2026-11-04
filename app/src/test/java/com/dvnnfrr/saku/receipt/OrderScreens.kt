@@ -137,5 +137,128 @@ val TOKOPEDIA_ORDER = arrayOf<Pair<String, String?>>(
     "Total Belanja" to "Rp62.500",
 )
 
+/** ShopeeFood order detail with its list folded (`Lihat Lebih Banyak`), a modifier line, a
+ * delivery fee struck to Rp0, and the amount paid beside the Paid stamp (research SF-1). */
+val SHOPEEFOOD_FOLDED = arrayOf<Pair<String, String?>>(
+    "Rincian Pesananmu" to null,
+    "1 x Es Kopi Gula Aren" to "Rp30.000",
+    "Normal, Normal Ice , Normal Espresso" to null,
+    "Lihat Lebih Banyak" to null,
+    "Subtotal Pesanan (8 menu)" to "Rp215.000",
+    "Voucher Diskon" to "-Rp118.250",
+    "Biaya Pengiriman" to "Rp7.500 Rp0",
+    "Biaya Layanan" to "Rp500",
+    "Paid" to "Rp97.250",
+    "" to "Sudah termasuk pajak",
+    "Informasi Pesanan" to null,
+    "No. Pesanan" to "2512150000ABCD SALIN",
+    "Pembayaran" to "ShopeePay",
+)
+
+/** ShopeeFood in English: a summary line with the total, `Paid` and the tax caption, and an
+ * 18-digit order id (research SF-5). */
+val SHOPEEFOOD_ENGLISH = arrayOf<Pair<String, String?>>(
+    "Order Processing" to null,
+    "Warung Kebun Hijau" to null,
+    "Rp19.000 - 1 item - ShopeePay" to null,
+    "Deliver To" to null,
+    "1 x Salad Sayur Segar" to "Rp11.000",
+    "Subtotal (1 item)" to "Rp11.000",
+    "Shipping Fee" to "↑ Rp5.000",
+    "Service Fee" to "Rp3.000",
+    "Paid" to "Rp19.000",
+    "" to "Tax included, where applicable.",
+    "Order ID" to "600000000000000001",
+    "Payment" to "ShopeePay",
+)
+
+/** ShopeeFood checkout in English: the price on its own row under the item, and Total
+ * then Total Payment (research SF-4). */
+val SHOPEEFOOD_CHECKOUT = arrayOf<Pair<String, String?>>(
+    "Confirm Order" to null,
+    "Kedai Pizza Rumahan" to null,
+    "1x Pizza Keju Lumer" to null,
+    "Jagung" to null,
+    "" to "Rp24.000",
+    "Note:" to "Please leave a note...",
+    "Order Total (1 item):" to "Rp24.000",
+    "Voucher" to "Select voucher >",
+    "Redeem 0 Shopee Coin" to null,
+    "Payment Option" to "Credit / Debit Card >",
+    "Order Subtotal (1 item)" to "Rp24.000",
+    "Shipping Fee" to "↑ Rp5.000",
+    "Service Fee" to "Rp3.000",
+    "Total" to "Rp32.000",
+    "Tax included, where applicable." to null,
+    "Total Payment" to "Rp32.000",
+)
+
+/** Shopee checkout: `Rp89.900  x1`, an unticked add-on, instalment tiles and a coin toggle
+ * above Rincian Pembayaran (research SM-2). */
+val SHOPEE_CHECKOUT = arrayOf<Pair<String, String?>>(
+    "Checkout" to null,
+    "Kipas Meja Mini Lipat" to null,
+    "Bebas Pengembalian" to null,
+    "Variasi: biru muda" to null,
+    "Rp89.900" to "x1",
+    "Proteksi Kerusakan +" to "Rp625 x1",
+    "Voucher Toko" to "Gunakan/ masukkan kode >",
+    "Opsi Pengiriman" to null,
+    "Reguler" to "Rp9.000 Rp0",
+    "Voucher s/d Rp10.000 jika pesanan belum tiba 2 Jun 2024." to null,
+    "Total Pesanan (1 Produk):" to "Rp89.900",
+    "Tukarkan 10181 Koin Shopee" to null,
+    "Metode Pembayaran" to "ShopeePay >",
+    "SPayLater (Rp16.191.841 Tersisa)" to null,
+    "Rekomendasi Rp91.799 x 1 bln" to "Rp33.308 x 3 bln",
+    "Rincian Pembayaran" to null,
+    "Subtotal untuk Produk" to "Rp89.900",
+    "Subtotal Pengiriman" to "Rp9.000",
+    "Total Diskon Pengiriman" to "- Rp9.000",
+    "Biaya Layanan" to "Rp1.000",
+    "Total Pembayaran" to "Rp90.900",
+    "Total Pembayaran" to "Rp90.900 Buat Pesanan",
+)
+
+/** Tokopedia's invoice: a four-column item table, Total Belanja and Total Tagihan (research TP-2). */
+val TOKOPEDIA_INVOICE = arrayOf<Pair<String, String?>>(
+    "INVOICE" to null,
+    "INV/20261101/MPL/1234567890" to null,
+    "Penjual : Toko Jam Sentosa" to null,
+    "Pembeli : Budi Contoh" to null,
+    "INFO PRODUK" to "JUMLAH HARGA SATUAN TOTAL HARGA",
+    "Jam Tangan Digital Sport" to "1 Rp35.000 Rp35.000",
+    "Berat: 200 gr" to null,
+    "TOTAL HARGA (1 BARANG)" to "Rp35.000",
+    "Total Ongkos Kirim" to "Rp12.000",
+    "Diskon Ongkos Kirim" to "-Rp1.000",
+    "Asuransi Pengiriman" to "Rp500",
+    "Biaya Jasa Aplikasi" to "Rp1.000",
+    "TOTAL BELANJA" to "Rp47.500",
+    "TOTAL TAGIHAN" to "Rp47.500",
+    "Metode Pembayaran : GoPay" to null,
+    "Invoice ini sah dan diproses oleh komputer" to null,
+)
+
+/** A GoFood order in GoPay's history: Pembelian with counts only, Bayar Pakai (research GP-1). */
+val GOFOOD_IN_GOPAY = arrayOf<Pair<String, String?>>(
+    "Rangkuman transaksi" to null,
+    "gofood" to "23 Agu, 10:53 AM",
+    "Makanan udah diantar" to "Transaksi F-2570000000",
+    "Alamat restoran" to null,
+    "Dapur Lele Sederhana" to null,
+    "Pembelian" to null,
+    "Ayam Penyet Sambal Ijo" to "8",
+    "Sate Usus" to "5",
+    "Kol Goreng" to "3",
+    "Tanpa alat makan/sedotan" to null,
+    "Detail pembayaran" to null,
+    "Harga" to "280.000",
+    "Biaya Penanganan dan Pengiriman" to "17.500",
+    "Total" to "297.500",
+    "Bayar Pakai GoPay Tabungan By Jago" to "297.500",
+    "Download bukti" to null,
+)
+
 private const val SCREEN_PITCH = 40
 private const val SCREEN_LINE = 24

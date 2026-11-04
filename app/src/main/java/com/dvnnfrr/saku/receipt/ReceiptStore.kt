@@ -28,7 +28,7 @@ private val CHAINS = listOf(
 
 /** Screenshot labels whose text, on the same row or the next, names who was paid. */
 private val PAYEE = Regex(
-    """^\s*(pembayaran\s*ke|bayar\s*ke|nama\s*merchant|merchant|nama\s*penerima|penerima|alamat\s*restoran)\b[:\s]*(.*)$""",
+    """^\s*(pembayaran\s*ke|bayar\s*ke|nama\s*merchant|merchant|nama\s*penerima|penerima|alamat\s*restoran|penjual)\b[:\s]*(.*)$""",
     RegexOption.IGNORE_CASE,
 )
 

@@ -36,15 +36,16 @@ private fun pattern(source: String) = Regex(source, RegexOption.IGNORE_CASE)
 private val ORDER_APPS = listOf(
     pattern("""go\s?food|biaya\s*penanganan|handling\s*and\s*delivery|biaya\s*layanan\s*dan\s*lainnya|service\s*and\s*other\s*fees""") to ReceiptSource.GOFOOD,
     pattern("""shopee\s?food""") to ReceiptSource.SHOPEEFOOD,
-    pattern("""tokopedia|\binv/\d|biaya\s*jasa\s*aplikasi""") to ReceiptSource.TOKOPEDIA,
-    pattern("""koin\s*shopee|subtotal\s*(untuk\s*)?produk|subtotal\s*pengiriman|shopee\s*mall|\bshopee\b(?!\s*(pay|food))""") to
+    pattern("""tokopedia|\binv/\d|biaya\s*jasa\s*aplikasi|invoice\s*ini\s*sah""") to ReceiptSource.TOKOPEDIA,
+    pattern("""koin\s*shopee|shopee\s*koin|subtotal\s*(untuk\s*)?produk|subtotal\s*barang|subtotal\s*pengiriman|shopee\s*mall""") to
         ReceiptSource.SHOPEE,
 )
 private val GOFOOD_ITEMS = pattern("""purchase\s*item""")
 private val GOFOOD_SUMMARY = pattern("""payment\s*summary""")
 private val GOFOOD_SUMMARY_ID = pattern("""ringkasan\s*pembayaran""")
 private val GOFOOD_PRICE_ID = pattern("""^\W*harga\b""")
-private val SHOPEEFOOD_ORDER = pattern("""rincian\s*pesanan""")
+/** ShopeeFood's heading, or the caption under its amount paid, in either language. */
+private val SHOPEEFOOD_ORDER = pattern("""rincian\s*pesanan|sudah\s*termasuk\s*pajak|tax\s*included,\s*where\s*applicable""")
 
 /* A banking app, from any row: names a paper slip never prints (`DEBIT BCA` is not m-BCA). */
 private val BANK_APPS = listOf(
