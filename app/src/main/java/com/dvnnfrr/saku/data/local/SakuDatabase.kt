@@ -13,6 +13,9 @@ import androidx.room.TypeConverters
         SubcategoryEntity::class,
         TxnEntity::class,
         ImportBatchEntity::class,
+        TagEntity::class,
+        TxnTagEntity::class,
+        ItemWordEntity::class,
     ],
     version = SakuDatabase.VERSION,
     exportSchema = true,
@@ -25,12 +28,14 @@ abstract class SakuDatabase : RoomDatabase() {
     abstract fun subcategoryDao(): SubcategoryDao
     abstract fun txnDao(): TxnDao
     abstract fun importBatchDao(): ImportBatchDao
+    abstract fun tagDao(): TagDao
+    abstract fun itemWordDao(): ItemWordDao
 
     companion object {
         private const val NAME = "saku.db"
 
         /** The Room schema version, which Room also writes as `PRAGMA user_version`. */
-        const val VERSION = 1
+        const val VERSION = 2
 
         /**
          * Room's identity hash for [VERSION], as it writes it into `room_master_table`.
@@ -38,7 +43,10 @@ abstract class SakuDatabase : RoomDatabase() {
          * and `SchemaIdentityTest` fails when the two drift. The database import refuses
          * a file whose hash differs.
          */
-        const val IDENTITY_HASH = "bfb8f34edf6ae031f2e4cb76c266b385"
+        const val IDENTITY_HASH = "1248a98cbd015c80c4fc3fe4ee0fec3b"
+
+        /** Version 1's hash. The database import still reads version 1 files. */
+        const val IDENTITY_HASH_V1 = "bfb8f34edf6ae031f2e4cb76c266b385"
 
         @Volatile
         private var instance: SakuDatabase? = null
@@ -53,6 +61,9 @@ abstract class SakuDatabase : RoomDatabase() {
                 // Foreign keys are RESTRICT on the paths that matter, so an account or
                 // category holding transactions cannot be deleted out from under them.
                 .setJournalMode(JournalMode.WRITE_AHEAD_LOGGING)
+                // Never a destructive fallback: a missing migration must crash, not wipe
+                // the ledger. Opening a newer file with an older Saku is refused by Room.
+                .addMigrations(*ALL_MIGRATIONS)
                 .build()
     }
 }

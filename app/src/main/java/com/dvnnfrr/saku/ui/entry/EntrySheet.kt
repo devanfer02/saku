@@ -36,6 +36,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.composed
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -64,7 +69,7 @@ import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
 
 /** Which field's picker is expanded. Only one at a time; the sheet is not tall. */
-private enum class OpenPicker { NONE, ACCOUNT, DESTINATION, CATEGORY }
+private enum class OpenPicker { NONE, ACCOUNT, DESTINATION, CATEGORY, TAGS }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,6 +77,8 @@ fun EntrySheet(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     editingId: Long? = null,
+    /** Price history on a saved expense, with its item name; null hides the action. */
+    onPriceHistory: ((String) -> Unit)? = null,
     viewModel: TransactionEntryViewModel = viewModel(factory = TransactionEntryViewModel.Factory),
 ) {
     val state by viewModel.state.collectAsState()
@@ -91,7 +98,7 @@ fun EntrySheet(
         containerColor = SakuTheme.colors.surface,
         modifier = modifier,
     ) {
-        EntrySheetBody(state = state, suggestions = suggestions, viewModel = viewModel)
+        EntrySheetBody(state = state, suggestions = suggestions, viewModel = viewModel, onPriceHistory = onPriceHistory)
     }
 }
 
@@ -100,11 +107,14 @@ private fun EntrySheetBody(
     state: EntryUiState,
     suggestions: List<NoteSuggestion>,
     viewModel: TransactionEntryViewModel,
+    onPriceHistory: ((String) -> Unit)?,
 ) {
     val form = state.form
     val spacing = SakuTheme.spacing
     var openPicker by rememberSaveable { mutableStateOf(OpenPicker.NONE) }
     var creatingCategory by rememberSaveable { mutableStateOf(false) }
+    // Which account leg the New account dialog fills: null when closed.
+    var creatingAccountFor by rememberSaveable { mutableStateOf<OpenPicker?>(null) }
     var confirmingDelete by rememberSaveable { mutableStateOf(false) }
     var pickingDate by rememberSaveable { mutableStateOf(false) }
     var pickingTime by rememberSaveable { mutableStateOf(false) }
@@ -195,12 +205,23 @@ private fun EntrySheetBody(
                     },
                 )
             }
+
+            TagsRow(
+                tags = form.tags,
+                onRemove = viewModel::removeTag,
+                onAdd = {
+                    focusManager.clearFocus()
+                    openPicker = OpenPicker.TAGS
+                },
+            )
         }
         }
 
         // An open picker takes the keypad's place, as a grid, so the choices sit where
         // the thumb already is and a long list needs little or no scrolling.
         if (openPicker == OpenPicker.NONE) {
+            val item = priceHistoryItem(form)
+            if (item != null && onPriceHistory != null) PriceHistoryAction(onClick = { onPriceHistory(item) })
             Keypad(
                 onDigit = viewModel::onDigit,
                 onTripleZero = viewModel::onTripleZero,
@@ -213,8 +234,12 @@ private fun EntrySheetBody(
                 open = openPicker,
                 state = state,
                 viewModel = viewModel,
-                onClose = { openPicker = OpenPicker.NONE },
+                onClose = {
+                    if (openPicker == OpenPicker.TAGS) viewModel.closeTagPicker()
+                    openPicker = OpenPicker.NONE
+                },
                 onCreateCategory = { creatingCategory = true },
+                onCreateAccount = { creatingAccountFor = openPicker },
             )
         }
     }
@@ -228,6 +253,18 @@ private fun EntrySheetBody(
                 openPicker = OpenPicker.NONE
             },
             onDismiss = { creatingCategory = false },
+        )
+    }
+
+    creatingAccountFor?.let { leg ->
+        NameDialog(
+            titleRes = R.string.accounts_new_title,
+            onConfirm = { name ->
+                viewModel.createAccount(name, destination = leg == OpenPicker.DESTINATION)
+                creatingAccountFor = null
+                openPicker = OpenPicker.NONE
+            },
+            onDismiss = { creatingAccountFor = null },
         )
     }
 
@@ -447,6 +484,10 @@ private fun NoteField(
                 textAlign = TextAlign.End,
                 fontSize = SakuTheme.typography.body.fontSize,
             ),
+            // The text's own ink, light on dark and dark on light; BasicTextField's
+            // default cursor is black whatever the theme.
+            cursorBrush = SolidColor(SakuTheme.colors.ink),
+            visualTransformation = CursorRoomAtEnd,
             // The "Note" Text is a sibling, so without this TalkBack focuses the
             // field and announces only "edit box".
             modifier = Modifier
@@ -458,6 +499,28 @@ private fun NoteField(
     }
 }
 
+/**
+ * Draws two narrow no-break spaces after the note. The note is right-aligned, so its last
+ * letter sits on the field's edge, where the cursor is drawn: without room the cursor
+ * covers that letter. U+202F is not trimmed as trailing whitespace by Android's line
+ * layout, unlike a plain space. Offsets map one to one; the extra character is never
+ * part of the value.
+ */
+private object CursorRoomAtEnd : VisualTransformation {
+    private const val ROOM = "\u202F\u202F"
+
+    override fun filter(text: AnnotatedString): TransformedText {
+        val length = text.length
+        return TransformedText(
+            AnnotatedString(text.text + ROOM),
+            object : OffsetMapping {
+                override fun originalToTransformed(offset: Int): Int = offset
+                override fun transformedToOriginal(offset: Int): Int = offset.coerceAtMost(length)
+            },
+        )
+    }
+}
+
 @Composable
 private fun ExpandedPicker(
     open: OpenPicker,
@@ -465,12 +528,14 @@ private fun ExpandedPicker(
     viewModel: TransactionEntryViewModel,
     onClose: () -> Unit,
     onCreateCategory: () -> Unit,
+    onCreateAccount: () -> Unit,
 ) {
     if (open == OpenPicker.NONE) return
     val colors = SakuTheme.colors
     val titleRes = when (open) {
         OpenPicker.ACCOUNT -> R.string.entry_field_account
         OpenPicker.DESTINATION -> R.string.entry_field_destination
+        OpenPicker.TAGS -> R.string.entry_field_tags
         else -> R.string.entry_field_category
     }
 
@@ -501,14 +566,16 @@ private fun ExpandedPicker(
 
         val gridModifier = Modifier.heightIn(max = PICKER_MAX_HEIGHT)
         when (open) {
-            // No create action on either account picker. Accounts are made on the
-            // Accounts screen; wiring this to the shared NameDialog created a
-            // *subcategory* named after the account the user thought they were adding.
+            // New account goes through its own dialog and `createAccount`. An earlier
+            // version reused the category dialog, which made a *subcategory* named after
+            // the account the user thought they were adding.
             OpenPicker.ACCOUNT -> AccountPickerGrid(
                 accounts = state.accounts,
                 selectedId = state.form.accountId,
                 onSelect = { viewModel.setAccount(it.id); onClose() },
                 modifier = gridModifier,
+                onCreateNew = onCreateAccount,
+                createLabel = stringResource(R.string.accounts_new_title),
             )
 
             OpenPicker.DESTINATION -> AccountPickerGrid(
@@ -516,6 +583,8 @@ private fun ExpandedPicker(
                 selectedId = state.form.toAccountId,
                 onSelect = { viewModel.setDestination(it.id); onClose() },
                 modifier = gridModifier,
+                onCreateNew = onCreateAccount,
+                createLabel = stringResource(R.string.accounts_new_title),
             )
 
             OpenPicker.CATEGORY -> CategoryPickerGrid(
@@ -527,6 +596,20 @@ private fun ExpandedPicker(
                 modifier = gridModifier,
             )
 
+            // Takes the keypad's place like the other pickers, so Done sits where the thumb is.
+            OpenPicker.TAGS -> TagPicker(
+                query = state.tagQuery,
+                picker = state.tagPickerUi,
+                hasAnyTag = state.allTags.isNotEmpty(),
+                onQuery = viewModel::setTagQuery,
+                onPick = viewModel::pickTag,
+                onAddTyped = viewModel::addTypedTag,
+                onDone = {
+                    viewModel.addTypedTag()
+                    onClose()
+                },
+            )
+
             OpenPicker.NONE -> Unit
         }
     }
@@ -536,7 +619,7 @@ private fun ExpandedPicker(
 private val PICKER_MAX_HEIGHT = 400.dp
 
 @Composable
-private fun NameDialog(
+internal fun NameDialog(
     @androidx.annotation.StringRes titleRes: Int,
     onConfirm: (String) -> Unit,
     onDismiss: () -> Unit,

@@ -1,9 +1,14 @@
 package com.dvnnfrr.saku.ui.navigation
 
+import android.net.Uri
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.dvnnfrr.saku.domain.ThemePreference
@@ -16,10 +21,14 @@ import com.dvnnfrr.saku.ui.importexport.ImportEntryPoint
 import com.dvnnfrr.saku.ui.importexport.ImportHistoryScreen
 import com.dvnnfrr.saku.ui.importexport.ImportScreen
 import com.dvnnfrr.saku.ui.importexport.RestoreScreen
+import com.dvnnfrr.saku.ui.receipt.ReceiptScreen
+import com.dvnnfrr.saku.ui.receipt.ReceiptViewModel
 import com.dvnnfrr.saku.ui.search.SearchScreen
 import com.dvnnfrr.saku.ui.shell.MoreScreen
 import com.dvnnfrr.saku.ui.stats.StatsScreen
+import com.dvnnfrr.saku.ui.tags.TagsScreen
 import com.dvnnfrr.saku.ui.transactions.TransactionsScreen
+import kotlinx.datetime.LocalDate
 
 /**
  * One entry per destination: the four tabs, then the screens the More menu pushes.
@@ -40,14 +49,44 @@ fun SakuNavHost(
         startDestination = SakuDestination.START.route,
         modifier = modifier,
     ) {
-        composable(SakuDestination.TRANSACTIONS.route) {
+        composable(SakuDestination.TRANSACTIONS.route) { entry ->
+            // Set by the Receipt screen on save: the day Trans opens on, as epoch days.
+            val openDay by entry.savedStateHandle.getStateFlow<Int?>(OPEN_DAY_KEY, null).collectAsState()
             TransactionsScreen(
-                onOpenSearch = { navController.navigate(TransRoute.SEARCH.route) },
+                onOpenSearch = { navController.navigate(TransRoute.search()) },
+                onOpenPriceHistory = { item -> navController.navigate(TransRoute.search(item)) },
+                onScanPhoto = { photo ->
+                    navController.navigate(TransRoute.RECEIPT.route.replace("{photo}", Uri.encode(photo.toString())))
+                },
+                openDay = openDay?.let(LocalDate::fromEpochDays),
+                onDayOpened = { entry.savedStateHandle[OPEN_DAY_KEY] = null },
                 openNewEntry = openEntry,
                 onNewEntryOpened = onEntryOpened,
             )
         }
-        composable(TransRoute.SEARCH.route) { SearchScreen(onBack = back) }
+        composable(
+            TransRoute.SEARCH.route,
+            arguments = listOf(navArgument(SEARCH_QUERY) { type = NavType.StringType; defaultValue = "" }),
+        ) { SearchScreen(onBack = back) }
+        composable(
+            TransRoute.RECEIPT.route,
+            arguments = listOf(
+                navArgument(ReceiptViewModel.PHOTO_ARG) {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+            ),
+        ) {
+            ReceiptScreen(
+                onBack = back,
+                onSaved = { day ->
+                    navController.getBackStackEntry(SakuDestination.TRANSACTIONS.route)
+                        .savedStateHandle[OPEN_DAY_KEY] = day.toEpochDays()
+                    navController.popBackStack(SakuDestination.TRANSACTIONS.route, inclusive = false)
+                },
+            )
+        }
         composable(SakuDestination.STATS.route) { StatsScreen() }
         composable(SakuDestination.ACCOUNTS.route) { AccountsScreen() }
         composable(SakuDestination.MORE.route) {
@@ -64,6 +103,7 @@ fun SakuNavHost(
         }
 
         composable(MoreRoute.CATEGORIES.route) { CategoriesScreen(onBack = back) }
+        composable(MoreRoute.TAGS.route) { TagsScreen(onBack = back) }
         composable(MoreRoute.IMPORT_MONEY_MANAGER.route) {
             ImportScreen(
                 entryPoint = ImportEntryPoint.MONEY_MANAGER,
@@ -95,6 +135,8 @@ fun SakuNavHost(
         }
     }
 }
+
+private const val OPEN_DAY_KEY = "open_day"
 
 /**
  * Switch tabs the way a bottom bar is expected to behave: the back stack does not

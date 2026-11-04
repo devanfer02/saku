@@ -16,10 +16,17 @@ data class TransactionFilter(
     val incomeCategoryIds: Set<Long>? = null,
     val expenseCategoryIds: Set<Long>? = null,
     val accountIds: Set<Long>? = null,
+    /**
+     * Null is "All": rows pass whatever their tags, untagged ones included. A set passes
+     * rows carrying at least one of its tags. Unlike the other three, ticking every tag is
+     * NOT "All", because "All" also lets untagged rows through.
+     */
+    val tagIds: Set<Long>? = null,
 ) {
     /** True while any tab is narrowed, which is when every screen must say so. */
     val isActive: Boolean
-        get() = incomeCategoryIds != null || expenseCategoryIds != null || accountIds != null
+        get() = incomeCategoryIds != null || expenseCategoryIds != null || accountIds != null ||
+            tagIds != null
 
     /** Whether a [type] category with [categoryId] is inside its side's selection. */
     fun includesCategory(type: TxnType, categoryId: Long): Boolean {

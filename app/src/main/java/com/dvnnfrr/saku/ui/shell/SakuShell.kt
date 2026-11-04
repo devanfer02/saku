@@ -11,6 +11,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import com.dvnnfrr.saku.R
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavHostController
@@ -19,6 +23,7 @@ import androidx.navigation.compose.rememberNavController
 import com.dvnnfrr.saku.domain.ThemePreference
 import com.dvnnfrr.saku.ui.navigation.SakuDestination
 import com.dvnnfrr.saku.ui.navigation.SakuNavHost
+import com.dvnnfrr.saku.ui.shared.cappedFontSize
 import com.dvnnfrr.saku.ui.navigation.navigateTo
 import com.dvnnfrr.saku.ui.theme.SakuPreview
 import com.dvnnfrr.saku.ui.theme.SakuPreviewSurface
@@ -65,7 +70,7 @@ fun SakuShell(
                             }
                         },
                         icon = { Icon(destination.icon, contentDescription = null) },
-                        label = { Text(stringResource(destination.labelRes)) },
+                        label = { NavLabel(destination) },
                         modifier = Modifier.testTag(destination.navTestTag),
                     )
                 }
@@ -87,4 +92,22 @@ fun SakuShell(
 @Composable
 private fun SakuShellPreview() {
     SakuPreviewSurface(padded = false) { SakuShell() }
+}
+
+/**
+ * A bottom-bar label. It stops growing at 1.3x font scale and stays on one line, so
+ * "Accounts" at 200% does not break mid-word. TalkBack reads the full name ("Trans."
+ * is spoken as "Transactions").
+ */
+@Composable
+private fun NavLabel(destination: SakuDestination) {
+    val size = cappedFontSize(MaterialTheme.typography.labelMedium.fontSize)
+    val spoken = if (destination == SakuDestination.TRANSACTIONS) stringResource(R.string.nav_transactions_spoken) else null
+    Text(
+        text = stringResource(destination.labelRes),
+        fontSize = size,
+        maxLines = 1,
+        softWrap = false,
+        modifier = if (spoken != null) Modifier.semantics { contentDescription = spoken } else Modifier,
+    )
 }

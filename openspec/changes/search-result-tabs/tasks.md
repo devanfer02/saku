@@ -1,0 +1,4 @@
+- [x] 1.1 `SearchTab`, `SearchPeriod`, years, `dailyScrollIndex`, `monthlyScrollIndex`, `defaultTab`; tests
+- [x] 1.2 Picked tab in `SearchViewModel`, kept across queries; test
+- [x] 1.3 Tabs, jumps, summary spacing and size in `SearchScreen`
+- [x] 1.4 Emulator check: the "mama"-style search on mock data, each tab, both jumps, dark theme, font 200% (31 Oct 2026, "kopi": 15 results, Monthly Oct to Jul, August opened Daily at 30 Aug, 2026 opened Monthly; dark and 200% clean)

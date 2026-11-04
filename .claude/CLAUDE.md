@@ -36,7 +36,7 @@ Large: `/opsx:propose` before code, then `/opsx:apply` task by task, ticking `ta
 
 Never commit a feature to `master`. Branch as `feat/`, `fix/`, `refactor/` or `chore/` plus a slug, push, open the PR against `master`, run `/humanizer` over the title and body, then merge.
 
-CI: a PR runs unit tests, lint, the debug build and the no-network-permission gate. A push to `master` builds the signed release and uploads one artifact, `saku-release-apk`. Maestro is not in CI; run it locally against the emulator.
+CI: a PR runs unit tests, lint, the debug build and the no-network-permission gate. A push to `master` builds the signed release and uploads one artifact, `saku-release-apk`. A push to `dev` builds the `dev` variant (`com.dvnnfrr.saku.dev`, "Saku Dev", installs beside the real app with its own data) and uploads `saku-dev-apk`; reset `dev` to the branch you want on the phone and push it. Maestro is not in CI; run it locally against the emulator.
 
 ### Done means
 

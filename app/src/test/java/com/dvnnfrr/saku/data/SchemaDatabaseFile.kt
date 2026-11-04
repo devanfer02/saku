@@ -29,8 +29,9 @@ class SchemaDatabaseFile(private val file: File) {
         userVersion: Int = SakuDatabase.VERSION,
         identityHash: String? = null,
         withMasterTable: Boolean = true,
+        schemaVersion: Int = SakuDatabase.VERSION,
     ): SchemaDatabaseFile {
-        val database = JSONObject(schemaJson().readText()).getJSONObject("database")
+        val database = JSONObject(schemaJson(schemaVersion).readText()).getJSONObject("database")
         val entities = database.getJSONArray("entities")
         for (i in 0 until entities.length()) {
             val entity = entities.getJSONObject(i)
@@ -98,6 +99,18 @@ class SchemaDatabaseFile(private val file: File) {
         "importBatchId" to null, "dedupHash" to "script-$id",
     )
 
+    fun tag(id: Long, name: String, archived: Boolean = false) = insert(
+        "tag",
+        "id" to id, "name" to name, "sortOrder" to id, "archived" to archived,
+    )
+
+    fun txnTag(txnId: Long, tagId: Long) = insert("txn_tag", "txnId" to txnId, "tagId" to tagId)
+
+    fun itemWord(printed: String, readable: String, wholeName: Boolean = false) = insert(
+        "item_word", "printed" to printed, "readable" to readable, "isWholeName" to if (wholeName) 1 else 0,
+        "updatedAtEpochSec" to 0L,
+    )
+
     fun close(): File {
         db.close()
         return file
@@ -130,7 +143,10 @@ const val DAY_SEC = 86_400L
  * A small file shaped like the owner's: opening balances, an archived expense and an
  * archived income category, a transfer, a negative adjustment and no subcategories.
  */
-fun sampleDatabaseFile(file: File): File = SchemaDatabaseFile(file).createSchema()
+fun sampleDatabaseFile(file: File, schemaVersion: Int = SakuDatabase.VERSION): File =
+    sampleRows(SchemaDatabaseFile(file).createSchema(schemaVersion = schemaVersion, userVersion = schemaVersion)).close()
+
+private fun sampleRows(file: SchemaDatabaseFile): SchemaDatabaseFile = file
     .account(1, "Cash", type = "CASH", openingBalance = 150_000, colorSlot = 0)
     .account(2, "BCA", type = "BANK", openingBalance = 2_500_000, colorSlot = 1)
     .account(3, "RDPU SucorInvest", type = "INVESTMENT", colorSlot = 3, lastReconciledEpochSec = 1_780_000_000)
@@ -143,4 +159,3 @@ fun sampleDatabaseFile(file: File): File = SchemaDatabaseFile(file).createSchema
     .txn(3, SAMPLE_FIRST_EPOCH_SEC + 2 * DAY_SEC, "TRANSFER", 1_000_000, accountId = 2, toAccountId = 3)
     .txn(4, SAMPLE_FIRST_EPOCH_SEC + 3 * DAY_SEC, "ADJUSTMENT", -25_000, accountId = 1)
     .txn(5, SAMPLE_FIRST_EPOCH_SEC + 40 * DAY_SEC, "EXPENSE", 12_000, accountId = 2, categoryId = 3, note = "kos")
-    .close()

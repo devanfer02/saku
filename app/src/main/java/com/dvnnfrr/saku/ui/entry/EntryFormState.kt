@@ -43,6 +43,8 @@ data class EntryFormState(
     val toAccountId: Long? = null,
     val categoryId: Long? = null,
     val note: String = "",
+    /** Optional on every type, and kept across a type change: a transfer can carry a tag too. */
+    val tags: List<EntryTag> = emptyList(),
 ) {
     val isEditing: Boolean get() = id != null
 
@@ -105,7 +107,11 @@ data class EntryFormState(
         fun recording(now: LocalDateTime, accountId: Long? = null): EntryFormState =
             EntryFormState(occurredAt = now, accountId = accountId)
 
-        fun editing(transaction: Transaction, at: LocalDateTime): EntryFormState = EntryFormState(
+        fun editing(
+            transaction: Transaction,
+            at: LocalDateTime,
+            tags: List<EntryTag> = emptyList(),
+        ): EntryFormState = EntryFormState(
             id = transaction.id,
             type = transaction.type,
             amount = AmountInput.of(transaction.amount),
@@ -114,6 +120,7 @@ data class EntryFormState(
             toAccountId = transaction.toAccountId,
             categoryId = transaction.categoryId,
             note = transaction.note.orEmpty(),
+            tags = tags,
         )
     }
 }

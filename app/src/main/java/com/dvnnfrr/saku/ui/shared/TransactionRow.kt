@@ -34,6 +34,20 @@ import com.dvnnfrr.saku.ui.theme.forSlotOrNeutral
 private const val ARROW = "→"
 private const val SEPARATOR = " · "
 
+/** How many tags a row names before it counts the rest. */
+const val ROW_TAG_LIMIT = 2
+
+/**
+ * A row's tags as one short label: `#Monthly grocery #Ramadan +1`. Null with no tags.
+ * The `#` and `+` are marks, not words, so the label carries no copy.
+ */
+fun rowTagsLabel(tags: List<String>): String? {
+    if (tags.isEmpty()) return null
+    val shown = tags.take(ROW_TAG_LIMIT).joinToString(" ") { "#$it" }
+    val more = tags.size - ROW_TAG_LIMIT
+    return if (more > 0) "$shown +$more" else shown
+}
+
 /** What a [TransactionRow] renders, resolved from the transaction's shape. */
 @Immutable
 data class TransactionRowLabels(
@@ -103,6 +117,9 @@ fun TransactionRow(
     toAccountName: String? = null,
     titleFallback: String = type.defaultTitle,
     accountConjunction: String = "to",
+    tags: List<String> = emptyList(),
+    /** What TalkBack reads for the tags; copy arrives from the caller. */
+    spokenTags: String? = null,
     onClick: (() -> Unit)? = null,
 ) {
     val colors = SakuTheme.colors
@@ -131,13 +148,31 @@ fun TransactionRow(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(spacing.xs),
         ) {
-            Text(
-                text = labels.primary,
-                style = SakuTheme.typography.bodyStrong,
-                color = colors.ink,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            // The tags sit beside the category, both say what the row is, so the note line
+            // below keeps the full width. Each gets at most half; a short category leaves
+            // the tags right after it.
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = labels.primary,
+                    style = SakuTheme.typography.bodyStrong,
+                    color = colors.ink,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                rowTagsLabel(tags)?.let { label ->
+                    Text(
+                        text = SEPARATOR + label,
+                        style = SakuTheme.typography.caption,
+                        color = colors.ink2,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .weight(1f, fill = false)
+                            .semantics { contentDescription = spokenTags ?: label },
+                    )
+                }
+            }
             Text(
                 text = labels.secondary,
                 style = SakuTheme.typography.caption,
@@ -197,7 +232,8 @@ private fun TransactionRowPreview() {
                 accountName = "BCA",
                 categorySlot = ColorSlot(1),
                 category = "Makan & Minum",
-                note = "Nasi padang",
+                note = "Beras dan minyak",
+                tags = listOf("Monthly grocery", "Ramadan", "Trip Bali"),
             )
             TransactionRow(
                 amount = Money(16_500_000),

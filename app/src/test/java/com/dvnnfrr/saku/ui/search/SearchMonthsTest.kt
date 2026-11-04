@@ -114,13 +114,55 @@ class SearchMonthsTest {
     }
 
     @Test
-    fun `matches in one month give no breakdown`() {
-        val months = search(
+    fun `matches in one month give one month row and open on Daily`() {
+        val state = search(
             "arisan",
             listOf(txn("arisan", 1, day(10, 1)), txn("arisan", 2, day(10, 30))),
-        ).months
+        )
 
-        assertTrue(months.isEmpty())
+        assertEquals(listOf(month(10)), state.months.map { it.range })
+        assertEquals(SearchTab.DAILY, state.defaultTab)
+    }
+
+    @Test
+    fun `matches in two months open on Monthly`() {
+        val state = search("arisan", listOf(txn("arisan", 1, day(10, 1)), txn("arisan", 2, day(9, 1))))
+
+        assertEquals(SearchTab.MONTHLY, state.defaultTab)
+    }
+
+    @Test
+    fun `years run newest first with empty years kept`() {
+        val years = search(
+            "arisan",
+            listOf(
+                txn("arisan", 300_000, day(3, 1)),
+                txn("arisan", 200_000, day(7, 1, year = 2024)),
+                txn("arisan", 100_000, day(9, 1, year = 2024)),
+            ),
+        ).years
+
+        assertEquals(listOf(2026, 2025, 2024), years.map { it.range.start.year })
+        assertEquals(listOf(300_000L, 0L, 300_000L), years.map { it.expense.rupiah })
+        assertEquals(listOf(1, 0, 2), years.map { it.count })
+        assertEquals(listOf(1_000, 0, 1_000), years.map { it.barPermille })
+    }
+
+    @Test
+    fun `a year opens Monthly at its newest month with a match`() {
+        val state = search(
+            "arisan",
+            listOf(
+                txn("arisan", 1, day(2, 1)),
+                txn("arisan", 2, day(11, 1, year = 2025)),
+                txn("arisan", 3, day(5, 1, year = 2025)),
+            ),
+        )
+        val y2025 = state.years.single { it.range.start.year == 2025 }
+
+        // Months: Feb 2026, Jan 2026, Dec 2025, Nov 2025...
+        assertEquals(3, monthlyScrollIndex(state.months, y2025))
+        assertEquals(0, monthlyScrollIndex(state.months, state.years.first()))
     }
 
     @Test
@@ -183,11 +225,9 @@ class SearchMonthsTest {
         )
         val august = state.months.single { it.range == month(8) }
 
-        // Leading: summary and heading. Months: Oct, Sep, Aug. Days: 20 Oct (header and
-        // two rows), 3 Oct (header and one row), then 14 Aug's header.
-        val leading = 2
-        assertEquals(leading + 3 + 5, searchScrollIndex(leading, state.months, state.days, august))
-        assertEquals(leading + 3, searchScrollIndex(leading, state.months, state.days, state.months.first()))
+        // Days: 20 Oct (header and two rows), 3 Oct (header and one row), then 14 Aug's header.
+        assertEquals(5, dailyScrollIndex(state.days, august))
+        assertEquals(0, dailyScrollIndex(state.days, state.months.first()))
     }
 
     @Test
@@ -195,6 +235,6 @@ class SearchMonthsTest {
         val state = search("arisan", listOf(txn("arisan", 1, day(10, 1)), txn("arisan", 1, day(8, 1))))
         val september = state.months.single { it.range == month(9) }
 
-        assertNull(searchScrollIndex(2, state.months, state.days, september))
+        assertNull(dailyScrollIndex(state.days, september))
     }
 }

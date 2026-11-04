@@ -10,16 +10,20 @@ import com.dvnnfrr.saku.data.AppearanceStore
 import com.dvnnfrr.saku.data.ChartStyleStore
 import com.dvnnfrr.saku.data.FirstRunSeed
 import com.dvnnfrr.saku.data.FirstRunStore
+import com.dvnnfrr.saku.data.ReceiptDefaultsStore
 import com.dvnnfrr.saku.data.ReminderStore
 import com.dvnnfrr.saku.data.SharedPreferencesAppearanceStore
 import com.dvnnfrr.saku.data.local.SakuDatabase
+import com.dvnnfrr.saku.data.receipt.ReceiptRecognizer
 import com.dvnnfrr.saku.data.repository.AccountRepository
 import com.dvnnfrr.saku.data.repository.CategoryRepository
 import com.dvnnfrr.saku.data.repository.ImportRepository
 import com.dvnnfrr.saku.data.repository.RoomAccountRepository
 import com.dvnnfrr.saku.data.repository.RoomCategoryRepository
 import com.dvnnfrr.saku.data.repository.RoomImportRepository
+import com.dvnnfrr.saku.data.repository.RoomTagRepository
 import com.dvnnfrr.saku.data.repository.RoomTransactionRepository
+import com.dvnnfrr.saku.data.repository.TagRepository
 import com.dvnnfrr.saku.data.repository.TransactionRepository
 import com.dvnnfrr.saku.reminder.ReminderScheduler
 import com.dvnnfrr.saku.ui.filter.SharedFilter
@@ -48,6 +52,7 @@ interface AppContainer {
     val accounts: AccountRepository
     val categories: CategoryRepository
     val imports: ImportRepository
+    val tags: TagRepository
     val appearance: AppearanceStore
 
     /** The Stats chart style, remembered across restarts. */
@@ -67,6 +72,11 @@ interface AppContainer {
 
     /** Whether first-run setup was completed or skipped. */
     val firstRun: FirstRunStore
+
+    val receipts: ReceiptRecognizer
+
+    /** The account and tags the last receipt was saved with. */
+    val receiptDefaults: ReceiptDefaultsStore
 }
 
 class RoomAppContainer(context: Context) : AppContainer {
@@ -80,6 +90,7 @@ class RoomAppContainer(context: Context) : AppContainer {
     override val accounts: AccountRepository by lazy { RoomAccountRepository(db) }
     override val categories: CategoryRepository by lazy { RoomCategoryRepository(db) }
     override val imports: ImportRepository by lazy { RoomImportRepository(db) }
+    override val tags: TagRepository by lazy { RoomTagRepository(db) }
 
     /**
      * Not lazy. The theme reads it during the first composition, so deferring the
@@ -98,6 +109,10 @@ class RoomAppContainer(context: Context) : AppContainer {
     override val cacheDir: File = context.cacheDir
 
     override val firstRun: FirstRunStore by lazy { FirstRunStore(context) }
+
+    override val receipts: ReceiptRecognizer by lazy { ReceiptRecognizer(context) }
+
+    override val receiptDefaults: ReceiptDefaultsStore by lazy { ReceiptDefaultsStore(context) }
 }
 
 /**
@@ -139,6 +154,9 @@ class SakuApplication : Application() {
         scope.launch {
             roomContainer.reminderScheduler.sync(roomContainer.reminders.current())
         }
+
+        // A camera photo whose read was cut short (the app was killed mid-scan).
+        scope.launch { roomContainer.receipts.clearCache() }
 
         scope.launch {
             FirstRunSeed.applyIfEmpty(

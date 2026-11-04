@@ -15,10 +15,13 @@ import com.dvnnfrr.saku.domain.Money
 import com.dvnnfrr.saku.domain.NoteUsage
 import com.dvnnfrr.saku.domain.PeriodTotals
 import com.dvnnfrr.saku.domain.Subcategory
+import com.dvnnfrr.saku.domain.Tag
+import com.dvnnfrr.saku.domain.InvalidTagNameException
 import com.dvnnfrr.saku.domain.Transaction
 import com.dvnnfrr.saku.domain.TransactionFilter
 import com.dvnnfrr.saku.domain.TxnType
 import com.dvnnfrr.saku.excel.BackupContents
+import com.dvnnfrr.saku.receipt.LearnedWords
 import kotlinx.coroutines.flow.Flow
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
@@ -101,6 +104,13 @@ interface TransactionRepository {
     fun observeAll(filter: TransactionFilter): Flow<List<Transaction>>
 
     /**
+     * The receipt item dictionary: each expense note's item key (`receipt/ItemKey.kt`)
+     * mapped to the category its rows were filed under most often, pooled over every note
+     * with that key, so `SUSU UHT 1L` and `SUSU UHT 1L ×2` count as one item.
+     */
+    fun observeItemCategories(): Flow<Map<String, Long>>
+
+    /**
      * Distinct non-blank notes of [type], each with its use count, last use, last amount
      * and most-used category, unordered. For the entry sheet's note autocomplete, which
      * caches this and filters it in memory per keystroke.
@@ -127,12 +137,53 @@ interface TransactionRepository {
         categoryId: Long? = null,
         subcategoryId: Long? = null,
         note: String? = null,
+        /** Written with the row in one database transaction. Ids of existing tags only. */
+        tagIds: Set<Long> = emptySet(),
     ): Long
 
-    /** Validated identically to [record]; an edit cannot write a state an entry could not. */
+    /**
+     * Records every row of [rows], each with [tagIds], in one database transaction:
+     * either all are saved or none is. Each row is validated as [record] validates it.
+     * Returns the new ids in order. For a scanned receipt.
+     */
+    suspend fun saveAll(
+        rows: List<NewTransaction>,
+        tagIds: Set<Long> = emptySet(),
+        /** Words the user taught by editing item names, upserted in the same transaction. */
+        words: LearnedWords = LearnedWords.NONE,
+    ): List<Long>
+
+    /** The item words the user taught, applied before the built-in expansions. */
+    fun observeLearnedWords(): Flow<LearnedWords>
+
+    /**
+     * Validated identically to [record]; an edit cannot write a state an entry could not.
+     * Replaces the row's tags with [Transaction.tagIds] in the same database transaction.
+     */
     suspend fun update(transaction: Transaction)
 
     suspend fun delete(id: Long)
+}
+
+interface TagRepository {
+    /** Every tag, archived included, in the user's order. */
+    fun observeAll(): Flow<List<Tag>>
+
+    /** Rows per tag id. A tag on no row is absent. */
+    fun observeCounts(): Flow<Map<Long, Int>>
+
+    suspend fun all(): List<Tag>
+
+    /**
+     * The tag named [name] ignoring case and spaces, created when none exists. An archived
+     * match is returned as it is, not unarchived. Throws [InvalidTagNameException].
+     */
+    suspend fun findOrCreate(name: String): Long
+
+    /** Throws [InvalidTagNameException], or [DuplicateNameException] when another tag has the name. */
+    suspend fun rename(id: Long, name: String)
+
+    suspend fun setArchived(id: Long, archived: Boolean)
 }
 
 interface AccountRepository {
@@ -295,6 +346,8 @@ data class BackupSnapshot(
     val categories: List<Category>,
     val subcategories: List<Subcategory>,
     val transactions: List<Transaction>,
+    val tags: List<Tag> = emptyList(),
+    val words: LearnedWords = LearnedWords.NONE,
 )
 
 /** What a restore created. The transactions are in [batch], so Import history can reverse them. */
@@ -303,6 +356,17 @@ data class RestoreResult(
     val categoriesCreated: Int,
     val subcategoriesCreated: Int,
     val batch: ImportBatch,
+    val tagsCreated: Int = 0,
+)
+
+/** A row to record, as [TransactionRepository.saveAll] takes it. */
+data class NewTransaction(
+    val occurredAt: Instant,
+    val type: TxnType,
+    val amount: Money,
+    val accountId: Long,
+    val categoryId: Long?,
+    val note: String?,
 )
 
 /** A parsed, fully mapped row waiting on the user's confirmation. */
@@ -316,6 +380,8 @@ data class PendingRow(
     val subcategoryId: Long?,
     val note: String?,
     val dedupHash: String,
+    /** Found or created by name when the row is committed. Not part of [dedupHash]. */
+    val tagNames: List<String> = emptyList(),
 )
 
 class DuplicateNameException(val existingId: Long, val name: String) :

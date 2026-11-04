@@ -1,6 +1,7 @@
 package com.dvnnfrr.saku.excel
 
 import com.dvnnfrr.saku.domain.Money
+import com.dvnnfrr.saku.domain.TagName
 import com.dvnnfrr.saku.domain.TxnType
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
@@ -31,6 +32,8 @@ data class ParsedRow(
     val subcategoryName: String?,
     val note: String?,
     val discrepancy: AmountDiscrepancy?,
+    /** Valid, distinct tag names from the `Tags` column. Money Manager files have none. */
+    val tagNames: List<String> = emptyList(),
 )
 
 /**
@@ -269,6 +272,7 @@ object ImportParser {
                 subcategoryName = row.cleanText(columns.SUBCATEGORY),
                 note = row.cleanText(columns.NOTE),
                 discrepancy = null,
+                tagNames = TagName.split(row.textAt(columns.TAGS)),
             ),
         )
     }

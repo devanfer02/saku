@@ -4,6 +4,8 @@ import com.dvnnfrr.saku.domain.AccountType
 import com.dvnnfrr.saku.domain.CategoryKind
 import com.dvnnfrr.saku.domain.ColorSlot
 import com.dvnnfrr.saku.domain.Money
+import com.dvnnfrr.saku.domain.TagName
+import com.dvnnfrr.saku.receipt.LearnedWords
 import com.dvnnfrr.saku.domain.TxnType
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
@@ -65,11 +67,25 @@ data class DatabaseTxnRow(
     val note: String?,
 )
 
+data class DatabaseTagRow(
+    val id: Long,
+    val name: String,
+    val sortOrder: Int,
+    val archived: Boolean,
+)
+
+data class DatabaseTxnTagRow(val txnId: Long, val tagId: Long)
+
 data class DatabaseRows(
     val accounts: List<DatabaseAccountRow>,
     val categories: List<DatabaseCategoryRow>,
     val subcategories: List<DatabaseSubcategoryRow>,
     val transactions: List<DatabaseTxnRow>,
+    /** Empty for a schema 1 file, which has no tag tables. */
+    val tags: List<DatabaseTagRow> = emptyList(),
+    val txnTags: List<DatabaseTxnTagRow> = emptyList(),
+    /** The `item_word` rows: printed, readable, whole name. Empty when the file has none. */
+    val words: List<Triple<String, String, Boolean>> = emptyList(),
 )
 
 /** Why a database file was not imported. Data, not prose; the screen words it. */
@@ -107,20 +123,26 @@ object DatabaseImport {
     const val CATEGORY = "category"
     const val SUBCATEGORY = "subcategory"
     const val TXN = "txn"
+    const val TAG = "tag"
+    const val TXN_TAG = "txn_tag"
+
+    /** The first schema version with the tag tables. */
+    const val TAGS_SINCE = 2
 
     /**
-     * Null when the file was written for [expectedVersion] with [expectedHash]. Checked
-     * before any row is read, because a file of another schema may not have the columns
-     * the row queries name.
+     * Null when the file was written for one of [known], schema version to identity hash.
+     * Checked before any row is read, because a file of another schema may not have the
+     * columns the row queries name. A refused version names [current], the newest.
      */
-    fun refusalFor(header: DatabaseHeader, expectedVersion: Int, expectedHash: String): DatabaseRefusal? =
-        when {
+    fun refusalFor(header: DatabaseHeader, known: Map<Int, String>, current: Int): DatabaseRefusal? {
+        val expectedHash = known[header.userVersion]
+        return when {
             header.identityHash == null -> DatabaseRefusal.NotSaku
-            header.userVersion != expectedVersion ->
-                DatabaseRefusal.DifferentVersion(header.userVersion, expectedVersion)
+            expectedHash == null -> DatabaseRefusal.DifferentVersion(header.userVersion, current)
             header.identityHash != expectedHash -> DatabaseRefusal.DifferentLayout
             else -> null
         }
+    }
 
     /**
      * The file's rows as the records a backup restore reads.
@@ -166,6 +188,21 @@ object DatabaseImport {
         val subcategoryById = rows.subcategories.zip(subcategories).associate { (row, sub) -> row.id to (row to sub) }
         refuseDuplicates(SUBCATEGORY, subcategories.map { it.name to it.ref })
 
+        val tags = rows.tags.map { row ->
+            BackupTag(
+                name = TagName.normalize(row.name) ?: refuse(DatabaseRefusal.InvalidValue(TAG, row.id, "name")),
+                archived = row.archived,
+                sortOrder = row.sortOrder,
+            )
+        }
+        refuseDuplicates(TAG, tags.map { it.name to TagName.key(it.name) })
+        val tagNameById = rows.tags.zip(tags).associate { (row, tag) -> row.id to tag.name }
+        val txnIds = rows.transactions.map { it.id }.toSet()
+        val tagNamesByTxn = rows.txnTags.groupBy({ it.txnId }) { link ->
+            if (link.txnId !in txnIds) refuse(DatabaseRefusal.MissingReference(TXN_TAG, link.txnId, "txnId"))
+            tagNameById[link.tagId] ?: refuse(DatabaseRefusal.MissingReference(TXN_TAG, link.txnId, "tagId"))
+        }
+
         val parsed = rows.transactions.map { row ->
             val type = TxnType.entries.firstOrNull { it.name == row.type }
                 ?: refuse(DatabaseRefusal.InvalidValue(TXN, row.id, "type"))
@@ -196,6 +233,7 @@ object DatabaseImport {
                 subcategoryName = subcategory?.name,
                 note = row.note,
                 discrepancy = null,
+                tagNames = tagNamesByTxn[row.id].orEmpty().sortedBy { name -> tags.indexOfFirst { it.name == name } },
             )
             Triple(row.id, parsedRow, category)
         }
@@ -218,6 +256,11 @@ object DatabaseImport {
                 fileRowCount = rows.transactions.size,
                 rows = parsed.map { it.second },
                 rejected = emptyList(),
+            ),
+            tags = tags,
+            words = LearnedWords(
+                words = rows.words.filterNot { it.third }.associate { it.first to it.second },
+                names = rows.words.filter { it.third }.associate { it.first to it.second },
             ),
         )
 

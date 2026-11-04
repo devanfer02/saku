@@ -16,13 +16,18 @@ com.dvnnfrr.saku
 ├── domain/         Money, DateRange, TxnType, Account… pure Kotlin, no Android
 ├── data/           Room entities, DAOs, repositories, FirstRunSeed, AppearanceStore
 ├── excel/          import parsing and export, pure JVM, no Android and no UI copy
+├── receipt/        receipt and payment-screenshot parsing from OCR lines, pure JVM
 └── ui/
     ├── theme/      SakuTheme: colours, spacing, typography; the only place colour literals live
     ├── shared/     MoneyText, Donut, RankedRow, SegmentedTabs, EmptyState…
     ├── navigation/ SakuDestination, MoreRoute, SakuNavHost
     ├── shell/      the Scaffold and bottom bar; owns no feature
-    └── <feature>/  transactions, entry, stats, accounts, categories, importexport
+    └── <feature>/  transactions, entry, stats, accounts, categories, tags, importexport
 ```
+
+Receipt scan uses ML Kit's bundled text recognizer; `data/receipt/ReceiptRecognizer.kt` is the only
+file that imports it. Its logging backend merges `INTERNET` and `ACCESS_NETWORK_STATE`, which the
+manifest removes with `tools:node="remove"`; keep those two lines, or the network gate fails.
 
 Excel import uses fastexcel, which needs a StAX shim because Android ships no `javax.xml.stream`
 (see `excel/XlsxReader.kt`). Only a classloader test covers the shim, so check import on a device
@@ -115,6 +120,14 @@ conflicts with Saku; the note wins over the skill body. Sources and licences are
 
 ## Test data
 
+`data/mock-receipt-indomaret.png` and `data/mock-receipt-ewallet.png` are drawn by
+`data/make-mock-receipts.py` with invented items, for the receipt-scan Maestro flow. The receipt
+parser's accuracy bar runs on OCR text from the CORD v2 test split in
+`app/src/test/resources/receipt/cord/` (CC BY 4.0, see its `CORD-NOTICE.md`). Web photos of real
+receipts and wallet screenshots are a local-only set (`RECEIPT_LOCAL_SET`, and `RECEIPT_LONG_LOCAL_SET`
+for long receipts' items); never commit them. `data/receipt-long/` holds synthetic long receipts in
+overlapping and gapped photos, with their truth under `app/src/test/resources/receipt/long/`.
+
 `data/mock-money-manager.xlsx` is a mock Money Manager export with invented rows (Jul to Oct
 2026), used by tests and Maestro. Tests pin its counts, so changing it means updating them. It keeps
 a real export's quirks, which the importer must handle:
@@ -135,7 +148,23 @@ Settled. Reopen only with a reason, not by drift:
 - **Generic first run.** First run seeds two accounts, `Cash` and `Card`, and no categories or
   subcategories. Categories come from the entry sheet's "New category" or from an import; a user's
   history arrives by import.
+- **Receipt scan, one download.** On-device OCR with ML Kit's bundled recognizer, in the same APK
+  as everything else (a separate no-OCR build was tried and dropped, 31 Oct 2026). The release is
+  arm64-v8a only with compressed native libraries, about 21 MB; 32-bit phones are not supported.
+  The parser must keep at least 80% exact totals on every test source; see
+  `openspec/changes/receipt-scan/design.md`.
 - Seeded accounts open at the epoch, because every row worth importing predates any install.
+- **Tags (31 Oct 2026).** A transaction carries zero or more tags, optional on every type. A tag is a
+  name (1 to 30 characters, no `;`, unique ignoring case and spaces) that cuts across categories, such
+  as "Monthly grocery"; it is renamed and archived, never deleted. Tables `tag` and `txn_tag`, Room
+  schema version 2, reached by `MIGRATION_1_2`, which only creates. Never add
+  `fallbackToDestructiveMigration`. Backup format 2 adds a `Tags` sheet; format 1 and schema 1 files
+  still come in. Users back up before upgrading. See `openspec/changes/transaction-tags/design.md`.
+- **Receipt items** (1 Nov 2026). Scan is a button beside + on Trans, not an entry-sheet action.
+  The Receipt screen joins several photos, reads items, spreads receipt discounts by largest
+  remainder, checks the items against the total and saves one row or one row per item in one
+  transaction. Item names are made readable (`receipt/ItemName.kt`); words the user corrects are
+  learned in the `item_word` table, part of schema 2. See `openspec/changes/receipt-items/design.md`.
 - **No subcategories in the product.** Tagging them was a chore; search answers the same question
   with a count, totals and day-grouped rows. The UI neither shows nor asks for them. The
   `subcategory` table, `TxnEntity.subcategoryId` and every stored row stay, and import, export,

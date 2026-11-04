@@ -1,6 +1,9 @@
 package com.dvnnfrr.saku.ui.transactions
 
+import android.net.Uri
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -32,6 +35,7 @@ import com.dvnnfrr.saku.ui.entry.EntrySheet
 import com.dvnnfrr.saku.ui.filter.FilterAction
 import com.dvnnfrr.saku.ui.filter.FilterBar
 import com.dvnnfrr.saku.ui.filter.FilterSheet
+import com.dvnnfrr.saku.ui.receipt.ReceiptScanButton
 import com.dvnnfrr.saku.ui.shared.SegmentedTabs
 import com.dvnnfrr.saku.ui.shared.periodName
 import com.dvnnfrr.saku.ui.theme.SakuPreview
@@ -51,6 +55,13 @@ import kotlinx.datetime.Month
 fun TransactionsScreen(
     modifier: Modifier = Modifier,
     onOpenSearch: () -> Unit = {},
+    /** Price history on an expense row: open search on that item's name. */
+    onOpenPriceHistory: (String) -> Unit = {},
+    /** A receipt photo was taken or picked with Scan. */
+    onScanPhoto: (Uri) -> Unit = {},
+    /** A receipt was saved: open Daily on its day, then report it. */
+    openDay: LocalDate? = null,
+    onDayOpened: () -> Unit = {},
     /** The weekly reminder was tapped: open the sheet on a new transaction, then report it. */
     openNewEntry: Boolean = false,
     onNewEntryOpened: () -> Unit = {},
@@ -73,6 +84,13 @@ fun TransactionsScreen(
         }
     }
 
+    LaunchedEffect(openDay) {
+        if (openDay != null) {
+            viewModel.openDay(openDay)
+            onDayOpened()
+        }
+    }
+
     Box(modifier = modifier.fillMaxSize()) {
         TransactionsScreen(
             state = state,
@@ -91,15 +109,22 @@ fun TransactionsScreen(
             onClearCalendarSelection = viewModel::clearCalendarSelection,
         )
 
-        FloatingActionButton(
-            onClick = { editing = NEW },
-            containerColor = SakuTheme.colors.accent,
-            contentColor = MaterialTheme.colorScheme.onPrimary,
+        // Scan sits to the left of +, on the same row, both in thumb reach.
+        Row(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(SakuTheme.spacing.lg),
+            horizontalArrangement = Arrangement.spacedBy(SakuTheme.spacing.md),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.action_add))
+            ReceiptScanButton(onPhoto = onScanPhoto)
+            FloatingActionButton(
+                onClick = { editing = NEW },
+                containerColor = SakuTheme.colors.accent,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+            ) {
+                Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.action_add))
+            }
         }
     }
 
@@ -107,6 +132,10 @@ fun TransactionsScreen(
         EntrySheet(
             editingId = editing.takeIf { it != NEW },
             onDismiss = { editing = NOT_OPEN },
+            onPriceHistory = { item ->
+                editing = NOT_OPEN
+                onOpenPriceHistory(item)
+            },
         )
     }
 

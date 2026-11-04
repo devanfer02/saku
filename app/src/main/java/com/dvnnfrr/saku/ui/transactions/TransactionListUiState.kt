@@ -68,6 +68,8 @@ data class TransactionRowUi(
     val toAccount: AccountRef?,
     /** The category's colour for the row's dot. Null on a row with no category. */
     val categorySlot: ColorSlot? = null,
+    /** Tag names in the user's tag order. The row shows the first two. */
+    val tags: List<String> = emptyList(),
 )
 
 /** An account reduced to what a row draws: a name and a swatch. */

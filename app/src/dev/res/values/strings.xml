@@ -1,0 +1,4 @@
+<resources>
+    <!-- The dev build's name in the launcher, so it is not mistaken for the real Saku. -->
+    <string name="app_name">Saku Dev</string>
+</resources>

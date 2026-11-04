@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dvnnfrr.saku.data.repository.AccountRepository
 import com.dvnnfrr.saku.data.repository.CategoryRepository
+import com.dvnnfrr.saku.data.repository.TagRepository
 import com.dvnnfrr.saku.data.repository.TransactionRepository
 import com.dvnnfrr.saku.domain.Account
 import com.dvnnfrr.saku.domain.AccountFlows
@@ -11,6 +12,7 @@ import com.dvnnfrr.saku.domain.Category
 import com.dvnnfrr.saku.domain.CategoryKind
 import com.dvnnfrr.saku.domain.DateRange
 import com.dvnnfrr.saku.domain.PeriodTotals
+import com.dvnnfrr.saku.domain.Tag
 import com.dvnnfrr.saku.domain.TransactionFilter
 import com.dvnnfrr.saku.sakuViewModelFactory
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -36,6 +38,7 @@ class FilterSheetViewModel(
     transactionRepository: TransactionRepository,
     accountRepository: AccountRepository,
     categoryRepository: CategoryRepository,
+    tagRepository: TagRepository,
     private val sharedFilter: SharedFilter,
     zone: TimeZone = TimeZone.currentSystemDefault(),
 ) : ViewModel() {
@@ -51,6 +54,7 @@ class FilterSheetViewModel(
         val income: List<Category>,
         val expense: List<Category>,
         val accounts: List<Account>,
+        val tags: List<Tag>,
     )
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -59,13 +63,18 @@ class FilterSheetViewModel(
     }
 
     private val listed = combine(
-        transactionRepository.observePeriodTotals(range, zone, TransactionFilter.ALL),
-        transactionRepository.observeAccountFlows(range, zone),
+        combine(
+            transactionRepository.observePeriodTotals(range, zone, TransactionFilter.ALL),
+            transactionRepository.observeAccountFlows(range, zone),
+            ::Pair,
+        ),
         categoryRepository.observeActiveByKind(CategoryKind.INCOME),
         categoryRepository.observeActiveByKind(CategoryKind.EXPENSE),
         accountRepository.observeActive(),
-        ::Listed,
-    )
+        tagRepository.observeAll(),
+    ) { (whole, flows), income, expense, accounts, tags ->
+        Listed(whole, flows, income, expense, accounts, tags)
+    }
 
     val state: StateFlow<FilterSheetUiState> =
         combine(tab, filtered, listed) { tab, filtered, listed ->
@@ -79,6 +88,7 @@ class FilterSheetViewModel(
                 incomeCategories = listed.income,
                 expenseCategories = listed.expense,
                 accounts = listed.accounts,
+                tags = listed.tags,
             )
         }
             .stateIn(
@@ -108,12 +118,13 @@ class FilterSheetViewModel(
             FilterTab.INCOME -> current.incomeRows.map { it.id }
             FilterTab.EXPENSES -> current.expenseRows.map { it.id }
             FilterTab.ACCOUNT -> current.accountGroups.flatMap { group -> group.rows.map { it.id } }
+            FilterTab.TAGS -> current.tagRows.map { it.id }
         }
     }
 
     companion object {
         fun factory(range: DateRange) = sakuViewModelFactory {
-            FilterSheetViewModel(range, transactions, accounts, categories, filter)
+            FilterSheetViewModel(range, transactions, accounts, categories, tags, filter)
         }
     }
 }

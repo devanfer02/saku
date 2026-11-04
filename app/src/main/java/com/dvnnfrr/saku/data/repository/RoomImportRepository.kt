@@ -6,7 +6,11 @@ import com.dvnnfrr.saku.data.local.CategoryEntity
 import com.dvnnfrr.saku.data.local.ImportBatchEntity
 import com.dvnnfrr.saku.data.local.SakuDatabase
 import com.dvnnfrr.saku.data.local.SubcategoryEntity
+import com.dvnnfrr.saku.data.local.TagEntity
 import com.dvnnfrr.saku.data.local.TxnEntity
+import com.dvnnfrr.saku.data.local.TxnTagEntity
+import com.dvnnfrr.saku.domain.InvalidTagNameException
+import com.dvnnfrr.saku.domain.TagName
 import com.dvnnfrr.saku.domain.ImportBatch
 import com.dvnnfrr.saku.excel.BackupContents
 import com.dvnnfrr.saku.excel.ExistingRecords
@@ -31,6 +35,7 @@ class RoomImportRepository(
     private val accountDao = db.accountDao()
     private val categoryDao = db.categoryDao()
     private val subcategoryDao = db.subcategoryDao()
+    private val tagDao = db.tagDao()
 
     /**
      * The same validator the entry sheet goes through.
@@ -116,6 +121,8 @@ class RoomImportRepository(
             )
         }
 
+        linkTags(fresh.zip(insertedIds))
+
         // What actually landed, not what was attempted.
         val inserted = insertedIds.count { it > 0 }
 
@@ -126,6 +133,27 @@ class RoomImportRepository(
             rowCount = fileRowCount,
             insertedCount = inserted,
             skippedCount = rows.size - inserted,
+        )
+    }
+
+    /**
+     * Tags each new row by name, creating a tag the database lacks. Matched by
+     * `TagName.key`, archived tags included, and an existing tag is never changed. Only rows
+     * inserted here are tagged: a row skipped as already present keeps the tags it has.
+     */
+    private suspend fun linkTags(inserted: List<Pair<PendingRow, Long>>) {
+        val tagged = inserted.filter { (row, id) -> id > 0 && row.tagNames.isNotEmpty() }
+        if (tagged.isEmpty()) return
+
+        val idByKey = tagDao.all().associate { TagName.key(it.name) to it.id }.toMutableMap()
+        var nextSort = tagDao.nextSortOrder()
+        suspend fun tagId(name: String): Long = idByKey.getOrPut(TagName.key(name)) {
+            val normalized = TagName.normalize(name) ?: throw InvalidTagNameException(name)
+            tagDao.insert(TagEntity(name = normalized, sortOrder = nextSort++))
+        }
+
+        tagDao.link(
+            tagged.flatMap { (row, txnId) -> row.tagNames.map { TxnTagEntity(txnId = txnId, tagId = tagId(it)) } },
         )
     }
 
@@ -150,7 +178,12 @@ class RoomImportRepository(
             accounts = records.accounts,
             categories = records.categories,
             subcategories = records.subcategories,
-            transactions = txnDao.all().map { it.toDomain() },
+            transactions = txnDao.all().let { rows ->
+                val tagsByTxn = tagDao.allLinks().byTxn()
+                rows.map { it.toDomain(tagsByTxn[it.id].orEmpty()) }
+            },
+            tags = records.tags,
+            words = db.itemWordDao().all().toLearnedWords(),
         )
     }
 
@@ -212,6 +245,14 @@ class RoomImportRepository(
             )
         }
 
+        // Before the commit, so its by-name lookup finds them with their archived flag and order.
+        plan.tagsToCreate.forEach { tag ->
+            tagDao.insert(TagEntity(name = tag.name, sortOrder = tag.sortOrder, archived = tag.archived))
+        }
+
+        // Insert-only, like tags: a word this database already has keeps its reading.
+        if (!backup.words.isEmpty) db.itemWordDao().insertMissing(backup.words.toEntities(at))
+
         val batch = commit(
             fileName = fileName,
             rows = plan.pendingRows(RestoreIds(accountIds, categoryIds, subcategoryIds)),
@@ -224,6 +265,7 @@ class RoomImportRepository(
             categoriesCreated = plan.categoriesToCreate.size,
             subcategoriesCreated = plan.subcategoriesToCreate.size,
             batch = batch,
+            tagsCreated = plan.tagsToCreate.size,
         )
     }
 
@@ -232,6 +274,7 @@ class RoomImportRepository(
         accounts = accountDao.all().map { it.toDomain(accountDao.balanceOf(it.id) ?: it.openingBalance) },
         categories = categoryDao.all().map { it.toDomain() },
         subcategories = subcategoryDao.all().map { it.toDomain() },
+        tags = tagDao.all().map { it.toDomain() },
     )
 
     private companion object {

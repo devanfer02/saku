@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Scan button on Trans (receipt-items). One button reads paper receipts and payment screenshots alike. -->
+    <string name="receipt_scan">Scan a receipt</string>
+    <string name="receipt_camera">Take a photo</string>
+    <string name="receipt_gallery">Choose from gallery</string>
+    <string name="receipt_both_kinds">Paper receipts and payment screenshots both work.</string>
+
+    <!-- Receipt screen -->
+    <string name="receipt_title">Receipt</string>
+    <string name="receipt_reading">Reading the receipt…</string>
+    <string name="receipt_reading_part">Reading photo %1$d…</string>
+    <string name="receipt_unreadable">No text found on that photo. Take it again in good light, or choose another.</string>
+    <string name="receipt_nothing_read">Saku could not read this receipt. Add another photo, or record it by hand with +.</string>
+    <plurals name="receipt_photos">
+        <item quantity="one">%1$d photo</item>
+        <item quantity="other">%1$d photos</item>
+    </plurals>
+    <string name="receipt_unnamed">Receipt</string>
+    <string name="receipt_total">Total</string>
+    <!-- Under the total: the app or shop Saku recognized, "Read from GoFood". Brand names stay as written. -->
+    <string name="receipt_source">Read from %1$s</string>
+    <string name="receipt_no_total">No total found. Saving uses the items’ sum.</string>
+    <string name="receipt_other_amounts">Other amounts on the receipt</string>
+    <string name="receipt_chip_spoken">Use %1$s as the total</string>
+
+    <!-- The check of the items against the total -->
+    <string name="receipt_check_match">Items add up to the total</string>
+    <string name="receipt_check_short">%1$s not found</string>
+    <string name="receipt_check_over">Items come to %1$s more than the total</string>
+    <string name="receipt_check_detail">Items %1$s · Receipt %2$s</string>
+    <string name="receipt_gap_photos">Part may be missing between photo %1$d and %2$d. Add the missing part, or save the gap as one row.</string>
+    <string name="receipt_gap_row">Save the gap as one row</string>
+    <string name="receipt_gap_category">Gap row category</string>
+
+    <!-- Item rows -->
+    <plurals name="receipt_items_title">
+        <item quantity="one">%1$d item</item>
+        <item quantity="other">%1$d items</item>
+    </plurals>
+    <string name="receipt_item_quantity">%1$d × %2$s</string>
+    <string name="receipt_item_discount">Discount %1$s</string>
+    <string name="receipt_item_choose">Choose category</string>
+    <string name="receipt_item_history">From history</string>
+    <!-- TalkBack on an item row: "MINYAK GORENG 2L, Rp 38.900, Makan & Minum" -->
+    <string name="receipt_item_spoken">%1$s, %2$s, %3$s</string>
+    <string name="receipt_item_spoken_unset">no category</string>
+    <string name="receipt_item_change">Change name or category</string>
+    <string name="receipt_item_name">Name</string>
+    <string name="receipt_item_printed">Printed as %1$s</string>
+
+    <!-- One row -->
+    <string name="receipt_record_one">One row</string>
+    <string name="receipt_record_per_item">Per item</string>
+    <string name="receipt_one_row_only">No item rows found, so the receipt saves as one row.</string>
+    <string name="receipt_category">Category</string>
+    <string name="receipt_note">Note</string>
+    <string name="receipt_lines_title">Lines Saku could not place</string>
+    <string name="receipt_lines_hint">Tap a line to add it to the note.</string>
+    <string name="receipt_line_spoken">Add to note: %1$s</string>
+
+    <!-- Bottom bar -->
+    <string name="receipt_account">Account</string>
+    <string name="receipt_tags">Tags</string>
+    <string name="receipt_no_tag">No tag</string>
+    <string name="receipt_account_spoken">Account %1$s, change</string>
+    <string name="receipt_tags_spoken">Tags %1$s, change</string>
+    <string name="receipt_add_part">Add next part</string>
+    <plurals name="receipt_save">
+        <item quantity="one">Save %1$d row</item>
+        <item quantity="other">Save %1$d rows</item>
+    </plurals>
+
+    <!-- Save with categories unset -->
+    <plurals name="receipt_missing_title">
+        <item quantity="one">%1$d row has no category</item>
+        <item quantity="other">%1$d rows have no category</item>
+    </plurals>
+    <string name="receipt_missing_body">Pick one to use for all of them and save, or close this and choose each.</string>
+    <string name="receipt_pick_category">Category for %1$s</string>
+    <string name="receipt_pick_account">Account</string>
+</resources>

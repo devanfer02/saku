@@ -2,6 +2,8 @@ package com.dvnnfrr.saku.ui.filter
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -116,6 +118,7 @@ fun FilterSheet(
                 stringResource(R.string.filter_tab_income),
                 stringResource(R.string.filter_tab_expenses),
                 stringResource(R.string.filter_tab_account),
+                stringResource(R.string.filter_tab_tags),
             ),
             selectedIndex = state.tab.ordinal,
             onSelect = { onSelectTab(FilterTab.entries[it]) },
@@ -127,11 +130,13 @@ fun FilterSheet(
                 FilterTab.INCOME -> checkList(state.allIncome, state.incomeRows, onToggleAll, onToggle)
                 FilterTab.EXPENSES -> checkList(state.allExpense, state.expenseRows, onToggleAll, onToggle)
                 FilterTab.ACCOUNT -> accountList(state, onToggleAll, onToggle)
+                FilterTab.TAGS -> checkList(state.allTags, state.tagRows, onToggleAll, onToggle, R.string.filter_no_tags)
             }
         }
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SheetHeader(state: FilterSheetUiState) {
     val colors = SakuTheme.colors
@@ -146,10 +151,12 @@ private fun SheetHeader(state: FilterSheetUiState) {
         verticalArrangement = Arrangement.spacedBy(spacing.sm),
     ) {
         Text(text = period, style = SakuTheme.typography.heading, color = colors.ink, maxLines = 1)
-        Row(
+        // Flows, so at large font sizes the total moves under the rings instead of the
+        // three running into each other.
+        FlowRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.Top,
+            verticalArrangement = Arrangement.spacedBy(spacing.sm),
         ) {
             ShareRing(
                 label = incomeLabel,
@@ -196,17 +203,18 @@ private fun LazyListScope.checkList(
     rows: List<CheckRow>,
     onToggleAll: () -> Unit,
     onToggle: (Long) -> Unit,
+    @androidx.annotation.StringRes emptyMessage: Int = R.string.filter_no_items,
 ) {
     item(key = "all") { AllRow(allTicked, onToggleAll) }
     if (rows.isEmpty()) {
         item(key = "none") {
-            EmptyState(icon = Icons.Filled.FilterList, message = stringResource(R.string.filter_no_items))
+            EmptyState(icon = Icons.Filled.FilterList, message = stringResource(emptyMessage))
         }
     }
     items(count = rows.size, key = { rows[it].id }) { index ->
         val row = rows[index]
         CheckLine(ticked = row.ticked, onToggle = { onToggle(row.id) }) {
-            ColorSwatch(row.colorSlot)
+            row.colorSlot?.let { ColorSwatch(it) }
             Name(row.name)
         }
     }

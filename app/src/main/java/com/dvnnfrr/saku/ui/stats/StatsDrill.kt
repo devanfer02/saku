@@ -37,6 +37,7 @@ import com.dvnnfrr.saku.ui.theme.SakuTheme
 import com.dvnnfrr.saku.ui.theme.formatIdr
 import com.dvnnfrr.saku.ui.transactions.AccountRef
 import com.dvnnfrr.saku.ui.transactions.TransactionRowUi
+import com.dvnnfrr.saku.ui.transactions.spokenTags
 import com.dvnnfrr.saku.domain.TxnType
 import kotlinx.datetime.LocalDate
 
@@ -212,6 +213,8 @@ private fun CategoryBody(
                 category = row.categoryName,
                 note = row.note,
                 toAccountName = row.toAccount?.name,
+                tags = row.tags,
+                spokenTags = row.spokenTags(),
             )
         }
     }

@@ -5,6 +5,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.dvnnfrr.saku.data.local.SakuDatabase
 import com.dvnnfrr.saku.data.repository.RoomAccountRepository
 import com.dvnnfrr.saku.data.repository.RoomCategoryRepository
+import com.dvnnfrr.saku.data.repository.RoomTagRepository
 import com.dvnnfrr.saku.data.repository.RoomTransactionRepository
 import com.dvnnfrr.saku.domain.AccountType
 import com.dvnnfrr.saku.domain.CategoryKind
@@ -84,7 +85,7 @@ class SearchViewModelTest {
             note = note,
         )
 
-    private fun viewModel() = SearchViewModel(transactions, accounts, categories, shared, zone)
+    private fun viewModel() = SearchViewModel(transactions, accounts, categories, RoomTagRepository(db), shared, zone)
 
     @Test
     fun `search opens empty and matches after the query settles`() = runTest(dispatcher) {
@@ -129,5 +130,32 @@ class SearchViewModelTest {
         // The amount no longer matches, so the row drops out without retyping.
         assertEquals(0, vm.state.first { it.searched && it.count == 0 }.count)
         assertEquals("grab 25000", vm.query.value)
+    }
+
+    @Test
+    fun `opened on an item, search starts on it and shows its price card`() = runTest(dispatcher) {
+        seed()
+        spend("MINYAK GORENG 2L", bca, amount = 35_000, day = 1)
+        spend("MINYAK GORENG 2L ×2", bca, amount = 77_800, day = 20)
+        val vm = SearchViewModel(
+            transactions, accounts, categories, RoomTagRepository(db), shared, zone,
+            initialQuery = "MINYAK GORENG 2L",
+        )
+
+        assertEquals("MINYAK GORENG 2L", vm.query.value)
+        val price = vm.state.first { it.searched }.price
+        assertEquals(Money(38_900), price?.latest?.unitPrice)
+    }
+
+    @Test
+    fun `a picked tab is kept across queries`() {
+        val vm = viewModel()
+        assertEquals(null, vm.tab.value)
+
+        vm.selectTab(SearchTab.YEARLY)
+        vm.setQuery("kopi")
+        vm.setQuery("teh")
+
+        assertEquals(SearchTab.YEARLY, vm.tab.value)
     }
 }

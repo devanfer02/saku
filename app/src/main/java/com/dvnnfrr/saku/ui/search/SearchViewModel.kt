@@ -1,13 +1,18 @@
 package com.dvnnfrr.saku.ui.search
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import com.dvnnfrr.saku.container
 import com.dvnnfrr.saku.data.repository.AccountRepository
 import com.dvnnfrr.saku.data.repository.CategoryRepository
+import com.dvnnfrr.saku.data.repository.TagRepository
 import com.dvnnfrr.saku.data.repository.TransactionRepository
 import com.dvnnfrr.saku.domain.TransactionFilter
-import com.dvnnfrr.saku.sakuViewModelFactory
 import com.dvnnfrr.saku.ui.filter.SharedFilter
+import com.dvnnfrr.saku.ui.navigation.SEARCH_QUERY
 import com.dvnnfrr.saku.ui.transactions.DisplayIndex
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -28,7 +33,8 @@ import kotlinx.datetime.TimeZone
 internal const val SEARCH_DEBOUNCE_MS = 150L
 
 /**
- * State for search. Holds only the query text; the filter comes from [SharedFilter].
+ * State for search. Holds only the query text, the picked tab and the picked price item;
+ * the filter comes from [SharedFilter].
  *
  * The query is matched after a short pause so a fast typist does not re-match every
  * keystroke, but [query] itself is exposed undebounced for the text field. Notes are
@@ -39,14 +45,25 @@ class SearchViewModel(
     transactionRepository: TransactionRepository,
     accountRepository: AccountRepository,
     categoryRepository: CategoryRepository,
+    tagRepository: TagRepository,
     private val sharedFilter: SharedFilter,
     private val zone: TimeZone = TimeZone.currentSystemDefault(),
+    /** What search opened on: blank from the toolbar, an item's name from Price history. */
+    val initialQuery: String = "",
 ) : ViewModel() {
 
-    private val text = MutableStateFlow("")
+    private val text = MutableStateFlow(initialQuery)
 
     /** What the field shows, as typed. */
     val query: StateFlow<String> = text.asStateFlow()
+
+    private val pickedTab = MutableStateFlow<SearchTab?>(null)
+
+    /** The tab the user picked, or null to follow [SearchUiState.defaultTab]. Kept across queries. */
+    val tab: StateFlow<SearchTab?> = pickedTab.asStateFlow()
+
+    /** The price item chip the user picked, by key; null follows the most bought item. */
+    private val pickedItem = MutableStateFlow<String?>(null)
 
     private data class Sources(
         val filter: TransactionFilter,
@@ -68,13 +85,20 @@ class SearchViewModel(
     private val index = combine(
         accountRepository.observeAll(),
         categoryRepository.observeAll(),
+        tagRepository.observeAll(),
         ::DisplayIndex,
     )
 
     @OptIn(FlowPreview::class)
     val state: StateFlow<SearchUiState> =
-        combine(text.debounce(SEARCH_DEBOUNCE_MS).distinctUntilChanged(), sources, index) { q, src, idx ->
-            assembleSearch(q, src.filter, src.filtered, src.unfiltered, zone, idx)
+        combine(
+            text.debounce(SEARCH_DEBOUNCE_MS).distinctUntilChanged(),
+            sources,
+            index,
+            transactionRepository.observeLearnedWords(),
+            pickedItem,
+        ) { q, src, idx, learned, item ->
+            assembleSearch(q, src.filter, src.filtered, src.unfiltered, zone, idx, learned, item)
         }
             .stateIn(
                 scope = viewModelScope,
@@ -84,13 +108,28 @@ class SearchViewModel(
 
     fun setQuery(value: String) {
         text.value = value
+        // A new query is a new set of items; the counter picks again.
+        pickedItem.value = null
+    }
+
+    fun selectPriceItem(key: String) {
+        pickedItem.value = key
+    }
+
+    fun selectTab(tab: SearchTab) {
+        pickedTab.value = tab
     }
 
     fun clearFilter() = sharedFilter.clear()
 
     companion object {
-        val Factory = sakuViewModelFactory {
-            SearchViewModel(transactions, accounts, categories, filter)
+        val Factory = viewModelFactory {
+            initializer {
+                val query = createSavedStateHandle().get<String>(SEARCH_QUERY).orEmpty()
+                with(container()) {
+                    SearchViewModel(transactions, accounts, categories, tags, filter, initialQuery = query)
+                }
+            }
         }
     }
 }

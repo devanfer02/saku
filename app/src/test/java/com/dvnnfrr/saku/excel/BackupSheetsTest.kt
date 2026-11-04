@@ -32,9 +32,9 @@ class BackupSheetsTest {
     // -- Contents of a backup -----------------------------------------------------
 
     @Test
-    fun `a backup has the five sheets in order, transactions first`() {
+    fun `a backup has the seven sheets in order, transactions first`() {
         val names = build().map { it.sheetName }
-        assertEquals(listOf("Saku", "Accounts", "Categories", "Subcategories", "Backup"), names)
+        assertEquals(listOf("Saku", "Accounts", "Categories", "Subcategories", "Tags", "Words", "Backup"), names)
     }
 
     /** Scenario: Contents of a backup. Every record once, archived ones flagged. */
@@ -69,7 +69,7 @@ class BackupSheetsTest {
     @Test
     fun `the backup sheet records format, app version, write time and zone`() {
         val info = readBack(build()).info
-        assertEquals(1, info.formatVersion)
+        assertEquals(2, info.formatVersion)
         assertEquals("1.0", info.appVersion)
         assertEquals(writtenAt, info.writtenAt)
         assertEquals(JAKARTA, info.zone)
@@ -104,13 +104,13 @@ class BackupSheetsTest {
             table.copy(
                 rows = table.rows.map { row ->
                     if (row.textAt(0) != "Format version") row
-                    else row.copy(cells = listOf(row[0], CellValue.Number(BigDecimal(2))))
+                    else row.copy(cells = listOf(row[0], CellValue.Number(BigDecimal(3))))
                 },
             )
         }
 
         assertEquals(
-            BackupReadOutcome.Refused(BackupRefusal.NewerFormat(formatVersion = 2, appVersion = "2.3")),
+            BackupReadOutcome.Refused(BackupRefusal.NewerFormat(formatVersion = 3, appVersion = "2.3")),
             BackupSheets.parse(sheets),
         )
     }

@@ -34,10 +34,25 @@ money.
   in each account today and pick a few categories. You can also skip it.
 - **Trans**: a day-by-day list, a monthly view and a calendar. On the calendar, tap two dates or drag
   across them and you get the total for that range plus every row, grouped by day.
-- **Search**: type "kopi" and you get the count, the totals, a month-by-month breakdown and the rows
-  themselves. This replaces subcategories, which Saku does not ask for.
+- **Search**: type "kopi" and you get the count and the totals, then Daily, Monthly and Yearly tabs:
+  the rows by day, each month, each year. Tap a year or month to open it. This replaces subcategories, which Saku does not ask for.
+- **Price history**: search one item, say "minyak goreng 2l", and a card shows its unit price on each
+  trip as a line, with the lowest, the highest and the change since the first. A note ending in `×2`
+  counts as two units. Price history on a saved expense opens the same search.
 - **Entry**: amount keypad with `+` and `-` for quick sums, note suggestions from what you typed
   before, and category and account pickers laid out as a grid.
+- **Tags**: optional labels that cut across categories. Mark the rice under Makan & Minum and the soap
+  under Kebutuhan Kos both "Monthly grocery", then filter Trans and Stats by that tag to see the trip's
+  total split by category. A row can carry several tags; More > Tags renames and archives them.
+- **Scan receipt**: the button beside + takes a photo or picks one, of a paper receipt or a payment
+  screenshot (m-BCA, BRImo, GoPay, OVO, DANA and the like). Saku reads it on the phone. A long receipt
+  goes in several photos, top to bottom, with Add next part; Saku joins them and says when a part
+  may be missing. Each item gets a readable name (`INDOMIE GRG SPCL` becomes Indomie Goreng
+  Special), its discount, a share of any card discount, and the category it had last time. The
+  items are checked against the total before you save, as one row or one row per item, with an
+  optional tag such as Monthly grocery. Names you correct are remembered for the next receipt. The
+  photo is never kept. On 98 Indonesian receipts it had never seen, it picked the right total 87%
+  of the time.
 - **Stats**: the period total over ranked categories, a pie you can switch on and tap, and a strip of
   periods with a real Y axis. Tap the period name to jump to any week, month or year.
 - **Accounts**: Cash, Bank, Investment and Liability, with net worth split into spendable and
@@ -51,10 +66,28 @@ money.
 
 Import only ever adds rows. Nothing is deleted or overwritten by an import or a restore.
 
+**Back up before upgrading to a build with tags.** It moves the database to schema version 2. The
+upgrade only adds two tables and keeps every row, but an older Saku cannot open the upgraded database
+or read a backup it writes (backup format 2).
+
+## Requirements
+
+- Android 8.0 (API 26) or newer.
+- A 64-bit ARM phone (`arm64-v8a`), which is nearly every phone sold since 2019. The receipt
+  scanner's text recognition ships for 64-bit ARM only, so 32-bit phones, which v1.0 ran on, are
+  no longer supported.
+- About 21 MB to download, and a little more once installed, since the text recognition library
+  unpacks on the phone.
+- No account and no internet. Receipt photos come from your camera app or the photo picker, so
+  Saku asks for no camera or storage permission. Notifications are asked for only for the weekly
+  reminder, on Android 13 and newer.
+
 ## Privacy
 
 - The app has no `INTERNET` permission. A Gradle check fails the build if one shows up in the merged
-  manifest, including from a dependency.
+  manifest, including from a dependency. ML Kit's text recognition, used to scan receipts, brings
+  `INTERNET` and `ACCESS_NETWORK_STATE` for its usage logging; Saku's manifest removes both, so
+  that logging cannot send anything, and recognition runs entirely on the phone.
 - Android cloud backup is off, so `saku.db` stays on the phone.
 - Exports and backups are written through the system file picker, to the place you choose.
 
@@ -80,6 +113,8 @@ compileSdk 35, minSdk 26.
 ## Tests and CI
 
 - Unit tests run on the JVM, including the Room queries, through Robolectric.
+- The receipt parser is held to an accuracy bar: OCR text from 95 receipts of the
+  [CORD v2](https://github.com/clovaai/cord) test split (CC BY 4.0), at least 80% exact totals.
 - GitHub Actions runs unit tests, lint, the debug build and the no-network check on every pull
   request. A push to `master` builds a signed release APK and uploads it as the `saku-release-apk`
   artifact.

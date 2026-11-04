@@ -7,7 +7,9 @@ import com.dvnnfrr.saku.data.local.CategoryEntity
 import com.dvnnfrr.saku.data.local.CategoryTotalRow
 import com.dvnnfrr.saku.data.local.ImportBatchEntity
 import com.dvnnfrr.saku.data.local.SubcategoryEntity
+import com.dvnnfrr.saku.data.local.TagEntity
 import com.dvnnfrr.saku.data.local.TxnEntity
+import com.dvnnfrr.saku.data.local.TxnTagEntity
 import com.dvnnfrr.saku.domain.Account
 import com.dvnnfrr.saku.domain.AccountFlows
 import com.dvnnfrr.saku.domain.AccountType
@@ -17,6 +19,7 @@ import com.dvnnfrr.saku.domain.ColorSlot
 import com.dvnnfrr.saku.domain.ImportBatch
 import com.dvnnfrr.saku.domain.Money
 import com.dvnnfrr.saku.domain.Subcategory
+import com.dvnnfrr.saku.domain.Tag
 import com.dvnnfrr.saku.domain.Transaction
 import com.dvnnfrr.saku.domain.TransactionFilter
 import kotlinx.datetime.Instant
@@ -83,7 +86,7 @@ internal fun SubcategoryEntity.toDomain(): Subcategory = Subcategory(
     archived = archived,
 )
 
-internal fun TxnEntity.toDomain(): Transaction = Transaction(
+internal fun TxnEntity.toDomain(tagIds: Set<Long> = emptySet()): Transaction = Transaction(
     id = id,
     occurredAt = occurredAtEpochSec.asInstant(),
     type = type,
@@ -95,7 +98,19 @@ internal fun TxnEntity.toDomain(): Transaction = Transaction(
     note = note,
     createdAt = createdAtEpochSec.asInstant(),
     importBatchId = importBatchId,
+    tagIds = tagIds,
 )
+
+internal fun TagEntity.toDomain(): Tag = Tag(
+    id = id,
+    name = name,
+    sortOrder = sortOrder,
+    archived = archived,
+)
+
+/** Links as tag ids per transaction id, for attaching tags to a list of rows. */
+internal fun List<TxnTagEntity>.byTxn(): Map<Long, Set<Long>> =
+    groupBy({ it.txnId }, { it.tagId }).mapValues { it.value.toSet() }
 
 internal fun ImportBatchEntity.toDomain(): ImportBatch = ImportBatch(
     id = id,
@@ -138,7 +153,7 @@ internal fun List<CategoryTotalRow>.toDomain(): List<CategoryTotal> {
 }
 
 /**
- * A [TransactionFilter] as the six arguments `TXN_FILTER_WHERE` binds.
+ * A [TransactionFilter] as the eight arguments `TXN_FILTER_WHERE` binds.
  *
  * "All" becomes a true flag with an empty list, and an explicit selection a false flag
  * with its ids. An empty selection is a false flag with an empty list, which SQLite reads
@@ -151,6 +166,8 @@ internal data class FilterArgs(
     val incomeIds: List<Long>,
     val allExpense: Boolean,
     val expenseIds: List<Long>,
+    val allTags: Boolean,
+    val tagIds: List<Long>,
 )
 
 internal fun TransactionFilter.toArgs(): FilterArgs = FilterArgs(
@@ -160,6 +177,8 @@ internal fun TransactionFilter.toArgs(): FilterArgs = FilterArgs(
     incomeIds = incomeCategoryIds.orEmpty().toList(),
     allExpense = expenseCategoryIds == null,
     expenseIds = expenseCategoryIds.orEmpty().toList(),
+    allTags = tagIds == null,
+    tagIds = tagIds.orEmpty().toList(),
 )
 
 internal fun AccountFlowsRow.toDomain(): AccountFlows = AccountFlows(

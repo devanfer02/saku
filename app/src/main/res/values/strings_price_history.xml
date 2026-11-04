@@ -1,0 +1,40 @@
+<resources>
+    <!--
+        Copy for the item-price-history change: the price card in search and the
+        Price history action on an expense row. Kept out of strings.xml so concurrent
+        changes do not collide.
+    -->
+    <!-- The card header; %1$s is the item, such as Indomie Goreng Special. -->
+    <string name="price_title_of">Unit price, %1$s</string>
+    <!-- An item chip above the price card: the item name and how many times it was bought. -->
+    <plurals name="price_item_chip">
+        <item quantity="one">%1$s · %2$d</item>
+        <item quantity="other">%1$s · %2$d</item>
+    </plurals>
+    <string name="price_lowest">Lowest</string>
+    <string name="price_highest">Highest</string>
+    <!-- %1$s is the date of the first point, `12 Jul 2026`. -->
+    <string name="price_since">Since %1$s</string>
+    <string name="price_show">Show the price chart</string>
+    <string name="price_hide">Hide the price chart</string>
+    <string name="price_expanded">Expanded</string>
+    <string name="price_collapsed">Collapsed</string>
+    <!--
+        What TalkBack reads for the whole card. %1$s the item, %2$s latest price, %3$s lowest
+        price, %4$s when (price_in_month or price_on_day), %5$s highest price, %6$s when,
+        %7$s one of the price_spoken_* below.
+    -->
+    <string name="price_spoken">%1$s, unit price %2$s, lowest %3$s %4$s, highest %5$s %6$s, %7$s</string>
+    <!-- %1$s a month, `July` or `December 2025`. -->
+    <string name="price_in_month">in %1$s</string>
+    <!-- %1$s a date in the latest point's month, `25 Oct 2026`. -->
+    <string name="price_on_day">on %1$s</string>
+    <!-- %1$d whole percent, %2$s when the first point was. -->
+    <string name="price_spoken_up_percent">up %1$d%% since %2$s</string>
+    <string name="price_spoken_down_percent">down %1$d%% since %2$s</string>
+    <!-- For a change under half a percent, or a first price of zero: %1$s the amount. -->
+    <string name="price_spoken_up_amount">up %1$s since %2$s</string>
+    <string name="price_spoken_down_amount">down %1$s since %2$s</string>
+    <string name="price_spoken_same">the same as in %1$s</string>
+    <string name="entry_price_history">Price history</string>
+</resources>

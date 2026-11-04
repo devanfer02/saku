@@ -83,13 +83,13 @@ fun SegmentedTabs(
                         role = Role.Tab,
                         onClick = { onSelect(index) },
                     )
-                    .defaultMinSize(minHeight = 40.dp)
+                    .defaultMinSize(minHeight = spacing.touchTarget)
                     .padding(horizontal = spacing.sm, vertical = spacing.sm),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
                     text = option,
-                    style = SakuTheme.typography.label,
+                    style = SakuTheme.typography.label.cappedForSlot(),
                     color = content,
                     textAlign = TextAlign.Center,
                     maxLines = 1,

@@ -1,6 +1,10 @@
 package com.dvnnfrr.saku.ui.search
 
 import androidx.compose.foundation.background
+import androidx.compose.material3.FilterChip
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -27,18 +31,16 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.dvnnfrr.saku.R
@@ -51,6 +53,7 @@ import com.dvnnfrr.saku.ui.filter.FilterBar
 import com.dvnnfrr.saku.ui.shared.EmptyState
 import com.dvnnfrr.saku.ui.shared.MoneyText
 import com.dvnnfrr.saku.ui.shared.RankedRow
+import com.dvnnfrr.saku.ui.shared.SegmentedTabs
 import com.dvnnfrr.saku.ui.shared.periodLabel
 import com.dvnnfrr.saku.ui.theme.MoneySign
 import com.dvnnfrr.saku.ui.theme.SakuPreview
@@ -58,7 +61,6 @@ import com.dvnnfrr.saku.ui.theme.SakuPreviewSurface
 import com.dvnnfrr.saku.ui.theme.SakuTheme
 import com.dvnnfrr.saku.ui.theme.formatIdr
 import com.dvnnfrr.saku.ui.transactions.daySectionItems
-import kotlinx.coroutines.launch
 
 /**
  * Search over all history, pushed from Trans. Back returns to Trans as it was left,
@@ -72,23 +74,36 @@ fun SearchScreen(
 ) {
     val query by viewModel.query.collectAsState()
     val state by viewModel.state.collectAsState()
+    val pickedTab by viewModel.tab.collectAsState()
     // NOT_OPEN rather than null, as on Trans: the sheet here only ever edits.
     var editing by rememberSaveable { mutableStateOf(NOT_OPEN) }
 
     SearchScreen(
         query = query,
         state = state,
+        tab = pickedTab ?: state.defaultTab,
         onQueryChange = viewModel::setQuery,
+        onSelectTab = viewModel::selectTab,
+        onSelectPriceItem = viewModel::selectPriceItem,
         onBack = onBack,
         onClearFilter = viewModel::clearFilter,
         onRowClick = { editing = it },
         modifier = modifier,
+        // Opened on an item's name, the results are the point; a keyboard would cover them.
+        autoFocus = viewModel.initialQuery.isEmpty(),
     )
 
     // After a save or delete the observed rows re-emit, so the results update under the
     // same query without it being retyped.
     if (editing != NOT_OPEN) {
-        EntrySheet(editingId = editing, onDismiss = { editing = NOT_OPEN })
+        EntrySheet(
+            editingId = editing,
+            onDismiss = { editing = NOT_OPEN },
+            onPriceHistory = { item ->
+                editing = NOT_OPEN
+                viewModel.setQuery(item)
+            },
+        )
     }
 }
 
@@ -98,11 +113,14 @@ private const val NOT_OPEN = -1L
 fun SearchScreen(
     query: String,
     state: SearchUiState,
+    tab: SearchTab,
     onQueryChange: (String) -> Unit,
+    onSelectTab: (SearchTab) -> Unit,
     onBack: () -> Unit,
     onClearFilter: () -> Unit,
     onRowClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
+    onSelectPriceItem: (String) -> Unit = {},
     /** False in previews, which have no window to raise a keyboard in. */
     autoFocus: Boolean = true,
 ) {
@@ -172,85 +190,123 @@ fun SearchScreen(
                 message = stringResource(R.string.search_empty, query.trim()),
             )
 
-            else -> Results(state, onClearFilter, onRowClick)
+            else -> Results(state, tab, onSelectTab, onSelectPriceItem, onClearFilter, onRowClick)
         }
     }
 }
 
 /**
- * The summary, the month breakdown and the day rows as one list, so the breakdown
- * scrolls away like a header instead of pinning the rows below a tall block.
+ * The summary, then Daily, Monthly and Yearly tabs like Trans. Each tab keeps its own
+ * scroll position. Tapping a year opens Monthly at that year; tapping a month opens
+ * Daily at that month's newest day.
  */
 @Composable
 private fun Results(
     state: SearchUiState,
+    tab: SearchTab,
+    onSelectTab: (SearchTab) -> Unit,
+    onSelectPriceItem: (String) -> Unit,
     onClearFilter: () -> Unit,
     onRowClick: (Long) -> Unit,
 ) {
-    val listState = rememberLazyListState()
-    val scope = rememberCoroutineScope()
-    val showHidden = state.hiddenCount > 0
-    val showMonths = state.months.isNotEmpty()
-    // Must match the items emitted before the month rows below.
-    val leadingItems = 1 + (if (showHidden) 1 else 0) + (if (showMonths) 1 else 0)
+    val dailyState = rememberLazyListState()
+    val monthlyState = rememberLazyListState()
+    val yearlyState = rememberLazyListState()
+    // Open by default, but folded at large font sizes, where the open card would push
+    // every result row off the screen.
+    val largeFont = LocalDensity.current.fontScale >= PRICE_CARD_FOLD_SCALE
+    var priceExpanded by rememberSaveable { mutableStateOf(!largeFont) }
+    val tabs = listOf(
+        stringResource(R.string.search_tab_daily),
+        stringResource(R.string.search_tab_monthly),
+        stringResource(R.string.search_tab_yearly),
+    )
 
-    LazyColumn(
-        state = listState,
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = SakuTheme.spacing.xl),
-    ) {
-        item(key = "summary") { Summary(state) }
-        if (showHidden) item(key = "hidden") { HiddenLine(state.hiddenCount, onClearFilter) }
-        if (showMonths) {
-            item(key = "by-month") { MonthsHeading() }
-            items(count = state.months.size, key = { i -> "month-${state.months[i].range.start}" }) { i ->
-                val month = state.months[i]
-                val target = searchScrollIndex(leadingItems, state.months, state.days, month)
-                MonthRow(
-                    month = month,
-                    onClick = target?.let { index -> { scope.launch { listState.animateScrollToItem(index) } } },
-                )
+    Column(modifier = Modifier.fillMaxSize()) {
+        Summary(state)
+        if (state.hiddenCount > 0) HiddenLine(state.hiddenCount, onClearFilter)
+        // Between the summary and the tabs, so it stays put whichever tab is open; it
+        // folds to one line when the list needs the room.
+        // Two or more items bought at least twice: chips by row count pick whose card shows.
+        if (state.priceItems.size >= 2) {
+            PriceItemChips(
+                items = state.priceItems,
+                selectedKey = state.price?.itemKey,
+                onSelect = onSelectPriceItem,
+            )
+        }
+        state.price?.let { price ->
+            PriceCard(
+                price = price,
+                expanded = priceExpanded,
+                onToggle = { priceExpanded = !priceExpanded },
+                modifier = Modifier.padding(top = SakuTheme.spacing.xs),
+            )
+        }
+        SegmentedTabs(
+            options = tabs,
+            selectedIndex = tab.ordinal,
+            onSelect = { onSelectTab(SearchTab.entries[it]) },
+            modifier = Modifier.padding(SakuTheme.spacing.md),
+        )
+        val listPadding = PaddingValues(bottom = SakuTheme.spacing.xl)
+        when (tab) {
+            SearchTab.DAILY -> LazyColumn(state = dailyState, modifier = Modifier.fillMaxSize(), contentPadding = listPadding) {
+                daySectionItems(state.days, onRowClick)
+            }
+
+            SearchTab.MONTHLY -> LazyColumn(state = monthlyState, modifier = Modifier.fillMaxSize(), contentPadding = listPadding) {
+                items(count = state.months.size, key = { i -> "month-${state.months[i].range.start}" }) { i ->
+                    val month = state.months[i]
+                    val target = dailyScrollIndex(state.days, month)
+                    PeriodRow(
+                        period = month,
+                        onClick = target?.let { index ->
+                            {
+                                dailyState.requestScrollToItem(index)
+                                onSelectTab(SearchTab.DAILY)
+                            }
+                        },
+                    )
+                }
+            }
+
+            SearchTab.YEARLY -> LazyColumn(state = yearlyState, modifier = Modifier.fillMaxSize(), contentPadding = listPadding) {
+                items(count = state.years.size, key = { i -> "year-${state.years[i].range.start}" }) { i ->
+                    val year = state.years[i]
+                    val target = monthlyScrollIndex(state.months, year)
+                    PeriodRow(
+                        period = year,
+                        onClick = target?.let { index ->
+                            {
+                                monthlyState.requestScrollToItem(index)
+                                onSelectTab(SearchTab.MONTHLY)
+                            }
+                        },
+                    )
+                }
             }
         }
-        daySectionItems(state.days, onRowClick)
     }
 }
 
+/** One month or year: its money on the search's side, the count, and the other side when present. */
 @Composable
-private fun MonthsHeading() {
-    Text(
-        text = stringResource(R.string.search_by_month),
-        style = SakuTheme.typography.label,
-        color = SakuTheme.colors.ink2,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(
-                start = SakuTheme.spacing.screen,
-                end = SakuTheme.spacing.screen,
-                top = SakuTheme.spacing.md,
-                bottom = SakuTheme.spacing.xs,
-            )
-            .semantics { heading() },
-    )
-}
-
-/** One month: its money on the search's side, the count, and the other side when present. */
-@Composable
-private fun MonthRow(month: SearchMonth, onClick: (() -> Unit)?) {
+private fun PeriodRow(period: SearchPeriod, onClick: (() -> Unit)?) {
     val colors = SakuTheme.colors
-    val count = pluralStringResource(R.plurals.search_month_count, month.count, month.count)
+    val count = pluralStringResource(R.plurals.search_month_count, period.count, period.count)
     val supporting = when {
-        month.count == 0 -> stringResource(R.string.search_month_none)
-        month.otherSide.isZero -> count
-        month.side == TxnType.INCOME -> stringResource(R.string.search_month_with_out, count, formatIdr(month.otherSide))
-        else -> stringResource(R.string.search_month_with_in, count, formatIdr(month.otherSide))
+        period.count == 0 -> stringResource(R.string.search_month_none)
+        period.otherSide.isZero -> count
+        period.side == TxnType.INCOME -> stringResource(R.string.search_month_with_out, count, formatIdr(period.otherSide))
+        else -> stringResource(R.string.search_month_with_in, count, formatIdr(period.otherSide))
     }
     RankedRow(
         colorSlot = null,
-        name = periodLabel(month.range),
-        value = month.value,
-        color = if (month.side == TxnType.INCOME) colors.income else colors.expense,
-        barPermille = month.barPermille,
+        name = periodLabel(period.range),
+        value = period.value,
+        color = if (period.side == TxnType.INCOME) colors.income else colors.expense,
+        barPermille = period.barPermille,
         supporting = supporting,
         onClick = onClick,
     )
@@ -260,21 +316,29 @@ private fun MonthRow(month: SearchMonth, onClick: (() -> Unit)?) {
 @Composable
 private fun Summary(state: SearchUiState) {
     val spacing = SakuTheme.spacing
+    val typography = SakuTheme.typography
+    // 20% above the list's own text (owner, 1 Nov 2026), so the totals read as the answer.
+    val countStyle = typography.label.copy(fontSize = typography.label.fontSize * SUMMARY_SCALE)
+    val amountStyle = typography.amountSmall.copy(fontSize = typography.amountSmall.fontSize * SUMMARY_SCALE)
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = spacing.screen, vertical = spacing.sm),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = spacing.screen, end = spacing.screen, top = spacing.lg, bottom = spacing.sm),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(spacing.md),
     ) {
         Text(
             text = pluralStringResource(R.plurals.search_count, state.count, state.count),
-            style = SakuTheme.typography.label,
+            style = countStyle,
             color = SakuTheme.colors.ink2,
             modifier = Modifier.weight(1f),
         )
-        MoneyText(state.totals.income, type = TxnType.INCOME, style = SakuTheme.typography.amountSmall, sign = MoneySign.FLOW)
-        MoneyText(state.totals.expense, type = TxnType.EXPENSE, style = SakuTheme.typography.amountSmall, sign = MoneySign.FLOW)
+        MoneyText(state.totals.income, type = TxnType.INCOME, style = amountStyle, sign = MoneySign.FLOW)
+        MoneyText(state.totals.expense, type = TxnType.EXPENSE, style = amountStyle, sign = MoneySign.FLOW)
     }
 }
+
+private const val SUMMARY_SCALE = 1.2f
 
 @Composable
 private fun HiddenLine(count: Int, onClearFilter: () -> Unit) {
@@ -307,6 +371,7 @@ private fun SearchScreenPreview() {
     SakuPreviewSurface(padded = false) {
         SearchScreen(
             query = "kopi",
+            tab = SearchTab.DAILY,
             state = SearchUiState(
                 filter = TransactionFilter(accountIds = setOf(1L)),
                 searched = true,
@@ -315,10 +380,40 @@ private fun SearchScreenPreview() {
                 hiddenCount = 2,
             ),
             onQueryChange = {},
+            onSelectTab = {},
             onBack = {},
             onClearFilter = {},
             onRowClick = {},
             autoFocus = false,
         )
+    }
+}
+
+private const val PRICE_CARD_FOLD_SCALE = 1.3f
+
+/** One chip per item with its row count, most bought first; the picked one is selected. */
+@Composable
+private fun PriceItemChips(items: List<PriceItem>, selectedKey: String?, onSelect: (String) -> Unit) {
+    val spacing = SakuTheme.spacing
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = spacing.screen),
+        horizontalArrangement = Arrangement.spacedBy(spacing.sm),
+    ) {
+        items.forEach { item ->
+            FilterChip(
+                selected = item.key == selectedKey,
+                onClick = { onSelect(item.key) },
+                label = {
+                    Text(
+                        text = pluralStringResource(R.plurals.price_item_chip, item.count, item.name, item.count),
+                        maxLines = 1,
+                    )
+                },
+                modifier = Modifier.heightIn(min = spacing.touchTarget),
+            )
+        }
     }
 }

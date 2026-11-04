@@ -5,6 +5,8 @@ import com.dvnnfrr.saku.domain.AccountType
 import com.dvnnfrr.saku.domain.CategoryKind
 import com.dvnnfrr.saku.domain.ColorSlot
 import com.dvnnfrr.saku.domain.Money
+import com.dvnnfrr.saku.domain.TagName
+import com.dvnnfrr.saku.receipt.LearnedWords
 import com.dvnnfrr.saku.domain.TxnType
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
@@ -46,6 +48,13 @@ data class BackupSubcategory(
         get() = SubcategoryRef(CategoryRef(categoryKind, nameKey(categoryName)), nameKey(name))
 }
 
+/** A tag as the `Tags` sheet holds it. Format version 2 and later. */
+data class BackupTag(
+    val name: String,
+    val archived: Boolean,
+    val sortOrder: Int,
+)
+
 /**
  * The `Backup` sheet. [zone] is the zone the timestamps were written in, so a backup made
  * in Jakarta and restored on a phone set to another zone still lands on the same instants.
@@ -63,6 +72,10 @@ data class BackupContents(
     val categories: List<BackupCategory>,
     val subcategories: List<BackupSubcategory>,
     val transactions: ParsedSheet,
+    /** Empty for a format 1 backup and a schema 1 database, which predate tags. */
+    val tags: List<BackupTag> = emptyList(),
+    /** The learned item words; empty for a file written before them. */
+    val words: LearnedWords = LearnedWords.NONE,
 ) {
     /**
      * The category a transaction row points at. The transaction sheet names a category but
@@ -149,11 +162,17 @@ sealed interface BackupReadOutcome {
  */
 object BackupSheets {
 
-    const val FORMAT_VERSION = 1
+    /** 2 added the `Tags` sheet and the transaction sheet's `Tags` column. 1 still restores. */
+    const val FORMAT_VERSION = 2
+
+    /** The first format with a `Tags` sheet. */
+    const val TAGS_SINCE = 2
 
     const val ACCOUNTS = "Accounts"
     const val CATEGORIES = "Categories"
     const val SUBCATEGORIES = "Subcategories"
+    const val TAGS = "Tags"
+    const val WORDS = "Words"
     const val BACKUP = "Backup"
 
     private object AccountColumns {
@@ -189,6 +208,22 @@ object BackupSheets {
         val ALL = listOf(CATEGORY, CATEGORY_KIND, NAME, SORT_ORDER, ARCHIVED)
     }
 
+    private object TagColumns {
+        const val NAME = "Name"
+        const val ARCHIVED = "Archived"
+        const val SORT_ORDER = "Sort order"
+
+        val ALL = listOf(NAME, ARCHIVED, SORT_ORDER)
+    }
+
+    private object WordColumns {
+        const val PRINTED = "Printed"
+        const val READABLE = "Readable"
+        const val WHOLE_NAME = "Whole name"
+
+        val ALL = listOf(PRINTED, READABLE, WHOLE_NAME)
+    }
+
     private object InfoFields {
         const val FIELD = "Field"
         const val VALUE = "Value"
@@ -200,7 +235,7 @@ object BackupSheets {
 
     // -- Writing ------------------------------------------------------------------
 
-    /** The five sheets in file order: transactions first, the `Backup` sheet last. */
+    /** The seven sheets in file order: transactions first, the `Backup` sheet last. */
     fun build(
         snapshot: BackupSnapshot,
         appVersion: String,
@@ -216,6 +251,7 @@ object BackupSheets {
             categoryNames = snapshot.categories.associate { it.id to it.name },
             subcategoryNames = snapshot.subcategories.associate { it.id to it.name },
             zone = zone,
+            tagNames = snapshot.tags.associate { it.id to it.name },
         )
 
         val accounts = sheet(ACCOUNTS, AccountColumns.ALL, snapshot.accounts.map { account ->
@@ -256,6 +292,20 @@ object BackupSheets {
             },
         )
 
+        val tags = sheet(TAGS, TagColumns.ALL, snapshot.tags.map { tag ->
+            listOf(
+                CellValue.Text(tag.name),
+                CellValue.Flag(tag.archived),
+                CellValue.Number(BigDecimal.valueOf(tag.sortOrder.toLong())),
+            )
+        })
+
+        val wordRows = snapshot.words.words.map { (printed, readable) -> Triple(printed, readable, false) } +
+            snapshot.words.names.map { (printed, readable) -> Triple(printed, readable, true) }
+        val words = sheet(WORDS, WordColumns.ALL, wordRows.map { (printed, readable, whole) ->
+            listOf(CellValue.Text(printed), CellValue.Text(readable), CellValue.Flag(whole))
+        })
+
         val info = sheet(
             BACKUP,
             listOf(InfoFields.FIELD, InfoFields.VALUE),
@@ -270,7 +320,7 @@ object BackupSheets {
             ),
         )
 
-        return listOf(transactions, accounts, categories, subcategories, info)
+        return listOf(transactions, accounts, categories, subcategories, tags, words, info)
     }
 
     private fun sheet(name: String, headers: List<String>, rows: List<List<CellValue>>) =
@@ -315,13 +365,17 @@ object BackupSheets {
         val accounts = readAccounts(accountTable, info.zone)
         val categories = readCategories(categoryTable)
         val subcategories = readSubcategories(subcategoryTable)
+        // A format 1 file has no Tags sheet and its transaction sheet no Tags column.
+        val tags = if (info.formatVersion >= TAGS_SINCE) readTags(named(TAGS)) else emptyList()
+        // Optional: format 2 files written before learned words have no Words sheet.
+        val words = sheets.firstOrNull { nameKey(it.sheetName) == nameKey(WORDS) }?.let(::readWords) ?: LearnedWords.NONE
 
         val parsed = ImportParser.parse(transactionSheet, info.zone)
         val transactions = (parsed as? ParseOutcome.Parsed)?.sheet
             ?.takeIf { it.layout == SheetLayout.SAKU }
             ?: refuse(BackupRefusal.UnrecognisedTransactions)
 
-        val contents = BackupContents(info, accounts, categories, subcategories, transactions)
+        val contents = BackupContents(info, accounts, categories, subcategories, transactions, tags, words)
         checkReferences(contents)
         return contents
     }
@@ -434,6 +488,39 @@ object BackupSheets {
         return subcategories
     }
 
+    private fun readWords(table: SheetTable): LearnedWords {
+        val c = Columns(table)
+        val printed = c.require(WordColumns.PRINTED)
+        val readable = c.require(WordColumns.READABLE)
+        val whole = c.require(WordColumns.WHOLE_NAME)
+        val rows = table.dataRows().map { row ->
+            val cell = CellReader(WORDS, row)
+            Triple(cell.name(printed, WordColumns.PRINTED), cell.name(readable, WordColumns.READABLE), cell.flag(whole, WordColumns.WHOLE_NAME))
+        }
+        return LearnedWords(
+            words = rows.filterNot { it.third }.associate { it.first to it.second },
+            names = rows.filter { it.third }.associate { it.first to it.second },
+        )
+    }
+
+    private fun readTags(table: SheetTable): List<BackupTag> {
+        val c = Columns(table)
+        val name = c.require(TagColumns.NAME)
+        val archived = c.require(TagColumns.ARCHIVED)
+        val sortOrder = c.require(TagColumns.SORT_ORDER)
+
+        val tags = table.dataRows().map { row ->
+            val cell = CellReader(TAGS, row)
+            BackupTag(
+                name = cell.parse(name, TagColumns.NAME) { TagName.normalize(it) },
+                archived = cell.flag(archived, TagColumns.ARCHIVED),
+                sortOrder = cell.int(sortOrder, TagColumns.SORT_ORDER),
+            )
+        }
+        refuseDuplicates(TAGS, tags) { it.name to TagName.key(it.name) }
+        return tags
+    }
+
     /**
      * Two records with one name would leave restore unable to say which a transaction
      * meant, so the file is refused and the duplicate named rather than one picked.
@@ -451,6 +538,7 @@ object BackupSheets {
         val accounts = contents.accounts.map { nameKey(it.name) }.toSet()
         val categories = contents.categories.map { it.ref }.toSet()
         val subcategories = contents.subcategories.map { it.ref }.toSet()
+        val tags = contents.tags.map { TagName.key(it.name) }.toSet()
 
         contents.subcategories.forEach { subcategory ->
             if (subcategory.ref.category !in categories) {
@@ -469,6 +557,9 @@ object BackupSheets {
             }
             contents.subcategoryRefOf(row)?.let {
                 if (it !in subcategories) refuse(BackupRefusal.UnknownName(sheet, row.subcategoryName!!))
+            }
+            row.tagNames.forEach {
+                if (TagName.key(it) !in tags) refuse(BackupRefusal.UnknownName(sheet, it))
             }
         }
     }

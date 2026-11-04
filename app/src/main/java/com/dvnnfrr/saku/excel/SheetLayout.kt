@@ -8,7 +8,14 @@ package com.dvnnfrr.saku.excel
  * expectations, and picking the wrong one costs nothing because the file itself says
  * what it is.
  */
-enum class SheetLayout(val headers: List<String>) {
+enum class SheetLayout(
+    val headers: List<String>,
+    /**
+     * How many trailing columns a file may leave out and still be this layout. A missing
+     * column reads as empty, because `SheetRow.get` returns `CellValue.Empty` past the end.
+     */
+    val optionalTrailing: Int = 0,
+) {
 
     /**
      * The reference export. Eleven columns, two of them named `Account`.
@@ -33,7 +40,11 @@ enum class SheetLayout(val headers: List<String>) {
         ),
     ),
 
-    /** What Saku writes, and therefore what Saku must be able to read back exactly. */
+    /**
+     * What Saku writes, and therefore what Saku must be able to read back exactly. `Tags`
+     * came with schema 2 (Oct 2026) and is optional, so an export written before it still
+     * imports.
+     */
     SAKU(
         listOf(
             "Date",
@@ -44,7 +55,9 @@ enum class SheetLayout(val headers: List<String>) {
             "Category",
             "Subcategory",
             "Note",
+            "Tags",
         ),
+        optionalTrailing = 1,
     ),
     ;
 
@@ -83,6 +96,9 @@ enum class SheetLayout(val headers: List<String>) {
         const val CATEGORY = 5
         const val SUBCATEGORY = 6
         const val NOTE = 7
+
+        /** Tag names joined by `TagName.join`. Absent from exports written before tags. */
+        const val TAGS = 8
     }
 }
 
@@ -105,7 +121,11 @@ object LayoutDetector {
 
     fun detect(headers: List<String>): LayoutMatch {
         val found = headers.trimTrailingBlanks()
-        val layout = SheetLayout.entries.firstOrNull { it.headers.normalised() == found.normalised() }
+        val layout = SheetLayout.entries.firstOrNull { layout ->
+            (0..layout.optionalTrailing).any { left ->
+                layout.headers.dropLast(left).normalised() == found.normalised()
+            }
+        }
         return if (layout != null) LayoutMatch.Recognised(layout) else LayoutMatch.Unrecognised(found)
     }
 

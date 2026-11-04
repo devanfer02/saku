@@ -79,6 +79,12 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+        // ML Kit's OCR library is 11 MB on arm64. Release ships arm64 only (owner's call,
+        // 31 Oct 2026: one download, Android 8.0 and up on 64-bit ARM); x86_64 is added for
+        // debug only, so the emulator runs it and the release does not carry it.
+        ndk {
+            abiFilters += "arm64-v8a"
+        }
     }
 
     /**
@@ -113,6 +119,23 @@ android {
     }
 
     buildTypes {
+        debug {
+            ndk {
+                abiFilters += "x86_64"
+            }
+        }
+        // A debuggable build that installs beside the real app (`com.dvnnfrr.saku.dev`,
+        // "Saku Dev"), with its own database, for testing a feature on a phone. Built by
+        // CI on every push to the `dev` branch. Signed with the release key when the
+        // SAKU_* environment is present, so each new dev APK updates the last one; a CI
+        // runner's debug key changes every run and would force an uninstall each time.
+        create("dev") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".dev"
+            versionNameSuffix = "-dev"
+            matchingFallbacks += "debug"
+            signingConfig = signingConfigs.findByName("release") ?: getByName("debug").signingConfig
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(
@@ -135,6 +158,10 @@ android {
     buildFeatures {
         compose = true
     }
+    sourceSets {
+        // MigrationTestHelper reads the exported schemas as assets.
+        getByName("androidTest").assets.srcDir("$projectDir/schemas")
+    }
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
@@ -143,6 +170,11 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+        // Compressed in the APK and unpacked at install: the OCR library drops from 11.1 MB
+        // to about 4.4 MB of download, for a few MB more on the phone once installed.
+        jniLibs {
+            useLegacyPackaging = true
         }
     }
 }
@@ -201,6 +233,7 @@ dependencies {
     implementation(libs.fastexcel.writer)
     implementation(libs.fastexcel.reader)
     implementation(libs.stax.api)
+    implementation(libs.mlkit.text.recognition)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
@@ -211,6 +244,7 @@ dependencies {
     testImplementation(libs.androidx.test.core)
 
     androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.room.testing)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)

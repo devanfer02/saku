@@ -2,6 +2,7 @@ package com.dvnnfrr.saku.ui.shared
 
 import com.dvnnfrr.saku.domain.TxnType
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -134,5 +135,26 @@ class TransactionRowLabelsTest {
     fun `a blank note leaves the account alone`() {
         val result = labels(TxnType.EXPENSE, note = " ", accountName = "BCA")
         assertEquals("BCA", result.secondary)
+    }
+
+    @Test
+    fun `a row names two tags and counts the rest`() {
+        assertNull(rowTagsLabel(emptyList()))
+        assertEquals("#Trip Bali", rowTagsLabel(listOf("Trip Bali")))
+        assertEquals("#Monthly grocery #Ramadan", rowTagsLabel(listOf("Monthly grocery", "Ramadan")))
+        assertEquals("#Monthly grocery #Ramadan +1", rowTagsLabel(listOf("Monthly grocery", "Ramadan", "Trip Bali")))
+    }
+
+    @Test
+    fun `a row's tags resolve to names in the user's tag order, archived included`() {
+        val index = com.dvnnfrr.saku.ui.transactions.DisplayIndex(
+            accounts = emptyList(),
+            categories = emptyList(),
+            tags = listOf(
+                com.dvnnfrr.saku.domain.Tag(5, "Trip Bali", 2, archived = true),
+                com.dvnnfrr.saku.domain.Tag(6, "Monthly grocery", 0, archived = false),
+            ),
+        )
+        assertEquals(listOf("Monthly grocery", "Trip Bali"), index.tagNames(setOf(5, 6, 99)))
     }
 }

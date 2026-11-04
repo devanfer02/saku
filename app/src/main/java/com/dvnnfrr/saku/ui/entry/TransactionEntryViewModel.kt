@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.dvnnfrr.saku.data.repository.AccountRepository
 import com.dvnnfrr.saku.data.repository.CategoryRepository
 import com.dvnnfrr.saku.data.repository.DuplicateNameException
+import com.dvnnfrr.saku.data.repository.TagRepository
 import com.dvnnfrr.saku.data.repository.TransactionRepository
 import com.dvnnfrr.saku.domain.Account
 import com.dvnnfrr.saku.domain.Category
@@ -13,6 +14,7 @@ import com.dvnnfrr.saku.domain.Transaction
 import com.dvnnfrr.saku.domain.TxnType
 import com.dvnnfrr.saku.sakuViewModelFactory
 import com.dvnnfrr.saku.domain.NoteUsage
+import com.dvnnfrr.saku.domain.Tag
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -52,7 +54,14 @@ data class EntryUiState(
      * or editing a transaction with a note would pop suggestions nobody asked for.
      */
     val noteSuggestionsOpen: Boolean = false,
+    /** Every tag, archived included, so a saved row's archived tag still shows as a chip. */
+    val allTags: List<Tag> = emptyList(),
+    /** What is typed in the Add tag picker. */
+    val tagQuery: String = "",
 ) {
+    /** The Add tag picker's list for [tagQuery]. */
+    val tagPickerUi: TagPickerUi get() = tagPicker(allTags, form.tags, tagQuery)
+
     val problems: List<EntryProblem> get() = if (showProblems) form.problems() else emptyList()
 
     fun problemFor(field: EntryField): EntryProblem? = problems.firstOrNull { it.field == field }
@@ -62,6 +71,7 @@ class TransactionEntryViewModel(
     private val transactions: TransactionRepository,
     private val categoryRepository: CategoryRepository,
     private val accountRepository: AccountRepository,
+    private val tagRepository: TagRepository,
     private val zone: TimeZone = TimeZone.currentSystemDefault(),
     private val clock: Clock = Clock.System,
 ) : ViewModel() {
@@ -108,6 +118,15 @@ class TransactionEntryViewModel(
 
     private fun now(): LocalDateTime = clock.now().toLocalDateTime(zone)
 
+    init {
+        // Live, not read once in [open]: the ViewModel outlives the sheet, and [open] skips
+        // reloading for a sheet it already holds, so a tag archived or renamed on the Tags
+        // screen in between would otherwise be offered as it was.
+        viewModelScope.launch {
+            tagRepository.observeAll().collect { all -> _state.update { it.copy(allTags = all) } }
+        }
+    }
+
     /** What [open] last loaded, so re-composition does not throw away typed input. */
     private var openedFor: Long? = null
     private var opened = false
@@ -135,15 +154,17 @@ class TransactionEntryViewModel(
 
         viewModelScope.launch {
             val accounts = accountRepository.observeActive().first()
+            val allTags = tagRepository.all()
             val existing = editingId?.let { transactions.byId(it) }
             val form = when (existing) {
                 null -> EntryFormState.recording(now(), accountId = accounts.firstOrNull()?.id)
                 else -> EntryFormState.editing(
                     existing,
                     existing.occurredAt.toLocalDateTime(zone),
+                    entryTagsOf(existing.tagIds, allTags),
                 )
             }
-            _state.value = EntryUiState(form = form, accounts = accounts)
+            _state.value = EntryUiState(form = form, accounts = accounts, allTags = allTags)
             refreshCategories(form.categoryKind)
         }
     }
@@ -195,6 +216,19 @@ class TransactionEntryViewModel(
 
     fun selectCategory(id: Long?) = updateForm { it.copy(categoryId = id) }
 
+    /**
+     * Makes an account from the picker by name, puts it on the form's [destination] leg or
+     * its account, and reloads the account list. See [quickAccount].
+     */
+    fun createAccount(name: String, destination: Boolean) {
+        viewModelScope.launch {
+            val id = quickAccount(accountRepository, name)
+            val accounts = accountRepository.observeActive().first()
+            _state.update { it.copy(accounts = accounts) }
+            if (destination) setDestination(id) else setAccount(id)
+        }
+    }
+
     fun createCategory(name: String) {
         val kind = _state.value.form.categoryKind ?: return
         viewModelScope.launch {
@@ -214,6 +248,27 @@ class TransactionEntryViewModel(
 
     fun dismissDuplicateNotice() = _state.update { it.copy(duplicateName = null) }
 
+    fun setTagQuery(query: String) = _state.update { it.copy(tagQuery = query) }
+
+    /** Adds an existing tag from the picker's list and clears what was typed. */
+    fun pickTag(tag: Tag) = _state.update {
+        it.copy(form = it.form.copy(tags = it.form.tags.plusTag(tag)), tagQuery = "")
+    }
+
+    /**
+     * Adds what is typed: the tag it names in any case, or a new one created on Save.
+     * Does nothing for a blank or invalid name, which the picker already explains.
+     */
+    fun addTypedTag() = _state.update {
+        val next = it.form.tags.plusTyped(it.tagQuery, it.allTags)
+        if (next == it.form.tags) it else it.copy(form = it.form.copy(tags = next), tagQuery = "")
+    }
+
+    fun removeTag(tag: EntryTag) = updateForm { it.copy(tags = it.tags.minusTag(tag)) }
+
+    /** The picker closed; typing left in it is dropped, not added behind the user's back. */
+    fun closeTagPicker() = _state.update { it.copy(tagQuery = "") }
+
     fun save() {
         val form = _state.value.form
         if (!form.canSave) {
@@ -222,6 +277,8 @@ class TransactionEntryViewModel(
         }
         viewModelScope.launch {
             val occurredAt = form.occurredAt.toInstant(zone)
+            // New tags are made here, at Save, so a sheet closed without saving leaves none.
+            val tagIds = form.tags.map { it.id ?: tagRepository.findOrCreate(it.name) }.toSet()
             if (form.id == null) {
                 transactions.record(
                     occurredAt = occurredAt,
@@ -231,10 +288,11 @@ class TransactionEntryViewModel(
                     toAccountId = form.toAccountId,
                     categoryId = form.categoryId,
                     note = form.note.takeIf { it.isNotBlank() },
+                    tagIds = tagIds,
                 )
             } else {
                 val original = requireNotNull(transactions.byId(form.id))
-                transactions.update(form.toTransaction(original, occurredAt))
+                transactions.update(form.toTransaction(original, occurredAt).copy(tagIds = tagIds))
             }
             _state.update { it.copy(saved = true) }
             // The next open is a different transaction, so let it reload.
@@ -271,7 +329,12 @@ class TransactionEntryViewModel(
 
     companion object {
         val Factory = sakuViewModelFactory {
-            TransactionEntryViewModel(transactions, categories, accounts)
+            TransactionEntryViewModel(
+                transactions,
+                categories,
+                accounts,
+                tags,
+            )
         }
     }
 }

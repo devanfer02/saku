@@ -119,6 +119,7 @@ object ImportPlan {
                 categoryId = categoryId,
                 subcategoryId = subcategoryId,
                 note = row.note,
+                tagNames = row.tagNames,
                 dedupHash = DedupHash.of(
                     occurredAt = row.occurredAt,
                     type = row.type,

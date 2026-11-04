@@ -298,7 +298,7 @@ class BackupRestoreTest {
         advanceUntilIdle()
         val ready = model.state.value as RestoreUiState.Ready
         assertEquals(BACKUP_NAME, ready.preview.fileName)
-        assertEquals(1, ready.preview.formatVersion)
+        assertEquals(2, ready.preview.formatVersion)
         assertEquals("2026-10-30", ready.preview.writtenOn.toString())
         assertEquals(0, destination.accountDao().all().size)
         assertEquals(0, destination.txnDao().all().size)
@@ -317,7 +317,7 @@ class BackupRestoreTest {
             table.copy(
                 rows = table.rows.map { row ->
                     if (row.textAt(0) != "Format version") row
-                    else row.copy(cells = listOf(row[0], CellValue.Number(BigDecimal(2))))
+                    else row.copy(cells = listOf(row[0], CellValue.Number(BigDecimal(3))))
                 },
             )
         }
@@ -330,7 +330,7 @@ class BackupRestoreTest {
         assertEquals(
             RestoreUiState.Refused(
                 BACKUP_NAME,
-                RestoreRefusal.Backup(BackupRefusal.NewerFormat(formatVersion = 2, appVersion = "1.0")),
+                RestoreRefusal.Backup(BackupRefusal.NewerFormat(formatVersion = 3, appVersion = "1.0")),
             ),
             model.state.value,
         )

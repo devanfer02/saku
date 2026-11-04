@@ -22,8 +22,15 @@ class SchemaIdentityTest {
         assertEquals(SakuDatabase.VERSION, version)
         assertEquals(exported, SakuDatabase.IDENTITY_HASH)
     }
+
+    @Test
+    fun `the version 1 hash constant is the one Room exported for version 1`() {
+        val json = schemaJson(1).readText()
+        val exported = Regex("\"identityHash\"\\s*:\\s*\"([0-9a-f]+)\"").find(json)?.groupValues?.get(1)
+        assertEquals(exported, SakuDatabase.IDENTITY_HASH_V1)
+    }
 }
 
-/** Room's exported schema for the current version. Unit tests run from the module directory. */
-fun schemaJson(): File =
-    File("schemas/com.dvnnfrr.saku.data.local.SakuDatabase/${SakuDatabase.VERSION}.json")
+/** Room's exported schema for [version]. Unit tests run from the module directory. */
+fun schemaJson(version: Int = SakuDatabase.VERSION): File =
+    File("schemas/com.dvnnfrr.saku.data.local.SakuDatabase/$version.json")
