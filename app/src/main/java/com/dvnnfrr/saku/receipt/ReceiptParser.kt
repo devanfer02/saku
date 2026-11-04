@@ -15,10 +15,14 @@ object ReceiptParser {
         val rows = joined.rows
         if (rows.isEmpty()) return ReceiptReading.EMPTY.copy(gapsAfterPhoto = joined.gapsAfterPhoto)
 
-        val total = pickTotal(rows)
+        val source = pickSource(rows)
+        val order = if (source?.orderApp == true) pickAppOrder(rows) else null
+        val total = withOrderTotal(pickTotal(rows), order)
         val date = pickDate(rows, today)
-        val store = pickStore(rows)
-        val items = pickItems(rows, total.rowIndex)
+        val store = if (order == null) pickStore(rows) else pickStore(rows, appScreen = true) ?: order.shop
+        // An order app's screen is read by its own layout; the paper-receipt reader would
+        // take its payment and fee rows for items.
+        val items = order?.items ?: pickItems(rows, total.rowIndex)
 
         // Item rows are shown as items, so they are not offered again as unplaced lines.
         val used = setOfNotNull(total.rowIndex, date?.rowIndex, store?.rowIndex) + items.rowIndices
@@ -46,6 +50,14 @@ object ReceiptParser {
             receiptDiscounts = items.receiptDiscounts,
             additions = items.additions,
             gapsAfterPhoto = joined.gapsAfterPhoto,
+            source = source,
         )
+    }
+
+    /** The order's amount paid, when it found one; the generic pick becomes a chip. */
+    private fun withOrderTotal(generic: TotalPick, order: AppOrderPick?): TotalPick {
+        val paid = order?.total ?: return generic
+        val others = (listOfNotNull(generic.total) + generic.others).distinct().filterNot { it == paid }
+        return TotalPick(paid, order.totalRow, others.take(CHIPS))
     }
 }
