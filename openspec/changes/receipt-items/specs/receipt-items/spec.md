@@ -149,6 +149,52 @@ When the user saves per item after editing an item's name, Saku SHALL learn from
 - **WHEN** a backup with learned words is restored onto a database that has none
 - **THEN** the words are there; a word the database already had keeps its reading
 
+### Requirement: Read app order screens
+When a screenshot is a GoFood, ShopeeFood, Shopee or Tokopedia order, Saku SHALL read it by that layout instead of the paper-receipt rules. An item row SHALL be `n x Name  price` (quantity kept, the price the line price), `Name  n` with the price in the summary, the name rows above `x n  unit price` or `n x  unit price` (line price n times unit), or, under the item list heading, `Name  price`. A row with no amount right under an item SHALL finish its name, unless it is an option or note (`Flavour : …`, `Variasi: …`, cutlery) or a button. When one item has no price, its price SHALL be the summary's `Price`, `Harga` or subtotal less the priced items; when several have none, they SHALL stay out of the items. Fees, shipping and service (`Handling and delivery fee`, `Biaya Pengiriman`, `Biaya Layanan`, `Ongkos kirim`, `Subtotal Pengiriman`, `Biaya Jasa Aplikasi`, `Asuransi Pengiriman`, `Other fee(s)`, `Biaya Lain-lain`, packaging) SHALL be additions; discounts (`Other discounts`, `Diskon`, `Voucher`, `Promo`, `Kupon`, `Koin Shopee`, `Bebas Ongkir`, or any amount printed with a minus) SHALL be receipt discounts, and a cashback with no minus SHALL NOT; when the items come to less than the subtotal (a folded list), fees and discounts SHALL be left out so the total check shows the gap; a fee group's own row SHALL count once, through its parts. The total SHALL be the `Total Tagihan`, `Total Bayar`, `Total pembayaran` or `Total Belanja` row, in that order, else a plain `Total`, else `Paid`, else the amount beside or above `Sudah termasuk pajak`; `Total Harga` and `Subtotal` SHALL NOT be the total. On any row the last amount SHALL count, so a struck-through old amount before the new one is passed over. Payment rows (`GoPay 63.100`, `Paid with GoPay`, `Metode Pembayaran`) SHALL never be items. The store SHALL be a known chain, the restaurant under `Alamat Restoran`, or the shop row above the first item, never the app's own headings.
+
+#### Scenario: GoFood order with one item
+- **WHEN** the screenshot reads `GoPay 63.100`, `Purchase item(s)`, `Big Crunch Chicken 1`, `Flavour : Smoky Barbeque`, `Payment summary`, `Price 49.000`, `Handling and delivery fee 22.800`, `Other fee(s) 6.000`, `Other discounts -14.700`, `Total payment 63.100`
+- **THEN** the total is Rp 63.100, the one item is Big Crunch Chicken ×1 at Rp 49.000, the additions are Rp 22.800 and Rp 6.000, the discount Rp 14.700, and the items add up to the total
+
+#### Scenario: ShopeeFood order
+- **WHEN** the rows are `2 x Paket Kenyang 2 Bakar Rp110.000`, `1 x 1/2 Ekor Bebek Bakar + 1 Rp39.500`, `Sambal Matah 30 Ml`, `1 x Saus Keju Rp9.000`, `1 x Sambal Ijo Rp9.000`, `Subtotal Pesanan (5 menu) Rp167.500`, `Voucher Diskon -Rp67.000`, `Biaya Pengiriman Rp40.500 Rp24.500`, `Biaya Layanan Rp4.000`, `Biaya Lain-lain Rp3.000`, `Paid Rp132.000`
+- **THEN** the total is Rp 132.000; the items are Paket Kenyang 2 Bakar ×2 Rp 110.000, `1/2 Ekor Bebek Bakar + 1 Sambal Matah 30 Ml` Rp 39.500, Saus Keju Rp 9.000 and Sambal Ijo Rp 9.000; the discount is Rp 67.000; the additions Rp 24.500, Rp 4.000 and Rp 3.000; the items add up to the total
+
+#### Scenario: Shopee marketplace order
+- **WHEN** a shop row `Toko Sinar Rapi  Kunjungi Toko` is followed by two name rows, `Variasi: Hitam, XL` and `x2 Rp120.000 Rp45.000`
+- **THEN** the store is Toko Sinar Rapi and the item is the two name rows joined, quantity 2, Rp 90.000
+
+#### Scenario: Tokopedia order
+- **WHEN** `Detail Produk` is followed by the shop's name, a product name, `3 x Rp12.000` and `Total Harga Rp36.000`
+- **THEN** the store is the shop, the item is quantity 3 at Rp 36.000, and Total Harga is neither an item nor the total
+
+#### Scenario: Folded ShopeeFood list
+- **WHEN** a ShopeeFood order shows one item `1 x Es Kopi Gula Aren Rp30.000`, `Lihat Lebih Banyak`, `Subtotal Pesanan (8 menu) Rp215.000`, `Voucher Diskon -Rp118.250`, `Biaya Layanan Rp500` and `Paid Rp97.250`
+- **THEN** the total is Rp 97.250, the one item is read, no discount or fee is applied, and the check shows the gap
+
+#### Scenario: Tokopedia invoice
+- **WHEN** the invoice has `TOTAL BELANJA Rp47.500` and `TOTAL TAGIHAN Rp47.500` under the item table
+- **THEN** the total is the Total Tagihan row's, and `TOTAL HARGA (1 BARANG)` is not the total
+
+#### Scenario: Several items priced only in the summary
+- **WHEN** a GoFood order lists `Nasi Uduk Komplit 1` and `Teh Tarik 2` and only `Price 52.000`
+- **THEN** no items are read, the total is still read, and the names stay in the lines Saku could not place
+
+### Requirement: Show where a reading came from
+Saku SHALL detect the reading's source from the screen's own labels: an order app (GoFood, ShopeeFood, Shopee, Tokopedia) on any row, before the wallet it was paid with; a banking app's own name (`m-BCA`, `BRImo`, `Livin'`, `BNI Mobile`) on any row; a wallet or bank header, or a shop's printed name (Indomaret, Alfamart, Alfamidi, Superindo, Lawson, FamilyMart), in the top quarter; or a wallet named with its balance (`Saldo DANA`) anywhere. The source SHALL be kept apart from the store. When a source is known, the Receipt screen SHALL show `Read from <source>` in small text under the total, read by TalkBack as text; when none is known, nothing SHALL show. An order with no store SHALL take the source as its one-row note.
+
+#### Scenario: GoFood paid with GoPay
+- **WHEN** a GoFood order screen shows `GoPay 63.100` at the top
+- **THEN** the screen shows Read from GoFood
+
+#### Scenario: Paper receipt paid by wallet
+- **WHEN** a paper receipt from an unknown shop prints `OVO 20.000` near its foot
+- **THEN** no source is shown
+
+#### Scenario: Order with no restaurant
+- **WHEN** a GoFood order names no restaurant
+- **THEN** the store shows as not found and the one-row note is GoFood
+
 ## REMOVED Requirements
 
 ### Requirement: Scan a receipt from the entry sheet
