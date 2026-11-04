@@ -18,6 +18,8 @@
     </plurals>
     <string name="receipt_unknown_store">Store not found</string>
     <string name="receipt_total">Total</string>
+    <!-- Under the total: the app or shop Saku recognized, "Read from GoFood". Brand names stay as written. -->
+    <string name="receipt_source">Read from %1$s</string>
     <string name="receipt_no_total">No total found. Saving uses the items’ sum.</string>
     <string name="receipt_other_amounts">Other amounts on the receipt</string>
     <string name="receipt_chip_spoken">Use %1$s as the total</string>
