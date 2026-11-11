@@ -320,6 +320,17 @@ fun ReceiptChoices.fillUnset(state: ReceiptUiState, categoryId: Long): ReceiptCh
     oneRowCategoryId = state.oneRowCategoryId ?: categoryId,
 )
 
+/**
+ * The key of the first item in [after] that [before] did not hold: where the list scrolls
+ * once Add next part has read a new photo. Null on the first reading ([before] null), when
+ * no item is new, or when items only left the list.
+ */
+fun firstNewItemKey(before: List<String>?, after: List<String>): String? {
+    if (before == null) return null
+    val seen = before.toSet()
+    return after.firstOrNull { it !in seen }
+}
+
 /** Appends a receipt line to the one row's note, after a comma when it already says something. */
 fun appendToNote(note: String, line: String): String =
     if (note.isBlank()) line else "${note.trimEnd()}, $line"
