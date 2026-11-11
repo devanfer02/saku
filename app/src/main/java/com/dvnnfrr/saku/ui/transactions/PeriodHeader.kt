@@ -1,6 +1,7 @@
 package com.dvnnfrr.saku.ui.transactions
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,8 +10,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
@@ -54,7 +60,12 @@ fun PeriodHeader(
     val colors = SakuTheme.colors
     val spacing = SakuTheme.spacing
 
-    Column(modifier = modifier.fillMaxWidth().background(colors.surface)) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(colors.surface)
+            .swipeToStep(onPrevious = onPrevious, onNext = onNext),
+    ) {
         PeriodBar(
             range = range,
             onPrevious = onPrevious,
@@ -77,6 +88,45 @@ fun PeriodHeader(
  * "Left over" beside In and Out, as the period header draws them. Shared with the
  * Calendar's range summary, so a range reads the same way a month does.
  */
+/**
+ * A horizontal swipe across the header steps the period, as the arrows do: right to left
+ * for the next one, left to right for the previous. One step per swipe, however long. The
+ * arrows stay, and stay the way TalkBack and switch access step.
+ */
+private fun Modifier.swipeToStep(onPrevious: () -> Unit, onNext: () -> Unit): Modifier = composed {
+    val thresholdPx = with(LocalDensity.current) { SWIPE_THRESHOLD.toPx() }
+    val previous by rememberUpdatedState(onPrevious)
+    val next by rememberUpdatedState(onNext)
+    pointerInput(thresholdPx) {
+        var dragged = 0f
+        detectHorizontalDragGestures(
+            onDragStart = { dragged = 0f },
+            onDragEnd = {
+                when (swipeStep(dragged, thresholdPx)) {
+                    1 -> next()
+                    -1 -> previous()
+                }
+            },
+            onHorizontalDrag = { change, amount ->
+                change.consume()
+                dragged += amount
+            },
+        )
+    }
+}
+
+/**
+ * The step a horizontal drag of [draggedPx] makes: 1 (next) for a swipe to the left at
+ * least [thresholdPx] long, -1 (previous) for one to the right, 0 for anything shorter.
+ */
+internal fun swipeStep(draggedPx: Float, thresholdPx: Float): Int = when {
+    draggedPx <= -thresholdPx -> 1
+    draggedPx >= thresholdPx -> -1
+    else -> 0
+}
+
+private val SWIPE_THRESHOLD = 56.dp
+
 /**
  * Left over on the left, In and Out stacked on the right, always in that arrangement. Each
  * side has a fixed share of the width and a long amount shrinks to fit it, so a header
