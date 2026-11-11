@@ -27,14 +27,13 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.isSpecified
 import com.dvnnfrr.saku.domain.ColorSlot
 import com.dvnnfrr.saku.domain.Money
+import com.dvnnfrr.saku.ui.shared.fitOnOneLine
 import com.dvnnfrr.saku.ui.theme.SakuPreview
 import com.dvnnfrr.saku.ui.theme.SakuPreviewSurface
 import com.dvnnfrr.saku.ui.theme.SakuTheme
@@ -242,35 +241,6 @@ internal fun holeTextWidth(holeDiameterPx: Float, blockHeightPx: Float): Float {
     return 2f * sqrt(radius * radius - halfHeight * halfHeight)
 }
 
-/**
- * The factor a font size is multiplied by so a line [measuredWidthPx] wide fits into
- * [availableWidthPx]. Never above 1: text that fits keeps its size, and text that does
- * not shrinks rather than wrapping.
- */
-internal fun textFitScale(measuredWidthPx: Float, availableWidthPx: Float): Float {
-    if (measuredWidthPx <= availableWidthPx || measuredWidthPx <= 0f) return 1f
-    return (availableWidthPx / measuredWidthPx).coerceAtLeast(0f)
-}
-
-/**
- * [style] shrunk until [text] fits on one line [maxWidthPx] wide. Measured again after
- * each step because glyph widths round to whole pixels and do not scale exactly.
- */
-private fun TextMeasurer.fitOnOneLine(text: String, style: TextStyle, maxWidthPx: Float): TextStyle {
-    var fitted = style
-    repeat(FIT_ATTEMPTS) {
-        val width = measure(text, fitted, softWrap = false, maxLines = 1).size.width.toFloat()
-        val scale = textFitScale(width, maxWidthPx)
-        if (scale >= 1f) return fitted
-        fitted = fitted.copy(
-            fontSize = fitted.fontSize * scale,
-            lineHeight = if (fitted.lineHeight.isSpecified) fitted.lineHeight * scale else fitted.lineHeight,
-        )
-    }
-    return fitted
-}
-
-private const val FIT_ATTEMPTS = 3
 private const val FULL_TURN = 360f
 private const val TENTHS = 10f
 

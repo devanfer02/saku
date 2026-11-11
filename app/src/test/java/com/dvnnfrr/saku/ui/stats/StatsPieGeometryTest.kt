@@ -1,6 +1,7 @@
 package com.dvnnfrr.saku.ui.stats
 
 import androidx.compose.ui.geometry.Offset
+import com.dvnnfrr.saku.ui.shared.textFitScale
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

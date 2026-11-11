@@ -3,8 +3,6 @@ package com.dvnnfrr.saku.ui.transactions
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -79,7 +77,12 @@ fun PeriodHeader(
  * "Left over" beside In and Out, as the period header draws them. Shared with the
  * Calendar's range summary, so a range reads the same way a month does.
  */
-@OptIn(ExperimentalLayoutApi::class)
+/**
+ * Left over on the left, In and Out stacked on the right, always in that arrangement. Each
+ * side has a fixed share of the width and a long amount shrinks to fit it, so a header
+ * reading `-Rp 123.456.789` has the same shape as one reading `Rp 0`. In and Out used to
+ * drop below Left over when it was long, and the whole header grew a line.
+ */
 @Composable
 internal fun LeftOverFigures(
     totals: PeriodTotals,
@@ -89,22 +92,24 @@ internal fun LeftOverFigures(
     val spacing = SakuTheme.spacing
     val leftOverLabel = stringResource(R.string.label_left_over)
 
-    FlowRow(
+    Row(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalArrangement = Arrangement.spacedBy(spacing.sm),
+        verticalAlignment = Alignment.Bottom,
+        horizontalArrangement = Arrangement.spacedBy(spacing.lg),
     ) {
-        Column(modifier = Modifier.padding(end = spacing.lg)) {
+        Column(modifier = Modifier.weight(LEFT_OVER_SHARE)) {
             Caption(leftOverLabel)
             MoneyText(
                 money = totals.net,
                 sign = MoneySign.NET,
                 style = leftOverStyle,
                 contentDescription = "$leftOverLabel ${formatIdrSigned(totals.net)}",
+                shrinkToFit = true,
             )
         }
         Column(
-            modifier = Modifier.align(Alignment.Bottom),
+            modifier = Modifier.weight(1f - LEFT_OVER_SHARE),
+            horizontalAlignment = Alignment.End,
             verticalArrangement = Arrangement.spacedBy(spacing.xs),
         ) {
             Figure(stringResource(R.string.label_in), totals.income, TxnType.INCOME)
@@ -112,6 +117,9 @@ internal fun LeftOverFigures(
         }
     }
 }
+
+/** Left over's share of the header's width; In and Out take the rest. */
+private const val LEFT_OVER_SHARE = 0.55f
 
 @Composable
 private fun Figure(label: String, amount: Money, type: TxnType) {
@@ -125,6 +133,8 @@ private fun Figure(label: String, amount: Money, type: TxnType) {
             type = type,
             style = SakuTheme.typography.amountSmall,
             contentDescription = "$label ${formatIdr(amount)}",
+            shrinkToFit = true,
+            modifier = Modifier.weight(1f, fill = false),
         )
     }
 }
