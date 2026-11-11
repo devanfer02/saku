@@ -67,7 +67,7 @@ The Receipt screen SHALL show the items' sum after all discounts next to the rec
 - **THEN** the screen shows Rp 44.900 not found, with Add next part and the option to save the difference as a row
 
 ### Requirement: Category per item from history
-Each item SHALL get the category most often used by expense rows whose note equals its name, ignoring case, repeated spaces and a trailing ` ×n` quantity, marked as coming from history. An item with no such note SHALL have no category, and Save SHALL ask for the missing categories, with one choice that applies to all items still unset. The user SHALL be able to change any item's category.
+Each item SHALL get the category most often used by expense rows whose note equals its name, ignoring case, repeated spaces and a trailing ` ×n` quantity, marked as coming from history. An item with no such note SHALL take the category most used by expense rows noted with the receipt's store, else its app (such as GoFood), also from history. An item with neither SHALL have no category, and Save SHALL ask for the missing categories, with one choice that applies to all items still unset. The user SHALL be able to change any item's category.
 
 #### Scenario: Known item
 - **WHEN** an earlier expense with note `MINYAK GORENG 2L` was saved under Makan & Minum
@@ -78,8 +78,19 @@ Each item SHALL get the category most often used by expense rows whose note equa
 - **THEN** the item SUSU UHT 1L bought once shows Makan & Minum from history
 
 #### Scenario: New item
-- **WHEN** no earlier note matches DETERJEN 1.8KG
+- **WHEN** no earlier note matches DETERJEN 1.8KG or the store
 - **THEN** the item shows Choose, and Save asks for its category
+
+#### Scenario: New item at a known store
+- **WHEN** no earlier note matches DETERJEN 1.8KG and an earlier expense noted `Indomaret` was saved under Makan & Minum
+- **THEN** the item shows Makan & Minum from history
+
+### Requirement: Receipt category from history (2.0.2)
+One row SHALL take, unless the user picks one, the category most used by expense rows noted with the store, else with the app, else the category holding the largest share of the items. The gap row SHALL take the category of rows noted like it (`Indomaret other items`), else the store's. An archived category SHALL never be offered. The user SHALL be able to change every one.
+
+#### Scenario: Screenshot from a known shop
+- **WHEN** a payment screenshot reads the store Kopi Tuku Cipete and an earlier expense noted `Kopi Tuku Cipete` was saved under Makan & Minum
+- **THEN** One row shows Makan & Minum
 
 ### Requirement: Record as one row or one row per item
 The Receipt screen SHALL offer One row and One row per item. One row SHALL save one expense with the total as amount, the store as note and one chosen category. One row per item SHALL save one expense per item with its spread amount, the item name as note followed by ` ×n` when its quantity n is above 1, and its own category. Both SHALL use the receipt date when read and within the last year (else today), the scan time of day, and the chosen account, and SHALL save all rows in one database transaction. A reading with no items SHALL offer One row only.

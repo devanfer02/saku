@@ -185,6 +185,67 @@ class ReceiptAssemblyTest {
     }
 
     @Test
+    fun `one row takes the category history gives the store over the items' largest share`() {
+        val state = assemble(
+            choices = ReceiptChoices(recordAs = RecordAs.ONE_ROW),
+            dictionary = mapOf("INDOMARET" to makan.id, "BERAS PREMIUM 5KG" to kos.id),
+        )
+
+        assertEquals(makan.id, state.oneRowCategoryId)
+        assertEquals(0, state.unsetCount)
+    }
+
+    @Test
+    fun `a screenshot with no items takes the category last used for its store`() {
+        val screenshot = ReceiptReading(Money(46_882), emptyList(), LocalDate(2026, 10, 15), "Kopi Tuku Cipete", emptyList())
+        val state = assemble(reading = screenshot, dictionary = mapOf("KOPI TUKU CIPETE" to makan.id))
+
+        assertEquals(makan.id, state.oneRowCategoryId)
+        assertEquals(makan.id, receiptRows(state, scannedAt, zone).single().categoryId)
+    }
+
+    @Test
+    fun `an order with no store takes the category used for its app`() {
+        val order = ReceiptReading(Money(58_000), emptyList(), LocalDate(2026, 10, 15), null, emptyList(), source = ReceiptSource.GOFOOD)
+        val state = assemble(reading = order, dictionary = mapOf("GOFOOD" to makan.id))
+
+        assertEquals(makan.id, state.oneRowCategoryId)
+    }
+
+    @Test
+    fun `an item with no history of its own takes the store's category, marked from history`() {
+        val state = assemble(dictionary = mapOf("INDOMARET" to makan.id, "SABUN CUCI 800ML" to kos.id))
+
+        assertEquals(kos.id, state.items[4].categoryId)
+        assertEquals(makan.id, state.items[5].categoryId)
+        assertTrue(state.items[5].fromHistory)
+        assertEquals(0, state.unsetCount)
+    }
+
+    @Test
+    fun `the gap row takes its own note's category, else the store's`() {
+        val found = cardDiscount.copy(items = cardDiscount.items.dropLast(1), receiptDiscounts = emptyList())
+
+        val byNote = assemble(
+            reading = found,
+            choices = ReceiptChoices(gapRow = true),
+            dictionary = mapOf("INDOMARET OTHER ITEMS" to kos.id, "INDOMARET" to makan.id),
+        )
+        assertEquals(kos.id, byNote.gapCategoryId)
+
+        val byStore = assemble(reading = found, choices = ReceiptChoices(gapRow = true), dictionary = mapOf("INDOMARET" to makan.id))
+        assertEquals(makan.id, byStore.gapCategoryId)
+    }
+
+    @Test
+    fun `no history for the store leaves the category as before, and an archived one is not offered`() {
+        assertNull(storeCategory("Indomaret", null, emptyMap(), setOf(makan.id)))
+        assertNull(storeCategory("Indomaret", null, mapOf("INDOMARET" to 9L), setOf(makan.id)))
+        assertNull(storeCategory(null, null, mapOf("" to makan.id), setOf(makan.id)))
+        assertEquals(makan.id, storeCategory("  indomaret ", null, mapOf("INDOMARET" to makan.id), setOf(makan.id)))
+    }
+
+    @Test
     fun `a reading with no items records one row only`() {
         val screenshot = ReceiptReading(Money(46_882), emptyList(), LocalDate(2026, 10, 15), "Kopi Tuku Cipete", emptyList())
         val state = assemble(reading = screenshot, choices = ReceiptChoices(recordAs = RecordAs.PER_ITEM))

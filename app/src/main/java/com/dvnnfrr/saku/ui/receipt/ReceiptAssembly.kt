@@ -148,11 +148,13 @@ data class ReceiptUiState(
 /**
  * The screen state for [reading] under [choices].
  *
- * - An item's category is the user's pick, else the dictionary's (from note history).
+ * - An item's category is the user's pick, else the dictionary's (from note history),
+ *   else the store's: see [storeCategory].
  * - Amounts spread the receipt discounts and additions over the items by largest
  *   remainder, so the rows add up to exactly what the items net to.
  * - One row saves the total (or a tapped chip, or the items' sum when no total was read)
- *   under the category holding the largest share of the items, unless one is picked.
+ *   under the category picked, else the store's from history, else the one holding the
+ *   largest share of the items. The gap row likewise takes its own note's, else the store's.
  * - The account is the pick, else the last receipt's, else the first active one.
  */
 fun assembleReceipt(
@@ -171,6 +173,7 @@ fun assembleReceipt(
     val active = categories.filterNot { it.archived }
     val activeIds = active.map { it.id }.toSet()
     val nameOf = { id: Long? -> active.firstOrNull { it.id == id }?.name }
+    val fromStore = storeCategory(reading.store, reading.source?.label, dictionary, activeIds)
 
     val spread = spreadOverItems(
         nets = reading.items.map { it.net },
@@ -184,7 +187,7 @@ fun assembleReceipt(
         val picked = choices.categoryByItem[key]?.takeIf { it in activeIds }
         // By the readable name first; the printed one still finds rows saved before
         // readable names, or before a word was learned.
-        val known = (dictionary[itemKey(name)] ?: dictionary[key])?.takeIf { it in activeIds }
+        val known = (dictionary[itemKey(name)] ?: dictionary[key])?.takeIf { it in activeIds } ?: fromStore
         val categoryId = picked ?: known
         ReceiptItemUi(
             key = key,
@@ -207,7 +210,10 @@ fun assembleReceipt(
     val recordAs = if (items.isEmpty()) RecordAs.ONE_ROW else choices.recordAs
 
     val oneRowAmount = total ?: reading.itemsNet.takeIf { items.isNotEmpty() }
-    val oneRowCategory = choices.oneRowCategoryId?.takeIf { it in activeIds } ?: largestShare(items)
+    val oneRowCategory = choices.oneRowCategoryId?.takeIf { it in activeIds } ?: fromStore ?: largestShare(items)
+    val gapCategory = choices.gapCategoryId?.takeIf { it in activeIds }
+        ?: dictionary[itemKey(gapNote(reading.store))]?.takeIf { it in activeIds }
+        ?: fromStore
 
     val usable = accounts.filterNot { it.archived }
     val account = usable.firstOrNull { it.id == choices.accountId }
@@ -229,7 +235,7 @@ fun assembleReceipt(
         gapsAfterPhoto = reading.gapsAfterPhoto,
         recordAs = recordAs,
         gapRow = choices.gapRow,
-        gapCategoryId = choices.gapCategoryId?.takeIf { it in activeIds },
+        gapCategoryId = gapCategory,
         oneRowAmount = oneRowAmount,
         oneRowCategoryId = oneRowCategory,
         // An order screen that names no restaurant still says where it came from: `GoFood`.
@@ -241,6 +247,21 @@ fun assembleReceipt(
         accounts = usable,
     )
 }
+
+/**
+ * The category history gives this receipt as a whole: the usual category of expense rows
+ * noted with its [store] (a one-row save notes the store), else with its [source] app
+ * (`GoFood`). Null when neither was noted before, or its category is archived.
+ */
+internal fun storeCategory(
+    store: String?,
+    source: String?,
+    dictionary: Map<String, Long>,
+    activeIds: Set<Long>,
+): Long? = listOfNotNull(store, source)
+    .map(::itemKey)
+    .filter { it.isNotEmpty() }
+    .firstNotNullOfOrNull { key -> dictionary[key]?.takeIf { it in activeIds } }
 
 /** The category whose items cost the most in total, ties to the one listed first. */
 private fun largestShare(items: List<ReceiptItemUi>): Long? =
