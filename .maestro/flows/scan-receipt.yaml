@@ -22,7 +22,7 @@ name: Scan a receipt
 
 # --- the paper receipt ----------------------------------------------------------
 - tapOn: "Scan a receipt"
-- assertVisible: "Paper receipts and payment screenshots both work."
+- assertVisible: "Receipts or payment screenshots"
 - tapOn: "Choose from gallery"
 # --- the system photo picker ----------------------------------------------------
 - tapOn:
