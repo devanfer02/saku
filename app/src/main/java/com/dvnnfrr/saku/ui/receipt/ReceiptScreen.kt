@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AddAPhoto
@@ -38,6 +39,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -372,7 +374,18 @@ private fun ReceiptList(
     onAddLine: (String) -> Unit,
 ) {
     val spacing = SakuTheme.spacing
-    LazyColumn(modifier = Modifier.fillMaxSize()) {
+    val listState = rememberLazyListState()
+    // Add next part appends the new photo's items below the ones already read; scroll to
+    // the first of them so the user sees what the photo added without hunting for it.
+    var seenKeys by remember { mutableStateOf<List<String>?>(null) }
+    val itemKeys = state.items.map { it.key }
+    LaunchedEffect(itemKeys) {
+        val newKey = firstNewItemKey(seenKeys, itemKeys)
+        seenKeys = itemKeys
+        val index = newKey?.let { receiptListIndexOf(state, it) } ?: return@LaunchedEffect
+        listState.animateScrollToItem(index)
+    }
+    LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
         item(key = "summary") { ReceiptSummary(state = state, onPickTotal = onPickTotal) }
         if (state.reading) {
             item(key = "reading") { ReadingRow(photo = state.photos + 1) }
@@ -405,6 +418,21 @@ private fun ReceiptList(
         }
         item(key = "end") { Spacer(Modifier.size(spacing.lg)) }
     }
+}
+
+/**
+ * The position of item [key]'s row in [ReceiptList]'s LazyColumn, counting the rows above
+ * it there; null when items are not listed. Keep in step with ReceiptList.
+ */
+internal fun receiptListIndexOf(state: ReceiptUiState, key: String): Int? {
+    if (state.recordAs != RecordAs.PER_ITEM) return null
+    val itemIndex = state.items.indexOfFirst { it.key == key }.takeIf { it >= 0 } ?: return null
+    val above = 1 + // summary
+        (if (state.reading) 1 else 0) +
+        (if (state.unreadable) 1 else 0) +
+        state.gapsAfterPhoto.size +
+        1 // items title
+    return above + itemIndex
 }
 
 @Composable

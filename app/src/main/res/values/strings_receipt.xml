@@ -4,7 +4,7 @@
     <string name="receipt_scan">Scan a receipt</string>
     <string name="receipt_camera">Take a photo</string>
     <string name="receipt_gallery">Choose from gallery</string>
-    <string name="receipt_both_kinds">Paper receipts and payment screenshots both work.</string>
+    <string name="receipt_both_kinds">Receipts or payment screenshots</string>
 
     <!-- Receipt screen -->
     <string name="receipt_title">Receipt</string>

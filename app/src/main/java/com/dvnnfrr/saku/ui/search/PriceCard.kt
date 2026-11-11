@@ -2,6 +2,8 @@ package com.dvnnfrr.saku.ui.search
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -30,6 +32,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.unit.Dp
 import com.dvnnfrr.saku.R
 import com.dvnnfrr.saku.domain.DateRange
 import com.dvnnfrr.saku.domain.Money
@@ -60,6 +63,11 @@ fun PriceCard(
     range: PriceRange?,
     onSelectRange: (PriceRange) -> Unit,
     modifier: Modifier = Modifier,
+    /**
+     * The tallest the open part may grow; past it the chips, chart and figures scroll
+     * inside the card. Unspecified lets it grow freely.
+     */
+    maxBodyHeight: Dp = Dp.Unspecified,
 ) {
     val colors = SakuTheme.colors
     val spacing = SakuTheme.spacing
@@ -118,6 +126,8 @@ fun PriceCard(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .heightIn(max = maxBodyHeight)
+                    .verticalScroll(rememberScrollState())
                     .padding(start = spacing.lg, end = spacing.lg, bottom = spacing.md),
                 verticalArrangement = Arrangement.spacedBy(spacing.xs),
             ) {

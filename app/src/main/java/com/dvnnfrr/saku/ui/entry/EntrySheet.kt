@@ -6,6 +6,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -48,6 +51,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -102,6 +106,7 @@ fun EntrySheet(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun EntrySheetBody(
     state: EntryUiState,
@@ -120,6 +125,12 @@ private fun EntrySheetBody(
     var pickingTime by rememberSaveable { mutableStateOf(false) }
 
     val focusManager = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
+    // While the note is typed into, the phone keyboard and Saku's keypad would stack and
+    // push the history suggestions out of sight. The keypad steps aside until the keyboard
+    // closes (Done, a picked suggestion, Back, a tap elsewhere); Done brings Save back.
+    var noteFocused by remember { mutableStateOf(false) }
+    val typingNote = noteFocused && WindowInsets.isImeVisible
     val leaveNote = {
         viewModel.dismissSuggestions()
         focusManager.clearFocus()
@@ -194,6 +205,7 @@ private fun EntrySheetBody(
                     value = form.note,
                     onChange = viewModel::setNote,
                     onDone = leaveNote,
+                    onFocus = { noteFocused = it },
                     onBlur = viewModel::dismissSuggestions,
                 )
                 NoteSuggestions(
@@ -201,6 +213,7 @@ private fun EntrySheetBody(
                     onPick = { suggestion ->
                         viewModel.pickSuggestion(suggestion)
                         // The keyboard drops so the in-sheet keypad shows for the amount.
+                        keyboard?.hide()
                         focusManager.clearFocus()
                     },
                 )
@@ -219,7 +232,7 @@ private fun EntrySheetBody(
 
         // An open picker takes the keypad's place, as a grid, so the choices sit where
         // the thumb already is and a long list needs little or no scrolling.
-        if (openPicker == OpenPicker.NONE) {
+        if (openPicker == OpenPicker.NONE && !typingNote) {
             val item = priceHistoryItem(form)
             if (item != null && onPriceHistory != null) PriceHistoryAction(onClick = { onPriceHistory(item) })
             Keypad(
@@ -459,6 +472,7 @@ private fun NoteField(
     value: String,
     onChange: (String) -> Unit,
     onDone: () -> Unit,
+    onFocus: (Boolean) -> Unit,
     onBlur: () -> Unit,
 ) {
     val spacing = SakuTheme.spacing
@@ -493,7 +507,10 @@ private fun NoteField(
             modifier = Modifier
                 .weight(2f)
                 .padding(vertical = spacing.sm)
-                .onFocusChanged { if (!it.isFocused) onBlur() }
+                .onFocusChanged {
+                    onFocus(it.isFocused)
+                    if (!it.isFocused) onBlur()
+                }
                 .semantics { contentDescription = label },
         )
     }

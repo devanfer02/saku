@@ -1,18 +1,22 @@
 package com.dvnnfrr.saku.ui.transactions
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
@@ -56,7 +60,12 @@ fun PeriodHeader(
     val colors = SakuTheme.colors
     val spacing = SakuTheme.spacing
 
-    Column(modifier = modifier.fillMaxWidth().background(colors.surface)) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(colors.surface)
+            .swipeToStep(onPrevious = onPrevious, onNext = onNext),
+    ) {
         PeriodBar(
             range = range,
             onPrevious = onPrevious,
@@ -79,7 +88,51 @@ fun PeriodHeader(
  * "Left over" beside In and Out, as the period header draws them. Shared with the
  * Calendar's range summary, so a range reads the same way a month does.
  */
-@OptIn(ExperimentalLayoutApi::class)
+/**
+ * A horizontal swipe across the header steps the period, as the arrows do: right to left
+ * for the next one, left to right for the previous. One step per swipe, however long. The
+ * arrows stay, and stay the way TalkBack and switch access step.
+ */
+private fun Modifier.swipeToStep(onPrevious: () -> Unit, onNext: () -> Unit): Modifier = composed {
+    val thresholdPx = with(LocalDensity.current) { SWIPE_THRESHOLD.toPx() }
+    val previous by rememberUpdatedState(onPrevious)
+    val next by rememberUpdatedState(onNext)
+    pointerInput(thresholdPx) {
+        var dragged = 0f
+        detectHorizontalDragGestures(
+            onDragStart = { dragged = 0f },
+            onDragEnd = {
+                when (swipeStep(dragged, thresholdPx)) {
+                    1 -> next()
+                    -1 -> previous()
+                }
+            },
+            onHorizontalDrag = { change, amount ->
+                change.consume()
+                dragged += amount
+            },
+        )
+    }
+}
+
+/**
+ * The step a horizontal drag of [draggedPx] makes: 1 (next) for a swipe to the left at
+ * least [thresholdPx] long, -1 (previous) for one to the right, 0 for anything shorter.
+ */
+internal fun swipeStep(draggedPx: Float, thresholdPx: Float): Int = when {
+    draggedPx <= -thresholdPx -> 1
+    draggedPx >= thresholdPx -> -1
+    else -> 0
+}
+
+private val SWIPE_THRESHOLD = 56.dp
+
+/**
+ * Left over on the left, In and Out stacked on the right, always in that arrangement. Each
+ * side has a fixed share of the width and a long amount shrinks to fit it, so a header
+ * reading `-Rp 123.456.789` has the same shape as one reading `Rp 0`. In and Out used to
+ * drop below Left over when it was long, and the whole header grew a line.
+ */
 @Composable
 internal fun LeftOverFigures(
     totals: PeriodTotals,
@@ -89,22 +142,24 @@ internal fun LeftOverFigures(
     val spacing = SakuTheme.spacing
     val leftOverLabel = stringResource(R.string.label_left_over)
 
-    FlowRow(
+    Row(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalArrangement = Arrangement.spacedBy(spacing.sm),
+        verticalAlignment = Alignment.Bottom,
+        horizontalArrangement = Arrangement.spacedBy(spacing.lg),
     ) {
-        Column(modifier = Modifier.padding(end = spacing.lg)) {
+        Column(modifier = Modifier.weight(LEFT_OVER_SHARE)) {
             Caption(leftOverLabel)
             MoneyText(
                 money = totals.net,
                 sign = MoneySign.NET,
                 style = leftOverStyle,
                 contentDescription = "$leftOverLabel ${formatIdrSigned(totals.net)}",
+                shrinkToFit = true,
             )
         }
         Column(
-            modifier = Modifier.align(Alignment.Bottom),
+            modifier = Modifier.weight(1f - LEFT_OVER_SHARE),
+            horizontalAlignment = Alignment.End,
             verticalArrangement = Arrangement.spacedBy(spacing.xs),
         ) {
             Figure(stringResource(R.string.label_in), totals.income, TxnType.INCOME)
@@ -112,6 +167,9 @@ internal fun LeftOverFigures(
         }
     }
 }
+
+/** Left over's share of the header's width; In and Out take the rest. */
+private const val LEFT_OVER_SHARE = 0.55f
 
 @Composable
 private fun Figure(label: String, amount: Money, type: TxnType) {
@@ -125,6 +183,8 @@ private fun Figure(label: String, amount: Money, type: TxnType) {
             type = type,
             style = SakuTheme.typography.amountSmall,
             contentDescription = "$label ${formatIdr(amount)}",
+            shrinkToFit = true,
+            modifier = Modifier.weight(1f, fill = false),
         )
     }
 }
