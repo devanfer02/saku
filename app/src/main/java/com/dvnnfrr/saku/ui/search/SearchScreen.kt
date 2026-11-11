@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -222,72 +223,78 @@ private fun Results(
         stringResource(R.string.search_tab_yearly),
     )
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        Summary(state)
-        if (state.hiddenCount > 0) HiddenLine(state.hiddenCount, onClearFilter)
-        // Between the summary and the tabs, so it stays put whichever tab is open; it
-        // folds to one line when the list needs the room.
-        // Two or more items bought at least twice: chips by row count pick whose card shows.
-        if (state.priceItems.size >= 2) {
-            PriceItemChips(
-                items = state.priceItems,
-                selectedKey = state.price?.itemKey,
-                onSelect = onSelectPriceItem,
-            )
-        }
-        state.price?.let { price ->
-            // The picked range, per item; null until the user picks one, then kept while typing.
-            var priceRange by rememberSaveable(price.itemKey) { mutableStateOf<PriceRange?>(null) }
-            PriceCard(
-                history = price,
-                expanded = priceExpanded,
-                onToggle = { priceExpanded = !priceExpanded },
-                range = priceRange,
-                onSelectRange = { priceRange = it },
-                modifier = Modifier.padding(top = SakuTheme.spacing.xs),
-            )
-        }
-        SegmentedTabs(
-            options = tabs,
-            selectedIndex = tab.ordinal,
-            onSelect = { onSelectTab(SearchTab.entries[it]) },
-            modifier = Modifier.padding(SakuTheme.spacing.md),
-        )
-        val listPadding = PaddingValues(bottom = SakuTheme.spacing.xl)
-        when (tab) {
-            SearchTab.DAILY -> LazyColumn(state = dailyState, modifier = Modifier.fillMaxSize(), contentPadding = listPadding) {
-                daySectionItems(state.days, onRowClick)
+    // The open price card scrolls inside itself past this share of the results' height, so
+    // at a large font or on a short screen it is never cut off and the tabs stay in view.
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val priceBodyMax = maxHeight * PRICE_BODY_SHARE
+        Column(modifier = Modifier.fillMaxSize()) {
+            Summary(state)
+            if (state.hiddenCount > 0) HiddenLine(state.hiddenCount, onClearFilter)
+            // Between the summary and the tabs, so it stays put whichever tab is open; it
+            // folds to one line when the list needs the room.
+            // Two or more items bought at least twice: chips by row count pick whose card shows.
+            if (state.priceItems.size >= 2) {
+                PriceItemChips(
+                    items = state.priceItems,
+                    selectedKey = state.price?.itemKey,
+                    onSelect = onSelectPriceItem,
+                )
             }
-
-            SearchTab.MONTHLY -> LazyColumn(state = monthlyState, modifier = Modifier.fillMaxSize(), contentPadding = listPadding) {
-                items(count = state.months.size, key = { i -> "month-${state.months[i].range.start}" }) { i ->
-                    val month = state.months[i]
-                    val target = dailyScrollIndex(state.days, month)
-                    PeriodRow(
-                        period = month,
-                        onClick = target?.let { index ->
-                            {
-                                dailyState.requestScrollToItem(index)
-                                onSelectTab(SearchTab.DAILY)
-                            }
-                        },
-                    )
+            state.price?.let { price ->
+                // The picked range, per item; null until the user picks one, then kept while typing.
+                var priceRange by rememberSaveable(price.itemKey) { mutableStateOf<PriceRange?>(null) }
+                PriceCard(
+                    history = price,
+                    expanded = priceExpanded,
+                    onToggle = { priceExpanded = !priceExpanded },
+                    range = priceRange,
+                    onSelectRange = { priceRange = it },
+                    modifier = Modifier.padding(top = SakuTheme.spacing.xs),
+                    maxBodyHeight = priceBodyMax,
+                )
+            }
+            SegmentedTabs(
+                options = tabs,
+                selectedIndex = tab.ordinal,
+                onSelect = { onSelectTab(SearchTab.entries[it]) },
+                modifier = Modifier.padding(SakuTheme.spacing.md),
+            )
+            val listPadding = PaddingValues(bottom = SakuTheme.spacing.xl)
+            when (tab) {
+                SearchTab.DAILY -> LazyColumn(state = dailyState, modifier = Modifier.fillMaxSize(), contentPadding = listPadding) {
+                    daySectionItems(state.days, onRowClick)
                 }
-            }
 
-            SearchTab.YEARLY -> LazyColumn(state = yearlyState, modifier = Modifier.fillMaxSize(), contentPadding = listPadding) {
-                items(count = state.years.size, key = { i -> "year-${state.years[i].range.start}" }) { i ->
-                    val year = state.years[i]
-                    val target = monthlyScrollIndex(state.months, year)
-                    PeriodRow(
-                        period = year,
-                        onClick = target?.let { index ->
-                            {
-                                monthlyState.requestScrollToItem(index)
-                                onSelectTab(SearchTab.MONTHLY)
-                            }
-                        },
-                    )
+                SearchTab.MONTHLY -> LazyColumn(state = monthlyState, modifier = Modifier.fillMaxSize(), contentPadding = listPadding) {
+                    items(count = state.months.size, key = { i -> "month-${state.months[i].range.start}" }) { i ->
+                        val month = state.months[i]
+                        val target = dailyScrollIndex(state.days, month)
+                        PeriodRow(
+                            period = month,
+                            onClick = target?.let { index ->
+                                {
+                                    dailyState.requestScrollToItem(index)
+                                    onSelectTab(SearchTab.DAILY)
+                                }
+                            },
+                        )
+                    }
+                }
+
+                SearchTab.YEARLY -> LazyColumn(state = yearlyState, modifier = Modifier.fillMaxSize(), contentPadding = listPadding) {
+                    items(count = state.years.size, key = { i -> "year-${state.years[i].range.start}" }) { i ->
+                        val year = state.years[i]
+                        val target = monthlyScrollIndex(state.months, year)
+                        PeriodRow(
+                            period = year,
+                            onClick = target?.let { index ->
+                                {
+                                    monthlyState.requestScrollToItem(index)
+                                    onSelectTab(SearchTab.MONTHLY)
+                                }
+                            },
+                        )
+                    }
                 }
             }
         }
@@ -394,6 +401,9 @@ private fun SearchScreenPreview() {
 }
 
 private const val PRICE_CARD_FOLD_SCALE = 1.3f
+
+/** The most of the results' height the open price card's body takes before it scrolls. */
+private const val PRICE_BODY_SHARE = 0.45f
 
 /** One chip per item with its row count, most bought first; the picked one is selected. */
 @Composable
